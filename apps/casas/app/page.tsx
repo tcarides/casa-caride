@@ -1,4 +1,5 @@
 'use client'
+import { apiFetch } from '@/lib/api'
 
 import { useEffect, useMemo, useState, useCallback, useDeferredValue, useRef } from 'react'
 import Link from 'next/link'
@@ -169,7 +170,7 @@ export default function HomePage() {
   const loadProperties = useCallback(async () => {
     try {
       setLoadError(null)
-      const res = await fetch('/api/properties')
+      const res = await apiFetch('/api/properties')
       if (!res.ok) {
         const text = await res.text().catch(() => '')
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`)
@@ -187,7 +188,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!currentUser) return
-    fetch('/api/dedupe/candidates')
+    apiFetch('/api/dedupe/candidates')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setPendingDupes(d.total ?? 0) })
       .catch(() => {})
@@ -197,7 +198,7 @@ export default function HomePage() {
     setScraping(true)
     setScrapeMsg(null)
     try {
-      const res = await fetch('/api/scrape', { method: 'POST' })
+      const res = await apiFetch('/api/scrape', { method: 'POST' })
       const data = await res.json()
       if (data.success) {
         setScrapeMsg(data.newCount > 0 ? `+${data.newCount} nuevas` : 'Sin cambios')
@@ -232,7 +233,7 @@ export default function HomePage() {
   // Aplica un status (sin toast). Devuelve true si ok.
   const applyStatus = useCallback(async (id: string, status: PropertyStatus): Promise<boolean> => {
     if (!currentUser) return false
-    const res = await fetch(`/api/properties/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, userId: currentUser }),
@@ -259,7 +260,7 @@ export default function HomePage() {
 
   const handleNotesChange = useCallback(async (id: string, notes: string) => {
     if (!currentUser) return
-    const res = await fetch(`/api/properties/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes, userId: currentUser }),
     })
@@ -272,7 +273,7 @@ export default function HomePage() {
 
   const handleDiscontinuedChange = useCallback(async (id: string, discontinued: boolean) => {
     if (!currentUser) return
-    const res = await fetch(`/api/properties/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ discontinued, userId: currentUser }),
     })

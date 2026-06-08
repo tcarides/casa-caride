@@ -1,4 +1,5 @@
 'use client'
+import { apiFetch } from '@/lib/api'
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -17,7 +18,7 @@ export default function MapaPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/properties')
+    apiFetch('/api/properties')
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(setProperties)
       .catch(e => setError(e.message))

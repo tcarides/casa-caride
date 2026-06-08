@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "@/lib/api";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -29,7 +30,7 @@ export default function Home() {
   const fetchState = useCallback(async () => {
     if (pending.current > 0) return;
     try {
-      const res = await fetch("/api/state", { cache: "no-store" });
+      const res = await apiFetch("/api/state", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       if (pending.current === 0) {
@@ -75,7 +76,7 @@ export default function Home() {
   async function patchItem(item, payload, optimistic) {
     patchLocal(item.id, optimistic ?? payload);
     await mutate(async () => {
-      const res = await fetch(`/api/items/${item.id}`, {
+      const res = await apiFetch(`/api/items/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -118,7 +119,7 @@ export default function Home() {
       { id: tempId, name, categoryId, needed: true, checked: false, quantity: 1, note: null },
     ]);
     await mutate(async () => {
-      const res = await fetch("/api/items", {
+      const res = await apiFetch("/api/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, categoryId, needed: true }),
@@ -135,7 +136,7 @@ export default function Home() {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
     if (typeof item.id === "string" && item.id.startsWith("tmp-")) return;
     await mutate(async () => {
-      const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/items/${item.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("delete");
     });
   }
@@ -147,7 +148,7 @@ export default function Home() {
     const clean = name.trim();
     if (!clean) return;
     await mutate(async () => {
-      const res = await fetch("/api/categories", {
+      const res = await apiFetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: clean }),
@@ -165,7 +166,7 @@ export default function Home() {
     if (!name || name === cat.name) return;
     setCategories((prev) => prev.map((c) => (c.id === cat.id ? { ...c, name } : c)));
     await mutate(async () => {
-      const res = await fetch(`/api/categories/${cat.id}`, {
+      const res = await apiFetch(`/api/categories/${cat.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -186,12 +187,12 @@ export default function Home() {
     setCategories(next);
     await mutate(async () => {
       await Promise.all([
-        fetch(`/api/categories/${a.id}`, {
+        apiFetch(`/api/categories/${a.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ position: b.position }),
         }),
-        fetch(`/api/categories/${b.id}`, {
+        apiFetch(`/api/categories/${b.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ position: a.position }),
@@ -205,7 +206,7 @@ export default function Home() {
     if (!confirm("¿Terminar la compra? Se va a vaciar la lista (el catálogo queda).")) return;
     setItems((prev) => prev.map((i) => ({ ...i, needed: false, checked: false })));
     await mutate(async () => {
-      const res = await fetch("/api/reset", {
+      const res = await apiFetch("/api/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope: "trip" }),
@@ -217,7 +218,7 @@ export default function Home() {
   async function uncheckAll() {
     setItems((prev) => prev.map((i) => ({ ...i, checked: false })));
     await mutate(async () => {
-      const res = await fetch("/api/reset", {
+      const res = await apiFetch("/api/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope: "checked" }),

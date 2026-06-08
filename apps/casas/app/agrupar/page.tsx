@@ -1,4 +1,5 @@
 'use client'
+import { apiFetch } from '@/lib/api'
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
@@ -76,7 +77,7 @@ export default function AgruparPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/dedupe/candidates')
+      const res = await apiFetch('/api/dedupe/candidates')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setCandidates(data.candidates)
@@ -101,7 +102,7 @@ export default function AgruparPage() {
     }
     setSubmitting(true)
     try {
-      await fetch(`/api/dedupe/${action}`, {
+      await apiFetch(`/api/dedupe/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ propA: current.prop_a, propB: current.prop_b }),

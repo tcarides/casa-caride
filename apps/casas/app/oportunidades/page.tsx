@@ -1,4 +1,5 @@
 'use client'
+import { apiFetch } from '@/lib/api'
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import Link from 'next/link'
@@ -41,7 +42,7 @@ export default function OportunidadesPage() {
   const loadProperties = useCallback(async () => {
     try {
       setLoadError(null)
-      const res = await fetch('/api/properties')
+      const res = await apiFetch('/api/properties')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setAllProperties(await res.json() as Property[])
     } catch (e: unknown) {
@@ -64,7 +65,7 @@ export default function OportunidadesPage() {
 
   const applyStatus = useCallback(async (id: string, status: PropertyStatus): Promise<boolean> => {
     if (!currentUser) return false
-    const res = await fetch(`/api/properties/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, userId: currentUser }),
     })
@@ -83,7 +84,7 @@ export default function OportunidadesPage() {
 
   const handleNotesChange = useCallback(async (id: string, notes: string) => {
     if (!currentUser) return
-    const res = await fetch(`/api/properties/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes, userId: currentUser }),
     })
@@ -92,7 +93,7 @@ export default function OportunidadesPage() {
 
   const handleDiscontinuedChange = useCallback(async (id: string, discontinued: boolean) => {
     if (!currentUser) return
-    const res = await fetch(`/api/properties/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ discontinued, userId: currentUser }),
     })
