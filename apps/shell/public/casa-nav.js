@@ -34,6 +34,8 @@
     'transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .2s;padding:0}',
     '.casa-fab:active{transform:scale(.9)}',
     '.casa-fab.casa-hidden{transform:translateY(120px) scale(.7);opacity:0;pointer-events:none}',
+    // En apps con barra de navegación inferior propia (fixture), subir el botón.
+    '.casa-fab.casa-raised{bottom:calc(80px + env(safe-area-inset-bottom))}',
     '.casa-ovl{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.45);opacity:0;',
     'pointer-events:none;transition:opacity .2s}',
     '.casa-ovl.casa-open{opacity:1;pointer-events:auto}',
@@ -66,6 +68,8 @@
   fab.type = 'button';
   fab.setAttribute('aria-label', 'Cambiar de app o volver a Casa');
   fab.textContent = current ? current.emoji : '🏡';
+  // El fixture tiene su propia barra inferior: subimos el botón para no taparla.
+  if (path.indexOf('/fixture') === 0) fab.classList.add('casa-raised');
   document.body.appendChild(fab);
 
   // --- Hoja (sheet) ---
