@@ -9,10 +9,24 @@ import type { NextConfig } from 'next'
  * - /olivia/* y /fixture/* -> estáticos servidos desde public/ (no necesitan rewrite).
  *
  * En desarrollo las zonas corren en localhost (3001, 3002).
- * En producción se apuntan a las URLs de Vercel vía variables de entorno.
+ * En producción se apuntan a las URLs de Vercel vía variables de entorno
+ * (SUPER_URL / CASAS_URL). Si faltan en producción, falla el build con un
+ * error claro en vez de rutear silenciosamente a localhost.
  */
-const SUPER_URL = process.env.SUPER_URL ?? 'http://localhost:3001'
-const CASAS_URL = process.env.CASAS_URL ?? 'http://localhost:3002'
+function zoneUrl(name: 'SUPER' | 'CASAS', devPort: number): string {
+  const url = process.env[`${name}_URL`]
+  if (url) return url.replace(/\/$/, '')
+  // En Vercel las env vars deben estar seteadas: si falta, fallar claro.
+  if (process.env.VERCEL) {
+    throw new Error(
+      `Falta la variable de entorno ${name}_URL (URL de la zona ${name.toLowerCase()} en Vercel).`
+    )
+  }
+  return `http://localhost:${devPort}`
+}
+
+const SUPER_URL = zoneUrl('SUPER', 3001)
+const CASAS_URL = zoneUrl('CASAS', 3002)
 
 const nextConfig: NextConfig = {
   async rewrites() {

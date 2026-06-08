@@ -79,6 +79,9 @@ Para que las zonas funcionen con datos, copiá sus `.env.example` a `.env.local`
 
 ## Deploy en Vercel (Multi-Zones)
 
+> Runbook paso a paso (con bases de datos y troubleshooting):
+> [docs/deploy-vercel.md](docs/deploy-vercel.md).
+
 Se crean **3 proyectos** en Vercel desde este mismo repo (cada uno con su *Root
 Directory*):
 
