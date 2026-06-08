@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   Map as MapIcon, Link2, RefreshCw, LayoutGrid, Rows3, ArrowUpDown,
-  SlidersHorizontal, X, Home, Repeat, List, Loader2, Archive, Sparkles,
+  SlidersHorizontal, X, Repeat, List, Loader2, Archive, Sparkles,
 } from 'lucide-react'
 import PropertyCard from '@/components/PropertyCard'
 import CardSkeleton from '@/components/CardSkeleton'
@@ -373,13 +373,10 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col pb-16 lg:pb-0">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-700/80 px-3 sm:px-6 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-accent/15 text-accent-400">
-            <Home size={18} />
-          </span>
-          <div className="leading-none">
-            <div className="text-base font-bold text-white">Casas</div>
-            <div className="text-[10px] text-slate-500 hidden sm:block">Zona Norte · {allProperties.length} props</div>
+        <div className="casa-headrow text-white">
+          <div className="casa-title">
+            <h1>Casas</h1>
+            <p>Zona Norte · {allProperties.length} props</p>
           </div>
         </div>
 
