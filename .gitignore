@@ -19,6 +19,7 @@ build/
 
 # claude code (local)
 .claude/settings.local.json
+.claude/launch.json
 
 # misc
 .DS_Store
