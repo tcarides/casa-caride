@@ -8,7 +8,7 @@ import type { MetadataRoute } from 'next'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Casa Caride',
-    short_name: 'Casa',
+    short_name: 'Casa Caride',
     description: 'Las apps de la familia Caride en un solo lugar.',
     start_url: '/',
     scope: '/',
