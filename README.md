@@ -49,7 +49,7 @@ casa-caride/
 │   │   └── public/
 │   │       ├── olivia/    # app estática servida en /olivia
 │   │       └── fixture/   # app estática servida en /fixture
-│   ├── super/      # listas-super (Next 15, basePath /super, DB Neon)
+│   ├── super/      # listas-super (Next 16, basePath /super, DB Neon)
 │   └── casas/      # compra de casas (Next 16, basePath /casas, DB Postgres)
 ├── tools/          # scraper y extensión de casas (no se deployan)
 ├── packages/       # (futuro) UI y auth compartidos
