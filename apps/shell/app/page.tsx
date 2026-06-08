@@ -1,14 +1,16 @@
 import { APPS } from './apps.config'
+import { InstallInfo } from './InstallInfo'
 
 export default function Home() {
   return (
     <main className="home">
       <header className="home__header">
         <div className="home__logo" aria-hidden>🏡</div>
-        <div>
+        <div className="home__heading">
           <h1 className="home__title">Casa Caride</h1>
           <p className="home__subtitle">Las apps de la familia, en un solo lugar</p>
         </div>
+        <InstallInfo />
       </header>
 
       <section className="grid" aria-label="Mini-apps">
