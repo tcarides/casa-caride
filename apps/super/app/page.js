@@ -274,8 +274,12 @@ export default function Home() {
     <>
       <header className="app-header">
         <div className="app-header-inner">
-          <h1>Lista del súper</h1>
-          <p className="summary">{summary}</p>
+          <div className="casa-headrow">
+            <div className="casa-title">
+              <h1>Lista del súper</h1>
+              <p className="summary">{summary}</p>
+            </div>
+          </div>
           <div className="tabs" role="tablist">
             <button
               className={"tab" + (view === "lista" ? " active" : "")}
