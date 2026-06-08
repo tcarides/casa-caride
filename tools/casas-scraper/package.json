@@ -1,0 +1,28 @@
+{
+  "name": "compra-casa-scraper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "tsx src/index.ts",
+    "scrape:full": "tsx src/index.ts --full",
+    "scrape:zp": "tsx src/index.ts --source zonaprop",
+    "scrape:ap": "tsx src/index.ts --source argenprob",
+    "scrape:ml": "tsx src/index.ts --source mercadolibre",
+    "scrape:ap:full": "tsx src/index.ts --source argenprob --full",
+    "scrape:ml:full": "tsx src/index.ts --source mercadolibre --full",
+    "cleanup": "tsx src/cleanup.ts",
+    "dedupe": "tsx src/dedupe.ts",
+    "geocode": "tsx src/geocode.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0",
+    "dotenv": "^17.4.2",
+    "sharp": "^0.34.5"
+  }
+}

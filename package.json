@@ -1,0 +1,20 @@
+{
+  "name": "casa-caride",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Casa Caride — una sola PWA que reúne las mini-apps de la familia (super, casas, Olivia, fixture).",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "start": "turbo run start"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  },
+  "packageManager": "npm@11.9.0"
+}
