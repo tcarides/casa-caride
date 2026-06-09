@@ -37,9 +37,9 @@
     '.casa-headrow{display:flex;align-items:center;gap:8px;min-width:0}',
     // Bloque de título unificado: misma tipografía en todas las apps.
     // Usa color:inherit para adaptarse al color de fondo de cada header.
-    '.casa-title{display:flex;flex-direction:column;gap:1px;min-width:0;font-family:' + FONT + '}',
+    '.casa-title{display:flex;flex-direction:column;gap:1px;min-width:0;font-family:var(--font-display,' + FONT + ')}',
     '.casa-title h1,.casa-title .casa-title__name{margin:0;font-size:1.25rem;',
-    'font-weight:700;letter-spacing:-.01em;line-height:1.2;color:inherit;font-family:inherit}',
+    'font-weight:var(--fw-medium,600);letter-spacing:-.01em;line-height:1.2;color:inherit;font-family:inherit}',
     '.casa-title p,.casa-title .casa-title__sub{margin:0;font-size:.8rem;font-weight:400;',
     'line-height:1.25;color:inherit;opacity:.7;font-family:inherit}',
   ].join('');
