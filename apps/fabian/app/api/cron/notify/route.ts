@@ -14,8 +14,11 @@ function arNow() {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const auth  = req.headers.get('authorization')
+  const force = req.nextUrl.searchParams.get('force') === 'true'
+
+  // En modo test (force) no se requiere CRON_SECRET
+  if (!force && process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -24,10 +27,12 @@ export async function GET(req: NextRequest) {
   const slot  = now.getUTCHours() < 12 ? 'am' : 'pm'
   const label = slot === 'am' ? 'mañana 🌅' : 'noche 🌙'
 
-  const doses  = await getDoses(today, today)
-  const already = doses.find(d => d.date === today && d.slot === slot)
-  if (already) {
-    return NextResponse.json({ skipped: true, reason: 'already given' })
+  if (!force) {
+    const doses   = await getDoses(today, today)
+    const already = doses.find(d => d.date === today && d.slot === slot)
+    if (already) {
+      return NextResponse.json({ skipped: true, reason: 'already given' })
+    }
   }
 
   const subs = await getAllSubs()
@@ -36,8 +41,8 @@ export async function GET(req: NextRequest) {
   }
 
   const payload = JSON.stringify({
-    title: 'Pastilla de Fabián 🐶',
-    body:  `Hora de la dosis de ${label}. ¿Quién se la da?`,
+    title: force ? '🔔 Notificación de prueba' : 'Pastilla de Fabián 🐶',
+    body:  force ? 'Las notificaciones funcionan correctamente.' : `Hora de la dosis de ${label}. ¿Quién se la da?`,
     tag:   `fabian-${slot}-${today}`,
     url:   '/fabian',
   })

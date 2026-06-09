@@ -56,6 +56,7 @@ export default function FabianPage() {
   const [doses, setDoses]       = useState<Dose[]>([])
   const [saving, setSaving]     = useState<Slot | null>(null)
   const [notifState, setNotif]  = useState<'unsupported' | 'off' | 'on' | 'busy'>('unsupported')
+  const [testSent, setTestSent] = useState(false)
 
   useEffect(() => {
     const v = localStorage.getItem(USER_KEY)
@@ -253,6 +254,23 @@ export default function FabianPage() {
             </div>
           )
         })}
+
+        {/* ── Test notif ── */}
+        {notifState === 'on' && (
+          <div className="fab-test-row">
+            <button
+              className="fab-test-btn"
+              disabled={testSent}
+              onClick={async () => {
+                setTestSent(true)
+                await fetch('/fabian/api/cron/notify?force=true')
+                setTimeout(() => setTestSent(false), 4000)
+              }}
+            >
+              {testSent ? '✓ Enviada' : '🔔 Probar notificación'}
+            </button>
+          </div>
+        )}
 
         {/* ── Historial ── */}
         {history.length > 0 && (
