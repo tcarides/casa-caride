@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  themeColor: '#0a0a0a',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -32,6 +32,8 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
+        {/* Tokens del design system, compartidos por todas las mini-apps */}
+        <link rel="stylesheet" href="/ds/styles.css" />
         {children}
         <SWRegister />
       </body>
