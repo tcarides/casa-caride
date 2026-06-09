@@ -266,7 +266,7 @@ export default function FabianPage() {
               disabled={testSent}
               onClick={async () => {
                 setTestSent(true)
-                await fetch('/fabian/api/cron/notify?force=true')
+                await fetch('/fabian/api/cron/notify?force=true', { cache: 'no-store' })
                 setTimeout(() => setTestSent(false), 4000)
               }}
             >
