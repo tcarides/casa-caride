@@ -29,8 +29,14 @@ body {
   gap: 12px;
 }
 
-.fab-user-btn {
+.fab-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.fab-user-btn {
   font-size: 12px;
   font-weight: 700;
   font-family: inherit;
@@ -43,6 +49,22 @@ body {
   transition: border-color .15s, color .15s;
 }
 .fab-user-btn:hover { border-color: var(--border-strong, #3a3a3a); color: var(--text-pri, #f2f2f0); }
+
+.fab-notif-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-card, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  cursor: pointer;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+  transition: border-color .15s, background .15s;
+}
+.fab-notif-btn:hover  { border-color: var(--fab); }
+.fab-notif-btn.active { background: color-mix(in oklab, var(--fab) 15%, transparent); border-color: var(--fab); }
+.fab-notif-btn:disabled { opacity: .5; cursor: default; }
 
 /* ── Layout ── */
 .fab-body {
@@ -165,6 +187,24 @@ body {
   border: 1.5px solid var(--border-subtle, #2a2a2a);
 }
 .dose-btn-undo:hover { border-color: var(--border-strong, #3a3a3a); color: var(--text-pri, #f2f2f0); }
+
+/* ── Test row ── */
+.fab-test-row { margin-bottom: 20px; }
+.fab-test-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1.5px dashed var(--border-strong, #3a3a3a);
+  background: transparent;
+  color: var(--text-sec, #9a9a94);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.fab-test-btn:hover:not(:disabled) { border-color: var(--fab); color: var(--fab); }
+.fab-test-btn:disabled { opacity: .6; cursor: default; }
 
 /* ── History ── */
 .fab-history { margin-top: 28px; }
