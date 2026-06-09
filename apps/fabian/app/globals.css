@@ -29,6 +29,17 @@ body {
   gap: 12px;
 }
 
+.fab-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fab-header-dog { font-size: 28px; line-height: 1; flex-shrink: 0; }
+
+/* El título es una pregunta larga — achicamos un poco */
+.fab-header .casa-title h1 { font-size: 15px; }
+.fab-header .casa-title p  { font-size: 12px; }
+
 .fab-header-actions {
   display: flex;
   align-items: center;
