@@ -46,6 +46,7 @@ interface Props {
   property: Property
   currentUser: UserId
   compact?: boolean
+  rankScore?: number
   onStatusChange: (id: string, status: PropertyStatus) => Promise<void>
   onNotesChange: (id: string, notes: string) => Promise<void>
   onDiscontinuedChange: (id: string, discontinued: boolean) => Promise<void>
@@ -53,7 +54,7 @@ interface Props {
 }
 
 export default function PropertyCard({
-  property: p, currentUser, compact = false,
+  property: p, currentUser, compact = false, rankScore,
   onStatusChange, onNotesChange, onDiscontinuedChange, onOpenPhotos,
 }: Props) {
   const [notes, setNotes] = useState(p.notes ?? '')
@@ -153,6 +154,11 @@ export default function PropertyCard({
           )}
           <span className={`absolute top-1 left-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${src.cls}`}>{src.label}</span>
           <div className="absolute top-1 right-1 flex gap-0.5">{renderUserBadge('tomi')}{renderUserBadge('flori')}</div>
+          {rankScore != null && (
+            <span className="absolute bottom-1 left-1 z-10 text-[10px] font-black bg-accent-500 text-accent-fg px-1.5 py-0.5 rounded-full shadow leading-none">
+              {rankScore}
+            </span>
+          )}
           {isDiscontinued && (
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-red-900/80 text-red-100 text-center text-[10px] font-bold py-0.5 uppercase tracking-wider">No publicada</div>
           )}
@@ -237,6 +243,11 @@ export default function PropertyCard({
         {p.photos.length > 1 && (
           <span className="absolute bottom-2.5 right-2.5 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded-full">
             {p.photos.length} fotos
+          </span>
+        )}
+        {rankScore != null && (
+          <span className="absolute bottom-2.5 left-2.5 z-10 text-[12px] font-black bg-accent-500 text-accent-fg px-2 py-0.5 rounded-full shadow leading-none">
+            {rankScore}
           </span>
         )}
 

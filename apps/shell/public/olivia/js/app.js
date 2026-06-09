@@ -67,7 +67,8 @@ function dailyIndex(arrLength, offset = 0) {
 /* ---------- Render principal ---------- */
 function renderHero(p) {
   const name = getName();
-  document.querySelector(".brand-text h1").textContent = name;
+  const titleEl = document.querySelector(".casa-title h1") || document.querySelector(".brand-text h1");
+  if (titleEl) titleEl.textContent = name;
 
   document.getElementById("weekNumber").textContent = p.week;
   document.getElementById("weekDetail").textContent =
