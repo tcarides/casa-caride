@@ -16,7 +16,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: "#1e293b",
+  themeColor: "#0a0a0a",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -26,6 +26,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es">
       <body>
+        {/* Tokens del design system, servidos por el shell. */}
+        <link rel="stylesheet" href="/ds/styles.css" />
         {children}
         {/* Navegación compartida de Casa Caride (módulo servido por el shell). */}
         <script src="/casa-nav.js" async />

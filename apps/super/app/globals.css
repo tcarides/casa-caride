@@ -1,18 +1,16 @@
 :root {
-  --bg: #f8fafc;
-  --header: #1e293b;
-  --header-2: #0f172a;
-  --accent: #10b981;
-  --accent-dark: #059669;
-  --accent-soft: #ecfdf5;
-  --card: #ffffff;
-  --text: #0f172a;
-  --muted: #64748b;
-  --border: #e7ebf0;
-  --danger: #ef4444;
-  --danger-soft: #fef2f2;
-  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.05);
-  --shadow-lg: 0 -8px 30px rgba(15, 23, 42, 0.18);
+  /* Variables locales de súper, mapeadas a los tokens del design system
+     (servidos en /ds/styles.css). Lo que el DS ya provee —--accent,
+     --accent-soft, --danger, --danger-soft, --shadow-lg— se hereda. */
+  --bg: var(--bg-0);
+  --header: var(--bg-1);
+  --header-2: var(--bg-0);
+  --accent-dark: var(--y-400);
+  --card: var(--surface-card);
+  --text: var(--text-pri);
+  --muted: var(--text-sec);
+  --border: var(--border-subtle);
+  --shadow: var(--shadow-sm);
 }
 
 * {
@@ -26,7 +24,7 @@ html {
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -37,8 +35,10 @@ body {
 
 /* ---------- Header ---------- */
 .app-header {
-  background: linear-gradient(160deg, var(--header) 0%, var(--header-2) 100%);
-  color: #fff;
+  background: color-mix(in oklab, var(--bg-0) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-pri);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -60,7 +60,7 @@ body {
 .summary {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
-  color: #cbd5e1;
+  color: var(--muted);
   min-height: 1.1em;
 }
 
@@ -81,15 +81,15 @@ body {
   border: none;
   border-radius: 9px;
   background: transparent;
-  color: #cbd5e1;
+  color: var(--muted);
   cursor: pointer;
   transition: all 0.18s;
 }
 
 .tab.active {
   background: var(--accent);
-  color: #fff;
-  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.4);
+  color: var(--on-accent);
+  box-shadow: var(--glow-accent);
 }
 
 /* ---------- Main ---------- */
@@ -131,7 +131,7 @@ main {
 
 .search-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .search-clear {
@@ -172,7 +172,7 @@ main {
 
 .item-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .add-btn {
@@ -181,12 +181,12 @@ main {
   border: none;
   border-radius: 12px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s;
-  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.35);
+  box-shadow: var(--glow-accent);
 }
 
 .add-btn:active {
@@ -231,7 +231,7 @@ main {
 .ghost-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* ---------- Toggle "ocultar comprados" ---------- */
@@ -261,7 +261,7 @@ main {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid #cbd5e1;
+  border: 2px solid var(--border-strong);
   position: relative;
   flex: 0 0 auto;
 }
@@ -277,7 +277,7 @@ main {
   inset: 0;
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.65rem;
 }
 
@@ -289,7 +289,7 @@ main {
   padding: 0 0.35rem;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -353,12 +353,12 @@ main {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2px solid #cbd5e1;
-  background: #fff;
+  border: 2px solid var(--border-strong);
+  background: var(--surface-input);
   cursor: pointer;
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -485,7 +485,7 @@ main {
   display: flex;
   gap: 0.5rem;
   padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
-  background: rgba(248, 250, 252, 0.92);
+  background: color-mix(in oklab, var(--bg-0) 90%, transparent);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--border);
   max-width: 600px;
@@ -507,7 +507,7 @@ main {
 
 .footer-btn.danger {
   color: var(--danger);
-  border-color: #fecaca;
+  border-color: var(--danger);
   background: var(--danger-soft);
 }
 
@@ -519,7 +519,7 @@ main {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(2px);
   z-index: 50;
   display: flex;
@@ -592,7 +592,7 @@ main {
 
 .field-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .modal-actions {
@@ -621,7 +621,7 @@ main {
 
 .btn-ghost.danger {
   color: var(--danger);
-  border-color: #fecaca;
+  border-color: var(--danger);
   background: var(--danger-soft);
 }
 
@@ -632,9 +632,9 @@ main {
   border: none;
   border-radius: 11px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.35);
+  box-shadow: var(--glow-accent);
 }
 
 .btn-primary:disabled {
