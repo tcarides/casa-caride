@@ -5,19 +5,22 @@ import type { NextConfig } from 'next'
  * launcher, el manifest y el service worker, y reúne a las mini-apps bajo
  * un único origen mediante rewrites (patrón Multi-Zones de Next.js).
  *
- * - /super/*  y /casas/*  -> apps Next independientes (zonas).
- * - /olivia/* y /fixture/* -> estáticos servidos desde public/ (no necesitan rewrite).
+ * - /super/* y /casas/* -> apps Next independientes (zonas core, obligatorias).
+ * - /fabian/*           -> zona opcional: si falta FABIAN_URL no rompe el build,
+ *                          simplemente no se cablea la ruta (el tile igual aparece).
+ * - /olivia/* y /fixture/* -> estáticos servidos desde public/ (sin rewrite).
  *
- * En desarrollo las zonas corren en localhost (3001, 3002).
+ * En desarrollo las zonas corren en localhost (3001, 3002, 3003).
  * En producción se apuntan a las URLs de Vercel vía variables de entorno
- * (SUPER_URL / CASAS_URL). Si faltan en producción, falla el build con un
- * error claro en vez de rutear silenciosamente a localhost.
+ * (SUPER_URL / CASAS_URL / FABIAN_URL).
  */
-function zoneUrl(name: 'SUPER' | 'CASAS', devPort: number): string {
+function zoneUrl(name: string, devPort: number, optional = false): string | null {
   const url = process.env[`${name}_URL`]
   if (url) return url.replace(/\/$/, '')
-  // En Vercel las env vars deben estar seteadas: si falta, fallar claro.
+  // En Vercel las env vars deben estar seteadas: si falta una obligatoria,
+  // fallar claro en vez de rutear silenciosamente a localhost.
   if (process.env.VERCEL) {
+    if (optional) return null
     throw new Error(
       `Falta la variable de entorno ${name}_URL (URL de la zona ${name.toLowerCase()} en Vercel).`
     )
@@ -25,23 +28,31 @@ function zoneUrl(name: 'SUPER' | 'CASAS', devPort: number): string {
   return `http://localhost:${devPort}`
 }
 
-const SUPER_URL   = zoneUrl('SUPER',   3001)
-const CASAS_URL   = zoneUrl('CASAS',   3002)
-const FABIAN_URL  = zoneUrl('FABIAN',  3003)
+const SUPER_URL  = zoneUrl('SUPER', 3001)!
+const CASAS_URL  = zoneUrl('CASAS', 3002)!
+const FABIAN_URL = zoneUrl('FABIAN', 3003, true) // opcional: no rompe si falta
 
 const nextConfig: NextConfig = {
   async rewrites() {
-    return [
+    const rules = [
       { source: '/super', destination: `${SUPER_URL}/super` },
       { source: '/super/:path*', destination: `${SUPER_URL}/super/:path*` },
       { source: '/casas', destination: `${CASAS_URL}/casas` },
       { source: '/casas/:path*', destination: `${CASAS_URL}/casas/:path*` },
-      { source: '/fabian',       destination: `${FABIAN_URL}/fabian` },
-      { source: '/fabian/:path*', destination: `${FABIAN_URL}/fabian/:path*` },
       // Apps estáticas: URL limpia -> index.html en public/
       { source: '/olivia', destination: '/olivia/index.html' },
       { source: '/fixture', destination: '/fixture/index.html' },
     ]
+
+    // Zona Fabián: solo si su URL está configurada.
+    if (FABIAN_URL) {
+      rules.push(
+        { source: '/fabian', destination: `${FABIAN_URL}/fabian` },
+        { source: '/fabian/:path*', destination: `${FABIAN_URL}/fabian/:path*` },
+      )
+    }
+
+    return rules
   },
 }
 
