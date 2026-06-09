@@ -1,0 +1,12 @@
+/* ============================================================
+   Casa Caride — Fonts
+   The reference is a neutral, Cash-App-inspired grotesque at
+   medium weight. We commit to ONE clean family for all UI +
+   display, with a mono track reserved for dense tabular data:
+     · Hanken Grotesk — UI, body, headings, hero amounts (400–700)
+     · JetBrains Mono — m², prices, counts in dense product views
+   Loaded from Google Fonts (no binaries were in the codebase —
+   see README "Type" note). Swap to self-hosted to ship offline.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');

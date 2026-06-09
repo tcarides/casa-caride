@@ -1,0 +1,52 @@
+/* ============================================================
+   Casa Caride — Typography tokens
+   Mobile-first product type. Compact, legible, with a mono track
+   reserved for the numbers these apps are full of.
+   ============================================================ */
+
+:root {
+  /* ---- Families ----
+     One neutral grotesque drives UI + display (matches the
+     reference); mono is the secondary track for tabular data. */
+  --font-display: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:    'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ---- Weights ---- */
+  --fw-regular:  400;  /* @kind font */
+  --fw-medium:   500;  /* @kind font */
+  --fw-semibold: 600;  /* @kind font */
+  --fw-bold:     700;  /* @kind font */
+  --fw-black:    800;  /* @kind font */
+
+  /* ---- Type scale (reference: dark/yellow, Cash-App-inspired) ----
+     Headings sit at MEDIUM weight (500), not bold — the restrained
+     fintech look. Body/secondary share 14px, separated by color. */
+  --fs-hero:    56px;  /* signature amount-on-black hero */
+  --fs-display: 32px;  /* big numbers, launcher title */
+  --fs-h1:      24px;  /* screen titles */
+  --fs-h2:      18px;  /* section / modal titles */
+  --fs-h3:      15px;  /* card titles, list item names */
+  --fs-body:    14px;  /* default body / inputs */
+  --fs-sm:      13px;  /* tight metadata */
+  --fs-caption: 12px;  /* captions, fine print */
+  --fs-xs:      11px;  /* labels, badges, eyebrows */
+
+  /* Default weight for headings — medium, per the reference */
+  --fw-heading: 500;  /* @kind font */
+
+  /* ---- Line heights ---- */
+  --lh-tight:   1.1;   /* @kind other */
+  --lh-snug:    1.25;  /* @kind other */
+  --lh-normal:  1.45;  /* @kind other */
+
+  /* ---- Letter spacing ---- */
+  /* display / large headings */
+  --ls-tight:   -0.01em;   /* @kind other */
+  --ls-normal:  0;         /* @kind other */
+  /* uppercase labels */
+  --ls-eyebrow:  0.08em;   /* @kind other */
+
+  /* ---- Semantic roles ---- */
+  --text-eyebrow-transform: uppercase;
+}

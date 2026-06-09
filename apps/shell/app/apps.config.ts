@@ -9,8 +9,8 @@ export type MiniApp = {
   description: string
   href: string
   emoji: string
-  /** Color de fondo del tile (gradiente CSS). */
-  gradient: string
+  /** Color de identidad de la app (token del design system). */
+  hue: string
   /** 'zone' = app Next vía rewrite · 'static' = HTML estático en public/ */
   kind: 'zone' | 'static'
 }
@@ -22,7 +22,7 @@ export const APPS: MiniApp[] = [
     description: 'La compra compartida de Flor y Tomás',
     href: '/super',
     emoji: '🛒',
-    gradient: 'linear-gradient(135deg, #10b981, #059669)',
+    hue: 'var(--app-super)',
     kind: 'zone',
   },
   {
@@ -31,7 +31,7 @@ export const APPS: MiniApp[] = [
     description: 'Propiedades, mapa y favoritos',
     href: '/casas',
     emoji: '🏠',
-    gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    hue: 'var(--app-casas)',
     kind: 'zone',
   },
   {
@@ -40,7 +40,7 @@ export const APPS: MiniApp[] = [
     description: 'Guía diaria de paternidad',
     href: '/olivia',
     emoji: '👶',
-    gradient: 'linear-gradient(135deg, #f472b6, #ec4899)',
+    hue: 'var(--app-olivia)',
     kind: 'static',
   },
   {
@@ -49,7 +49,7 @@ export const APPS: MiniApp[] = [
     description: 'Argentina, calendario y grupos 2026',
     href: '/fixture',
     emoji: '⚽',
-    gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+    hue: 'var(--app-fixture)',
     kind: 'static',
   },
 ]

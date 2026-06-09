@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { APPS } from './apps.config'
 import { InstallInfo } from './InstallInfo'
 
@@ -19,9 +20,11 @@ export default function Home() {
             key={app.slug}
             href={app.href}
             className="tile"
-            style={{ background: app.gradient }}
+            style={{ '--tile-hue': app.hue } as CSSProperties}
           >
+            <span className="tile__glow" aria-hidden />
             <span className="tile__emoji" aria-hidden>{app.emoji}</span>
+            {app.kind === 'static' && <span className="tile__tag">estática</span>}
             <span className="tile__name">{app.name}</span>
             <span className="tile__desc">{app.description}</span>
           </a>
