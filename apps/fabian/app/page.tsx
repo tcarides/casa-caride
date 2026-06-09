@@ -188,9 +188,12 @@ export default function FabianPage() {
     <>
       <header className="fab-header">
         <div className="casa-headrow">
-          <div className="casa-title">
-            <h1>Fabián</h1>
-            <p>Medicación cada 12 h</p>
+          <div className="fab-header-title">
+            <span className="fab-header-dog">🐶</span>
+            <div className="casa-title">
+              <h1>¿Te acordaste de darle la pastilla?</h1>
+              <p>Registrá que Fabián tomó sus medicinas</p>
+            </div>
           </div>
         </div>
         <div className="fab-header-actions">
