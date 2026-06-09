@@ -24,7 +24,7 @@ export default function UserSelector({ onSelect }: Props) {
             <button
               key={u}
               onClick={() => onSelect(u)}
-              className="flex-1 bg-accent-600 hover:bg-accent-500 active:bg-accent-700 text-white font-semibold py-4 rounded-xl text-lg transition-colors"
+              className="flex-1 bg-accent-600 hover:bg-accent-500 active:bg-accent-700 text-accent-fg font-semibold py-4 rounded-xl text-lg transition-colors"
             >
               {USER_LABELS[u]}
             </button>

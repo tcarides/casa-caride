@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  themeColor: '#0a0a0a',
   width: 'device-width',
   initialScale: 1,
 }
@@ -18,6 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className="font-sans antialiased">
+        {/* Tokens del design system, servidos por el shell. */}
+        <link rel="stylesheet" href="/ds/styles.css" />
         {children}
         {/* Navegación compartida de Casa Caride (módulo servido por el shell). */}
         <script src="/casa-nav.js" async />
@@ -26,9 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           theme="dark"
           toastOptions={{
             style: {
-              background: '#1e293b',
-              border: '1px solid #334155',
-              color: '#e2e8f0',
+              background: '#141414',
+              border: '1px solid #2a2a2a',
+              color: '#f2f2f0',
             },
           }}
         />

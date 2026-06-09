@@ -90,7 +90,7 @@ function UserRow({
   }
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${isCurrent ? 'bg-accent-600 text-white' : 'bg-slate-700 text-slate-300'}`}>
+      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${isCurrent ? 'bg-accent-600 text-accent-fg' : 'bg-slate-700 text-slate-300'}`}>
         {USER_LABELS[user]}{isCurrent ? ' (vos)' : ''}
       </span>
       <StatChip

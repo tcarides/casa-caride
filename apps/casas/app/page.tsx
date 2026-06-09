@@ -384,7 +384,7 @@ export default function HomePage() {
           {SCRAPER_ENABLED && scrapeMsg && <span className="text-xs text-accent-400">{scrapeMsg}</span>}
           {SCRAPER_ENABLED && (
             <button onClick={handleScrape} disabled={scraping}
-              className="text-xs px-3 py-1.5 rounded-lg bg-accent-600 hover:bg-accent-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium transition-colors inline-flex items-center gap-1.5">
+              className="text-xs px-3 py-1.5 rounded-lg bg-accent-600 hover:bg-accent-500 disabled:bg-slate-700 disabled:text-slate-500 text-accent-fg font-medium transition-colors inline-flex items-center gap-1.5">
               <RefreshCw size={13} className={scraping ? 'animate-spin' : ''} />
               <span className="hidden sm:inline">{scraping ? 'Buscando…' : 'Buscar nuevas'}</span>
             </button>
@@ -417,7 +417,7 @@ export default function HomePage() {
             </select>
           </div>
 
-          <Link href="/oportunidades" className="hidden lg:inline-flex text-xs px-3 py-1.5 rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors items-center gap-1.5" title="Oportunidades recomendadas">
+          <Link href="/oportunidades" className="hidden lg:inline-flex text-xs px-3 py-1.5 rounded-lg bg-accent-600 hover:bg-accent-500 text-accent-fg transition-colors items-center gap-1.5" title="Oportunidades recomendadas">
             <Sparkles size={14} /> Oportunidades
           </Link>
           <Link href="/mapa" className="hidden lg:inline-flex text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors items-center gap-1.5" title="Ver mapa">
@@ -556,7 +556,7 @@ export default function HomePage() {
         </Link>
         <button onClick={() => setMobileFiltersOpen(true)} className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-slate-400 hover:text-slate-200 relative">
           <SlidersHorizontal size={20} /><span className="text-[10px]">Filtros</span>
-          {activeChips.length > 0 && <span className="absolute top-1 right-1/4 bg-accent-600 text-white text-[9px] font-bold px-1.5 rounded-full">{activeChips.length}</span>}
+          {activeChips.length > 0 && <span className="absolute top-1 right-1/4 bg-accent-600 text-accent-fg text-[9px] font-bold px-1.5 rounded-full">{activeChips.length}</span>}
         </button>
       </nav>
 

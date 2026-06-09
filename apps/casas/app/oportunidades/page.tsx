@@ -157,7 +157,7 @@ export default function OportunidadesPage() {
             <div className={gridClass}>
               {opps.slice(0, 150).map(p => (
                 <div key={p.id} className="relative flex flex-col">
-                  <span className="absolute top-2 left-2 z-10 text-[11px] font-bold bg-accent-600 text-white px-2 py-0.5 rounded-full shadow">
+                  <span className="absolute top-2 left-2 z-10 text-[11px] font-bold bg-accent-600 text-accent-fg px-2 py-0.5 rounded-full shadow">
                     {p.opp.score}
                   </span>
                   <PropertyCard
