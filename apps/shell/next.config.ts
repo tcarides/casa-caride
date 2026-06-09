@@ -25,8 +25,9 @@ function zoneUrl(name: 'SUPER' | 'CASAS', devPort: number): string {
   return `http://localhost:${devPort}`
 }
 
-const SUPER_URL = zoneUrl('SUPER', 3001)
-const CASAS_URL = zoneUrl('CASAS', 3002)
+const SUPER_URL   = zoneUrl('SUPER',   3001)
+const CASAS_URL   = zoneUrl('CASAS',   3002)
+const FABIAN_URL  = zoneUrl('FABIAN',  3003)
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -35,6 +36,8 @@ const nextConfig: NextConfig = {
       { source: '/super/:path*', destination: `${SUPER_URL}/super/:path*` },
       { source: '/casas', destination: `${CASAS_URL}/casas` },
       { source: '/casas/:path*', destination: `${CASAS_URL}/casas/:path*` },
+      { source: '/fabian',       destination: `${FABIAN_URL}/fabian` },
+      { source: '/fabian/:path*', destination: `${FABIAN_URL}/fabian/:path*` },
       // Apps estáticas: URL limpia -> index.html en public/
       { source: '/olivia', destination: '/olivia/index.html' },
       { source: '/fixture', destination: '/fixture/index.html' },

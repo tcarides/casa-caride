@@ -52,4 +52,13 @@ export const APPS: MiniApp[] = [
     hue: 'var(--app-fixture)',
     kind: 'static',
   },
+  {
+    slug: 'fabian',
+    name: 'Fabián',
+    description: 'La medicación del perro, cada 12 h',
+    href: '/fabian',
+    emoji: '🐶',
+    hue: 'var(--app-fabian)',
+    kind: 'zone',
+  },
 ]

@@ -1,0 +1,264 @@
+/* ── Fabián — estilos propios (tokens del DS vienen de /ds/styles.css) ── */
+
+:root {
+  --fab: #FF9F45;   /* acento naranja de Fabián — igual que --app-fabian */
+}
+
+html, body { background: #0a0a0a; }
+
+body {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: var(--text-pri, #f2f2f0);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+.fab-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in oklab, #0a0a0a 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle, #2a2a2a);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fab-user-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--surface-card, #141414);
+  color: var(--text-sec, #9a9a94);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.fab-user-btn:hover { border-color: var(--border-strong, #3a3a3a); color: var(--text-pri, #f2f2f0); }
+
+/* ── Layout ── */
+.fab-body {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 20px 60px;
+}
+
+/* ── Section label ── */
+.fab-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-sec, #9a9a94);
+  margin-bottom: 12px;
+}
+
+/* ── Dose card ── */
+.dose-card {
+  background: var(--surface-card, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: var(--r-xl, 24px);
+  padding: 20px;
+  margin-bottom: 12px;
+  transition: border-color .2s;
+}
+.dose-card.done {
+  border-color: var(--fab);
+}
+
+.dose-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.dose-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dose-icon { font-size: 30px; line-height: 1; }
+.dose-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-pri, #f2f2f0);
+  margin: 0;
+  line-height: 1.2;
+}
+.dose-time {
+  font-size: 13px;
+  color: var(--text-sec, #9a9a94);
+  margin: 3px 0 0;
+}
+.dose-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border-strong, #3a3a3a);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: transparent;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.dose-card.done .dose-circle {
+  background: var(--fab);
+  border-color: var(--fab);
+  color: #0a0a0a;
+}
+
+.dose-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+}
+.dose-who {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-pri, #f2f2f0);
+}
+.dose-when {
+  font-size: 12px;
+  color: var(--text-sec, #9a9a94);
+  margin-left: 5px;
+  font-weight: 400;
+}
+.dose-pending {
+  font-size: 14px;
+  color: var(--text-hint, #5a5a56);
+}
+
+.dose-btn {
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 9px 20px;
+  transition: transform .1s ease, box-shadow .1s ease;
+  white-space: nowrap;
+  border: none;
+}
+.dose-btn:active { transform: scale(.94); }
+.dose-btn-give {
+  background: var(--fab);
+  color: #0a0a0a;
+  box-shadow: 0 4px 14px -4px rgba(255,159,69,.4);
+}
+.dose-btn-give:hover { box-shadow: 0 6px 18px -4px rgba(255,159,69,.55); }
+.dose-btn-undo {
+  background: transparent;
+  color: var(--text-sec, #9a9a94);
+  border: 1.5px solid var(--border-subtle, #2a2a2a);
+}
+.dose-btn-undo:hover { border-color: var(--border-strong, #3a3a3a); color: var(--text-pri, #f2f2f0); }
+
+/* ── History ── */
+.fab-history { margin-top: 28px; }
+
+.history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  background: var(--surface-card, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: var(--r-lg, 16px);
+  margin-bottom: 8px;
+}
+.history-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-pri, #f2f2f0);
+  text-transform: capitalize;
+}
+.history-slots { display: flex; gap: 10px; }
+.history-slot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hs-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong, #3a3a3a);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: transparent;
+  transition: all .15s;
+}
+.history-slot.done .hs-dot {
+  background: var(--fab);
+  border-color: var(--fab);
+  color: #0a0a0a;
+}
+.hs-icon { font-size: 14px; }
+.hs-who {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-hint, #5a5a56);
+}
+
+/* ── User picker ── */
+.user-picker {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-0, #0a0a0a);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  gap: 14px;
+  z-index: 100;
+}
+.user-picker-dog { font-size: 64px; line-height: 1; margin-bottom: 4px; }
+.user-picker h1 {
+  font-size: 26px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0;
+  color: var(--text-pri, #f2f2f0);
+}
+.user-picker p {
+  font-size: 14px;
+  color: var(--text-sec, #9a9a94);
+  text-align: center;
+  margin: 0 0 8px;
+}
+.user-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 18px 20px;
+  border-radius: var(--r-xl, 24px);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  background: var(--surface-card, #141414);
+  color: var(--text-pri, #f2f2f0);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.user-btn:hover { border-color: var(--fab); }
+.user-btn:active { transform: scale(.97); }
+.user-btn-emoji { font-size: 28px; }
