@@ -156,14 +156,12 @@ export default function OportunidadesPage() {
             )}
             <div className={gridClass}>
               {opps.slice(0, 150).map(p => (
-                <div key={p.id} className="relative flex flex-col">
-                  <span className="absolute top-2 left-2 z-10 text-[11px] font-bold bg-accent-600 text-accent-fg px-2 py-0.5 rounded-full shadow">
-                    {p.opp.score}
-                  </span>
+                <div key={p.id} className="flex flex-col">
                   <PropertyCard
                     property={p}
                     currentUser={currentUser}
                     compact={viewMode === 'compact'}
+                    rankScore={p.opp.score}
                     onStatusChange={handleStatusChange}
                     onNotesChange={handleNotesChange}
                     onDiscontinuedChange={handleDiscontinuedChange}
