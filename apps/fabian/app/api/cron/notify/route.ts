@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   const payload = JSON.stringify({
-    title: force ? '🔔 Notificación de prueba' : 'Pastilla de Fabián 🐶',
+    title: '¿Te acordaste de darle la pastilla? 🐶',
     body:  force ? 'Las notificaciones funcionan correctamente.' : `Hora de la dosis de ${label}. ¿Quién se la da?`,
     tag:   `fabian-${slot}-${today}`,
     url:   '/fabian',
