@@ -6,7 +6,7 @@
  *  - Estáticos del shell (íconos, manifest): stale-while-revalidate.
  * Scope "/" -> cubre todas las mini-apps del mismo origen.
  */
-const CACHE = 'casa-caride-v7'
+const CACHE = 'casa-caride-v8'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
@@ -59,6 +59,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
+
+  // Las APIs nunca se cachean: siempre datos frescos del server.
+  if (url.pathname.includes('/api/')) return
 
   // Navegaciones -> network-first
   if (request.mode === 'navigate') {
