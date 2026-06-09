@@ -6,7 +6,7 @@
  *  - Estáticos del shell (íconos, manifest): stale-while-revalidate.
  * Scope "/" -> cubre todas las mini-apps del mismo origen.
  */
-const CACHE = 'casa-caride-v6'
+const CACHE = 'casa-caride-v7'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
@@ -24,6 +24,32 @@ self.addEventListener('activate', (event) => {
         Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
+  )
+})
+
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() ?? {}
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? 'Fabián 🐶', {
+      body:     data.body  ?? 'Hora de la pastilla',
+      icon:     '/icon-192.png',
+      badge:    '/icon-192.png',
+      tag:      data.tag   ?? 'fabian',
+      renotify: true,
+      data:     { url: data.url ?? '/fabian' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url ?? '/fabian'
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+      const match = cs.find(c => c.url.includes('/fabian'))
+      if (match) return match.focus()
+      return clients.openWindow(url)
+    })
   )
 })
 

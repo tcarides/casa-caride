@@ -17,8 +17,6 @@ let schemaReady = false
 async function ensureSchema() {
   if (schemaReady) return
   const sql = getSql()
-  // Una fila por dosis. PK (dose_date, slot) → no se puede dar dos veces.
-  // given_by = quién la dio; given_at = cuándo (para el "hace 2 h").
   await sql`
     CREATE TABLE IF NOT EXISTS fabian_doses (
       dose_date DATE        NOT NULL,
@@ -28,8 +26,58 @@ async function ensureSchema() {
       PRIMARY KEY (dose_date, slot)
     )
   `
+  await sql`
+    CREATE TABLE IF NOT EXISTS fabian_push_subs (
+      endpoint   TEXT        PRIMARY KEY,
+      auth       TEXT        NOT NULL,
+      p256dh     TEXT        NOT NULL,
+      user_id    TEXT        NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
   schemaReady = true
 }
+
+/* ── Push subscriptions ─────────────────────────────────────────────────── */
+
+export interface PushSub {
+  endpoint: string
+  auth: string
+  p256dh: string
+  userId: string
+}
+
+export async function saveSub(
+  sub: { endpoint: string; keys?: { auth?: string; p256dh?: string } },
+  userId: string,
+): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  const auth   = sub.keys?.auth   ?? ''
+  const p256dh = sub.keys?.p256dh ?? ''
+  await sql`
+    INSERT INTO fabian_push_subs (endpoint, auth, p256dh, user_id)
+    VALUES (${sub.endpoint}, ${auth}, ${p256dh}, ${userId})
+    ON CONFLICT (endpoint) DO UPDATE SET user_id = ${userId}, created_at = NOW()
+  `
+}
+
+export async function deleteSub(endpoint: string): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`DELETE FROM fabian_push_subs WHERE endpoint = ${endpoint}`
+}
+
+export async function getAllSubs(): Promise<PushSub[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT endpoint, auth, p256dh, user_id FROM fabian_push_subs` as {
+    endpoint: string; auth: string; p256dh: string; user_id: string
+  }[]
+  return rows.map(r => ({ endpoint: r.endpoint, auth: r.auth, p256dh: r.p256dh, userId: r.user_id }))
+}
+
+/* ── Doses ──────────────────────────────────────────────────────────────── */
 
 export type Slot = 'am' | 'pm'
 export type Caretaker = 'tomi' | 'flori'

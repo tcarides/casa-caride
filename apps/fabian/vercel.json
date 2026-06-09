@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/fabian/api/cron/notify", "schedule": "30 11 * * *" },
+    { "path": "/fabian/api/cron/notify", "schedule": "30 23 * * *" }
+  ]
+}

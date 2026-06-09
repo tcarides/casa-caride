@@ -29,8 +29,14 @@ body {
   gap: 12px;
 }
 
-.fab-user-btn {
+.fab-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.fab-user-btn {
   font-size: 12px;
   font-weight: 700;
   font-family: inherit;
@@ -43,6 +49,22 @@ body {
   transition: border-color .15s, color .15s;
 }
 .fab-user-btn:hover { border-color: var(--border-strong, #3a3a3a); color: var(--text-pri, #f2f2f0); }
+
+.fab-notif-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-card, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  cursor: pointer;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+  transition: border-color .15s, background .15s;
+}
+.fab-notif-btn:hover  { border-color: var(--fab); }
+.fab-notif-btn.active { background: color-mix(in oklab, var(--fab) 15%, transparent); border-color: var(--fab); }
+.fab-notif-btn:disabled { opacity: .5; cursor: default; }
 
 /* ── Layout ── */
 .fab-body {

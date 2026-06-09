@@ -15,6 +15,14 @@ interface Dose {
 const USER_KEY = 'fabian:user'
 const NAMES: Record<Caretaker, string> = { tomi: 'Tomás', flori: 'Flori' }
 
+function urlBase64ToUint8Array(b64: string): ArrayBuffer {
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4)
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'))
+  const buf = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i)
+  return buf.buffer as ArrayBuffer
+}
+
 // Argentina = UTC-3 fijo (no hay horario de verano)
 function arDate(offsetDays = 0): string {
   const ms = Date.now() - 3 * 60 * 60 * 1000 - offsetDays * 86_400_000
@@ -47,12 +55,61 @@ export default function FabianPage() {
   const [userReady, setReady]   = useState(false)
   const [doses, setDoses]       = useState<Dose[]>([])
   const [saving, setSaving]     = useState<Slot | null>(null)
+  const [notifState, setNotif]  = useState<'unsupported' | 'off' | 'on' | 'busy'>('unsupported')
 
   useEffect(() => {
     const v = localStorage.getItem(USER_KEY)
     if (v === 'tomi' || v === 'flori') setUser(v)
     setReady(true)
   }, [])
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    navigator.serviceWorker.ready.then(reg =>
+      reg.pushManager.getSubscription().then(sub => setNotif(sub ? 'on' : 'off'))
+    )
+  }, [])
+
+  async function toggleNotifications() {
+    if (!user || notifState === 'unsupported' || notifState === 'busy') return
+    setNotif('busy')
+    try {
+      const reg = await navigator.serviceWorker.ready
+
+      if (notifState === 'on') {
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          await sub.unsubscribe()
+          await fetch('/fabian/api/push/subscribe', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          })
+        }
+        setNotif('off')
+        return
+      }
+
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') { setNotif('off'); return }
+
+      const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!VAPID_KEY) { setNotif('off'); return }
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_KEY),
+      })
+      await fetch('/fabian/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON(), userId: user }),
+      })
+      setNotif('on')
+    } catch {
+      setNotif('off')
+    }
+  }
 
   const fetchDoses = useCallback(async () => {
     const from = arDate(13)
@@ -135,13 +192,26 @@ export default function FabianPage() {
             <p>Medicación cada 12 h</p>
           </div>
         </div>
-        <button
-          className="fab-user-btn"
-          onClick={() => { localStorage.removeItem(USER_KEY); setUser(null) }}
-          title="Cambiar usuario"
-        >
-          {NAMES[user]}
-        </button>
+        <div className="fab-header-actions">
+          {notifState !== 'unsupported' && (
+            <button
+              className={`fab-notif-btn${notifState === 'on' ? ' active' : ''}`}
+              onClick={toggleNotifications}
+              disabled={notifState === 'busy'}
+              title={notifState === 'on' ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+              aria-label={notifState === 'on' ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+            >
+              {notifState === 'on' ? '🔔' : '🔕'}
+            </button>
+          )}
+          <button
+            className="fab-user-btn"
+            onClick={() => { localStorage.removeItem(USER_KEY); setUser(null) }}
+            title="Cambiar usuario"
+          >
+            {NAMES[user]}
+          </button>
+        </div>
       </header>
 
       <div className="fab-body">
