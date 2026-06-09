@@ -285,7 +285,7 @@ export default function PropertyCard({
                 <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
                   title={best ? 'La publicación con más información' : undefined}
-                  className={`px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 transition-colors ${best ? 'bg-accent-600 hover:bg-accent-500 text-white font-semibold' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}>
+                  className={`px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 transition-colors ${best ? 'bg-accent-600 hover:bg-accent-500 text-accent-fg font-semibold' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}>
                   {(SOURCE_META[s.source]?.label) ?? s.source}{best ? ' · + info' : ''}<ExternalLink size={9} />
                 </a>
               )
@@ -311,7 +311,7 @@ export default function PropertyCard({
               rows={2} value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Notas (compartidas)…" autoFocus
             />
-            <button onClick={saveNotes} className="text-xs bg-accent-600 hover:bg-accent-500 text-white px-3 rounded-md font-medium">OK</button>
+            <button onClick={saveNotes} className="text-xs bg-accent-600 hover:bg-accent-500 text-accent-fg px-3 rounded-md font-medium">OK</button>
           </div>
         )}
 

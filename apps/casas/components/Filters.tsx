@@ -47,7 +47,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       className={`text-xs px-2 py-1 rounded border transition-colors ${
         active
-          ? 'bg-accent-600 border-accent-500 text-white'
+          ? 'bg-accent-600 border-accent-500 text-accent-fg'
           : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500'
       }`}
     >
@@ -195,7 +195,7 @@ export default function Filters({ filters, onChange, total, shown }: Props) {
                 onClick={() => onChange(active ? { priceMin: '', priceMax: '' } : { priceMin: r.min, priceMax: r.max })}
                 className={`text-xs px-2 py-1 rounded border transition-colors ${
                   active
-                    ? 'bg-accent-600 border-accent-500 text-white'
+                    ? 'bg-accent-600 border-accent-500 text-accent-fg'
                     : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500'
                 }`}
               >

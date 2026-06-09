@@ -1,17 +1,19 @@
 :root {
-  --bg: #fff7f4;
-  --bg-2: #fdeef0;
-  --ink: #3a2e33;
-  --ink-soft: #7a6a70;
-  --pink: #f7a6b5;
-  --pink-deep: #e87a93;
-  --peach: #ffd9b0;
-  --mint: #a8d8c4;
-  --lilac: #cdb7e8;
-  --card: #ffffff;
-  --line: #f0e3e6;
-  --shadow: 0 10px 30px rgba(190, 120, 140, 0.12);
-  --shadow-sm: 0 4px 14px rgba(190, 120, 140, 0.10);
+  /* Paleta del design system (dark/yellow). El "rosa" pasa a ser el amarillo
+     de marca; los pasteles decorativos quedan como acentos secundarios. */
+  --bg: #0a0a0a;
+  --bg-2: #141414;
+  --ink: #f2f2f0;
+  --ink-soft: #9a9a94;
+  --pink: #ffd600;
+  --pink-deep: #f5c400;
+  --peach: #ffe93a;
+  --mint: #34c77b;
+  --lilac: #b98bff;
+  --card: #141414;
+  --line: #2a2a2a;
+  --shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 4px 16px -4px rgba(0, 0, 0, 0.5);
   --radius: 22px;
 }
 
@@ -20,7 +22,7 @@
 html, body { margin: 0; padding: 0; }
 
 body {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: var(--font-sans);
   color: var(--ink);
   background: linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
   min-height: 100vh;
@@ -53,7 +55,7 @@ body {
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark { font-size: 34px; filter: drop-shadow(0 4px 6px rgba(232,122,147,.3)); }
 .brand-text h1 {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 28px;
   margin: 0;
@@ -117,7 +119,7 @@ body {
   margin-bottom: 14px;
 }
 .card-head h2 {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 20px;
   margin: 0;
@@ -132,15 +134,15 @@ body {
   border-radius: 999px;
   white-space: nowrap;
 }
-.pill-accent { background: linear-gradient(120deg, var(--peach), var(--pink)); color: #6a3340; }
+.pill-accent { background: linear-gradient(120deg, var(--peach), var(--pink)); color: #0a0a0a; }
 
 /* Hero */
-.hero { background: linear-gradient(150deg, #fff 0%, #fff4f6 100%); }
+.hero { background: linear-gradient(150deg, #181818 0%, #141414 100%); }
 .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .hero-week { display: flex; flex-direction: column; }
 .hero-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 .hero-bignum {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-size: 64px;
   font-weight: 600;
   line-height: 1;
@@ -168,7 +170,7 @@ body {
   align-items: center;
   justify-content: center;
 }
-.ring-pct { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; color: var(--pink-deep); }
+.ring-pct { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--pink-deep); }
 .ring-cap { font-size: 11px; color: var(--ink-soft); font-weight: 600; }
 
 .hero-stats {
@@ -180,7 +182,7 @@ body {
   border-top: 1px dashed var(--line);
 }
 .stat { text-align: center; }
-.stat-num { display: block; font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; color: var(--ink); }
+.stat-num { display: block; font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--ink); }
 .stat-cap { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
 
 /* Daily */
@@ -191,7 +193,7 @@ body {
   border-left: 4px solid var(--pink);
   background: var(--bg);
   border-radius: 0 14px 14px 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display);
   font-style: italic;
   font-size: 16px;
   color: var(--ink-soft);
@@ -215,7 +217,7 @@ body {
 .primary-btn {
   border: none;
   background: linear-gradient(120deg, var(--pink), var(--pink-deep));
-  color: #fff;
+  color: #0a0a0a;
   font-family: inherit;
   font-weight: 800;
   font-size: 14px;
@@ -246,7 +248,7 @@ body {
 }
 
 /* Aprendé */
-.lesson-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; margin: 0 0 10px; color: var(--ink); }
+.lesson-title { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 0 0 10px; color: var(--ink); }
 .lesson-body p, .lesson-para { margin: 0 0 12px; font-size: 15.5px; }
 .lesson-points { margin: 4px 0 0; padding-left: 0; list-style: none; display: grid; gap: 7px; }
 .lesson-points li {
@@ -302,7 +304,7 @@ body {
   display: grid;
   place-items: center;
   font-size: 14px;
-  color: #fff;
+  color: #0a0a0a;
   transition: background .15s ease;
   margin-top: 1px;
 }
@@ -364,7 +366,7 @@ body {
   max-width: 380px;
   box-shadow: var(--shadow);
 }
-.modal-card h2 { font-family: 'Fraunces', serif; font-weight: 600; margin: 0 0 18px; }
+.modal-card h2 { font-family: var(--font-display); font-weight: 600; margin: 0 0 18px; }
 .modal-card label { display: block; font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 12px 0 6px; }
 .modal-card input {
   width: 100%;

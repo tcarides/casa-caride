@@ -60,7 +60,7 @@ export default function PhotoModal({ photos, index, onClose, onPrev, onNext, url
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 bg-accent-600 hover:bg-accent-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 bg-accent-600 hover:bg-accent-500 text-accent-fg text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <ExternalLink size={15} /> Ver aviso
           </a>

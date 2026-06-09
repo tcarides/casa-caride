@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0a0a">
 <title>Mundial 2026 ⚽</title>
+<link rel="stylesheet" href="/ds/styles.css">
 <style>
 /* ── Tabs via CSS (sin depender de JS) ── */
 #r-arg, #r-cal, #r-grupos { display:none; }
@@ -11,33 +13,34 @@
 #r-arg:checked   ~ main #tab-arg   { display:block; }
 #r-cal:checked   ~ main #tab-cal   { display:block; }
 #r-grupos:checked ~ main #tab-grupos { display:block; }
-#r-arg:checked   ~ nav label[for="r-arg"]    { color:#1d3557; font-weight:800; }
-#r-cal:checked   ~ nav label[for="r-cal"]    { color:#1d3557; font-weight:800; }
-#r-grupos:checked ~ nav label[for="r-grupos"] { color:#1d3557; font-weight:800; }
+#r-arg:checked   ~ nav label[for="r-arg"]    { color:var(--accent); font-weight:800; }
+#r-cal:checked   ~ nav label[for="r-cal"]    { color:var(--accent); font-weight:800; }
+#r-grupos:checked ~ nav label[for="r-grupos"] { color:var(--accent); font-weight:800; }
 #r-arg:checked   ~ nav label[for="r-arg"]   .icon { transform:scale(1.15); }
 #r-cal:checked   ~ nav label[for="r-cal"]   .icon { transform:scale(1.15); }
 #r-grupos:checked ~ nav label[for="r-grupos"] .icon { transform:scale(1.15); }
 
 /* ── Filtro + buscador dentro de Partidos (vía JS) ── */
-.fbtn.active { background:#1d3557; border-color:#1d3557; color:white; }
-.search-box { width:100%; border:2px solid #ddd; border-radius:22px;
-              padding:10px 16px; font-size:0.9rem; color:#1a1a1a; background:white;
+.fbtn.active { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.search-box { width:100%; border:1px solid var(--border-subtle); border-radius:22px;
+              padding:10px 16px; font-size:0.9rem; color:var(--text-pri); background:var(--surface-input);
               margin-bottom:10px; outline:none; -webkit-appearance:none; }
-.search-box:focus { border-color:#1d3557; }
-.no-results { text-align:center; color:#888; font-size:0.9rem; padding:30px 12px; display:none; }
+.search-box:focus { border-color:var(--accent); }
+.no-results { text-align:center; color:var(--text-sec); font-size:0.9rem; padding:30px 12px; display:none; }
 
 /* ── Reset ── */
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-       background:#f0f2f5; color:#1a1a1a; font-size:16px; padding-bottom:72px; }
+body { font-family:var(--font-sans);
+       background:var(--bg-0); color:var(--text-pri); font-size:16px; padding-bottom:72px; }
 
 /* ── Header ── */
-header { background:#1d3557; color:white; padding:14px 16px 10px;
+header { background:color-mix(in oklab, var(--bg-0) 88%, transparent); backdrop-filter:blur(12px);
+         color:var(--text-pri); padding:14px 16px 10px;
          display:flex; align-items:center; justify-content:space-between;
-         position:sticky; top:0; z-index:40; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+         position:sticky; top:0; z-index:40; border-bottom:1px solid var(--border-subtle); }
 header h1 { font-size:1.15rem; font-weight:700; }
-header p  { font-size:0.7rem; color:rgba(255,255,255,.65); margin-top:2px; }
-.chip { background:#e8c53a; color:#1a1a1a; font-size:0.65rem; font-weight:700;
+header p  { font-size:0.7rem; color:var(--text-sec); margin-top:2px; }
+.chip { background:var(--accent); color:var(--on-accent); font-size:0.65rem; font-weight:700;
         padding:3px 9px; border-radius:20px; white-space:nowrap; }
 
 /* ── Main ── */
@@ -45,118 +48,119 @@ main { padding:14px; }
 
 /* ── Bottom Nav ── */
 nav { position:fixed; bottom:0; left:0; right:0; z-index:40;
-      background:white; border-top:1px solid #ddd;
-      display:flex; height:62px; box-shadow:0 -2px 10px rgba(0,0,0,.08); }
+      background:color-mix(in oklab, var(--bg-0) 90%, transparent); backdrop-filter:blur(12px);
+      border-top:1px solid var(--border-subtle);
+      display:flex; height:62px; }
 nav label { flex:1; display:flex; flex-direction:column; align-items:center;
             justify-content:center; gap:3px; cursor:pointer;
-            font-size:0.65rem; color:#999; transition:color .15s; padding:6px 0; }
+            font-size:0.65rem; color:var(--text-sec); transition:color .15s; padding:6px 0; }
 nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 
 /* ── Cards base ── */
-.card { background:white; border-radius:12px; box-shadow:0 1px 5px rgba(0,0,0,.08); }
+.card { background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:12px; box-shadow:var(--shadow-sm); }
 
 /* ── Argentina tab ── */
-.next-card { background:linear-gradient(135deg,#1d3557,#2566a0);
-             color:white; border-radius:16px; padding:18px;
-             margin-bottom:16px; box-shadow:0 4px 16px rgba(29,53,87,.3); }
-.next-card .lbl { font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; opacity:.7; margin-bottom:8px; }
-.next-card .cd  { font-size:0.85rem; background:rgba(255,255,255,.15);
+.next-card { background:linear-gradient(135deg,#1b1f2b,#141414);
+             color:var(--text-pri); border:1px solid var(--border-subtle); border-radius:16px; padding:18px;
+             margin-bottom:16px; box-shadow:var(--shadow-md); }
+.next-card .lbl { font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; opacity:.6; margin-bottom:8px; }
+.next-card .cd  { font-size:0.85rem; background:rgba(255,255,255,.08);
                   display:inline-block; padding:3px 12px; border-radius:20px; margin-bottom:12px; }
 .next-card .teams { font-size:1.45rem; font-weight:800; line-height:1.25; margin-bottom:14px; }
-.next-card .hs  { font-size:2rem; font-weight:900; color:#e8c53a; line-height:1; }
-.next-card .hs-label { font-size:0.7rem; opacity:.7; margin-bottom:12px; }
-.next-card .meta { font-size:0.85rem; opacity:.9; display:flex; flex-direction:column; gap:5px; }
+.next-card .hs  { font-size:2rem; font-weight:900; color:var(--accent); line-height:1; }
+.next-card .hs-label { font-size:0.7rem; opacity:.6; margin-bottom:12px; }
+.next-card .meta { font-size:0.85rem; opacity:.85; display:flex; flex-direction:column; gap:5px; }
 
 .sec-title { font-size:0.72rem; text-transform:uppercase; letter-spacing:1px;
-             color:#888; font-weight:700; margin:0 0 10px; }
-.group-pill { background:#1d3557; color:white; font-size:0.7rem; font-weight:700;
+             color:var(--text-sec); font-weight:700; margin:0 0 10px; }
+.group-pill { background:var(--surface-input); color:var(--app-fixture); border:1px solid var(--border-subtle); font-size:0.7rem; font-weight:700;
               padding:3px 12px; border-radius:20px; display:inline-block; margin-bottom:12px; }
 
-.arg-card { padding:14px 16px; margin-bottom:10px; border-left:4px solid #74b9ff; }
-.arg-card.next-match { border-left-color:#e8c53a; }
-.arg-card .date { font-size:0.72rem; color:#888; font-weight:600; margin-bottom:6px; }
+.arg-card { padding:14px 16px; margin-bottom:10px; border-left:4px solid var(--app-fixture); }
+.arg-card.next-match { border-left-color:var(--accent); }
+.arg-card .date { font-size:0.72rem; color:var(--text-sec); font-weight:600; margin-bottom:6px; }
 .arg-card .row  { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .arg-card .team { font-size:1.05rem; font-weight:700; }
-.arg-card .team.blue { color:#1d3557; }
-.arg-card .vs   { font-size:0.75rem; color:#bbb; font-weight:600; padding:0 6px; }
+.arg-card .team.blue { color:var(--app-fixture); }
+.arg-card .vs   { font-size:0.75rem; color:var(--text-hint); font-weight:600; padding:0 6px; }
 .arg-card .bot  { display:flex; justify-content:space-between; align-items:center; }
-.arg-card .badge{ background:#1d3557; color:white; font-size:0.9rem; font-weight:800;
+.arg-card .badge{ background:var(--surface-input); color:var(--text-pri); border:1px solid var(--border-subtle); font-size:0.9rem; font-weight:800;
                   padding:4px 14px; border-radius:20px; }
-.arg-card .venue{ font-size:0.72rem; color:#888; text-align:right; line-height:1.4; }
+.arg-card .venue{ font-size:0.72rem; color:var(--text-sec); text-align:right; line-height:1.4; }
 
 .info-card { padding:14px 16px; margin-top:10px; }
 .info-card h3 { font-size:0.72rem; text-transform:uppercase; letter-spacing:1px;
-                color:#888; font-weight:700; margin-bottom:10px; }
+                color:var(--text-sec); font-weight:700; margin-bottom:10px; }
 .info-row { display:flex; justify-content:space-between; align-items:center;
-            padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:0.9rem; }
+            padding:8px 0; border-bottom:1px solid var(--border-subtle); font-size:0.9rem; }
 .info-row:last-child { border-bottom:none; }
 .info-row b { text-align:right; }
 
 /* ── Partidos tab ── */
 .filter-bar { display:flex; gap:8px; padding-bottom:12px; }
-.fbtn { flex-shrink:0; background:white; border:2px solid #ddd;
+.fbtn { flex-shrink:0; background:var(--surface-card); border:1px solid var(--border-subtle);
         border-radius:20px; padding:7px 16px; font-size:0.82rem; font-weight:600;
-        color:#666; cursor:pointer; white-space:nowrap; }
+        color:var(--text-sec); cursor:pointer; white-space:nowrap; }
 
 .day-block { margin-bottom:18px; }
-.day-hdr { font-size:0.8rem; font-weight:800; color:#1d3557; text-transform:uppercase;
+.day-hdr { font-size:0.8rem; font-weight:800; color:var(--text-pri); text-transform:uppercase;
            letter-spacing:.5px; padding:6px 4px 8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.phase-tag { background:#6c5ce7; color:white; font-size:0.65rem; font-weight:800;
+.phase-tag { background:var(--surface-input); color:var(--text-sec); font-size:0.65rem; font-weight:800;
              padding:2px 8px; border-radius:10px; }
 
-.m-card { background:white; border-radius:12px; padding:12px 14px; margin-bottom:7px;
-          box-shadow:0 1px 4px rgba(0,0,0,.07); display:flex; align-items:center; gap:12px; }
-.m-card.arg { border-left:4px solid #e8c53a; background:#fffdf0; }
-.m-card .hs { font-size:1.1rem; font-weight:800; color:#1d3557;
+.m-card { background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:12px; padding:12px 14px; margin-bottom:7px;
+          box-shadow:var(--shadow-sm); display:flex; align-items:center; gap:12px; }
+.m-card.arg { border-left:4px solid var(--accent); background:#181818; }
+.m-card .hs { font-size:1.1rem; font-weight:800; color:var(--text-pri);
               min-width:52px; text-align:center; line-height:1; }
-.m-card .hs small { font-size:0.55rem; color:#aaa; display:block; margin-top:2px; }
+.m-card .hs small { font-size:0.55rem; color:var(--text-hint); display:block; margin-top:2px; }
 .m-card .inf { flex:1; min-width:0; }
 .m-card .teams { font-size:0.95rem; font-weight:700;
                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.m-card .teams.arg { color:#1d3557; }
-.m-card .ven { font-size:0.7rem; color:#aaa; margin-top:3px;
+.m-card .teams.arg { color:var(--app-fixture); }
+.m-card .ven { font-size:0.7rem; color:var(--text-hint); margin-top:3px;
                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.m-card .gr { font-size:0.62rem; font-weight:700; color:white; padding:2px 7px;
+.m-card .gr { font-size:0.62rem; font-weight:700; color:var(--text-pri); padding:2px 7px;
               border-radius:8px; white-space:nowrap; flex-shrink:0; }
-.m-card .gr.g  { background:#636e72; }
-.m-card .gr.a  { background:#1d3557; }
-.m-card .gr.e  { background:#6c5ce7; }
+.m-card .gr.g  { background:#3a3a3a; }
+.m-card .gr.a  { background:#2b3556; }
+.m-card .gr.e  { background:#3a2b56; }
 
 /* ── Estado temporal de las jornadas ── */
 .day-block.past { opacity:.5; }
-.day-block.today .day-hdr { color:#0a8a3f; }
-.day-block.next-up .day-hdr { color:#b8860b; }
+.day-block.today .day-hdr { color:var(--success); }
+.day-block.next-up .day-hdr { color:var(--accent); }
 .m-card.played { opacity:.55; }
-.m-card.played .hs { color:#999; }
+.m-card.played .hs { color:var(--text-hint); }
 .state-tag { font-size:0.62rem; font-weight:800; padding:2px 8px;
              border-radius:10px; letter-spacing:.3px; }
-.state-tag.done { background:#dfe4ea; color:#636e72; }
-.state-tag.live { background:#0a8a3f; color:#fff; }
-.state-tag.soon { background:#e8c53a; color:#1a1a1a; }
-.arg-card.played-arg { opacity:.6; border-left-color:#bbb; }
+.state-tag.done { background:var(--surface-input); color:var(--text-sec); }
+.state-tag.live { background:var(--success); color:#06210f; }
+.state-tag.soon { background:var(--accent); color:var(--on-accent); }
+.arg-card.played-arg { opacity:.6; border-left-color:var(--border-strong); }
 
 /* ── Canal de TV (Argentina) ── */
-.m-card .tv, .arg-card .tv { font-size:0.68rem; color:#0a8a3f; font-weight:700;
+.m-card .tv, .arg-card .tv { font-size:0.68rem; color:var(--success); font-weight:700;
              margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.m-card .tv .paid, .arg-card .tv .paid { color:#999; font-weight:600; }
-.tv-note { font-size:0.7rem; color:#888; line-height:1.5; padding:2px 4px 14px;
+.m-card .tv .paid, .arg-card .tv .paid { color:var(--text-hint); font-weight:600; }
+.tv-note { font-size:0.7rem; color:var(--text-sec); line-height:1.5; padding:2px 4px 14px;
            display:flex; gap:6px; align-items:flex-start; }
 
 /* ── Grupos tab ── */
 .g-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.g-card { background:white; border-radius:12px; overflow:hidden;
-          box-shadow:0 1px 4px rgba(0,0,0,.07); }
-.g-title { background:#1d3557; color:white; padding:8px 12px;
-           font-size:0.8rem; font-weight:800; text-align:center; letter-spacing:1px; }
-.g-team { padding:9px 12px; font-size:0.85rem; border-bottom:1px solid #f5f5f5;
+.g-card { background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:12px; overflow:hidden;
+          box-shadow:var(--shadow-sm); }
+.g-title { background:var(--surface-input); color:var(--text-pri); padding:8px 12px;
+           font-size:0.8rem; font-weight:800; text-align:center; letter-spacing:1px; border-bottom:1px solid var(--border-subtle); }
+.g-team { padding:9px 12px; font-size:0.85rem; border-bottom:1px solid var(--border-subtle);
           display:flex; align-items:center; gap:6px; }
 .g-team:last-child { border-bottom:none; }
-.g-team.arg { background:#f0f6ff; color:#1d3557; font-weight:800; }
+.g-team.arg { background:rgba(110,139,255,.12); color:var(--app-fixture); font-weight:800; }
 
 /* ── Final card ── */
-.final-c { background:linear-gradient(135deg,#b8860b,#e8c53a); color:#1a1a1a;
+.final-c { background:linear-gradient(135deg,#F5C400,#FFD600); color:var(--on-accent);
            border-radius:14px; padding:18px; margin-top:14px;
-           text-align:center; box-shadow:0 4px 14px rgba(232,197,58,.35); }
+           text-align:center; box-shadow:var(--glow-accent); }
 .final-c .fl { font-size:0.75rem; font-weight:800; text-transform:uppercase;
                letter-spacing:1px; opacity:.7; }
 .final-c .fd { font-size:1.1rem; font-weight:900; margin:6px 0 2px; }

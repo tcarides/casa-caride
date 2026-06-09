@@ -8,18 +8,34 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Hanken Grotesk"', '"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
       },
       colors: {
-        // Color de acento de la app (teal)
+        // Acento del design system: amarillo eléctrico (texto near-black encima)
         accent: {
-          DEFAULT: '#14b8a6',
-          fg: '#0f172a',
-          50: '#f0fdfa',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
+          DEFAULT: '#FFD600',
+          fg: '#0A0A0A',
+          50: '#FFFDE6',
+          300: '#FFD600',
+          400: '#FFE93A',
+          500: '#FFD600',
+          600: '#F5C400',
+          700: '#D4A800',
+        },
+        // Superficies near-black del design system (reemplaza la ramp slate)
+        slate: {
+          50: '#FAFAF8',
+          100: '#F2F2F0',
+          200: '#E8E8E4',
+          300: '#C0C0BA',
+          400: '#9A9A94',
+          500: '#6E6E68',
+          600: '#3A3A3A',
+          700: '#2A2A2A',
+          800: '#1A1A1A',
+          900: '#0A0A0A',
+          950: '#050505',
         },
       },
       boxShadow: {

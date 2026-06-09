@@ -3,13 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --surface-2: #273449;
-  --border: #334155;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --accent: #14b8a6;
+  /* Mapeo a la paleta del design system (tokens en /ds/styles.css) */
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1e1e1e;
+  --border: #2a2a2a;
+  --text: #f2f2f0;
+  --muted: #9a9a94;
+  --accent: #ffd600;
 }
 
 body {
@@ -21,7 +22,7 @@ body {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
 
 /* Focus ring consistente para navegación por teclado */
 :focus-visible {
