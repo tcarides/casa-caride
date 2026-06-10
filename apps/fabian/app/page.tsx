@@ -266,7 +266,17 @@ export default function FabianPage() {
               disabled={testSent}
               onClick={async () => {
                 setTestSent(true)
-                await fetch('/fabian/api/cron/notify?force=true', { cache: 'no-store' })
+                try {
+                  const reg = await navigator.serviceWorker.ready
+                  await reg.showNotification('¿Te acordaste de darle la pastilla? 🐶', {
+                    body: 'Las notificaciones funcionan correctamente.',
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    tag: 'fabian-test',
+                  })
+                } catch {
+                  /* sin permisos o SW no listo: el botón solo aparece con notifs activas */
+                }
                 setTimeout(() => setTestSent(false), 4000)
               }}
             >

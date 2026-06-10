@@ -6,8 +6,11 @@ export async function POST(req: NextRequest) {
     subscription: { endpoint: string; keys?: { auth?: string; p256dh?: string } }
     userId: string
   }
-  if (!subscription?.endpoint || !userId) {
+  if (!subscription?.endpoint || (userId !== 'tomi' && userId !== 'flori')) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 })
+  }
+  if (!subscription.keys?.auth || !subscription.keys?.p256dh) {
+    return NextResponse.json({ error: 'subscription incompleta' }, { status: 400 })
   }
   await saveSub(subscription, userId)
   return NextResponse.json({ ok: true })

@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { getDoses, getAllSubs, deleteSub } from '@/lib/db'
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-)
+export const dynamic = 'force-dynamic'
+
+// Configura las claves VAPID en tiempo de request (no de build): si se hace a
+// nivel módulo, Next lo evalúa durante `next build` y rompe cuando todavía no
+// están seteadas las env vars.
+function initVapid(): boolean {
+  const { VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = process.env
+  if (!VAPID_SUBJECT || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return false
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+  return true
+}
 
 // Argentina = UTC-3 fijo
 function arNow() {
@@ -14,12 +20,17 @@ function arNow() {
 }
 
 export async function GET(req: NextRequest) {
-  const auth  = req.headers.get('authorization')
-  const force = req.nextUrl.searchParams.get('force') === 'true'
+  const auth = req.headers.get('authorization')
 
-  // En modo test (force) no se requiere CRON_SECRET
-  if (!force && process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Solo el cron de Vercel (que manda el Bearer con CRON_SECRET) puede disparar
+  // notificaciones reales. La prueba manual se hace con una notificación local
+  // desde el cliente (ver botón "Probar notificación" en la app).
+  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  if (!initVapid()) {
+    return NextResponse.json({ error: 'VAPID no configurado' }, { status: 500 })
   }
 
   const now   = arNow()
@@ -27,12 +38,10 @@ export async function GET(req: NextRequest) {
   const slot  = now.getUTCHours() < 12 ? 'am' : 'pm'
   const label = slot === 'am' ? 'mañana 🌅' : 'noche 🌙'
 
-  if (!force) {
-    const doses   = await getDoses(today, today)
-    const already = doses.find(d => d.date === today && d.slot === slot)
-    if (already) {
-      return NextResponse.json({ skipped: true, reason: 'already given' })
-    }
+  const doses   = await getDoses(today, today)
+  const already = doses.find(d => d.date === today && d.slot === slot)
+  if (already) {
+    return NextResponse.json({ skipped: true, reason: 'already given' })
   }
 
   const subs = await getAllSubs()
@@ -42,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   const payload = JSON.stringify({
     title: '¿Te acordaste de darle la pastilla? 🐶',
-    body:  force ? 'Las notificaciones funcionan correctamente.' : `Hora de la dosis de ${label}. ¿Quién se la da?`,
+    body:  `Hora de la dosis de ${label}. ¿Quién se la da?`,
     tag:   `fabian-${slot}-${today}`,
     url:   '/fabian',
   })
