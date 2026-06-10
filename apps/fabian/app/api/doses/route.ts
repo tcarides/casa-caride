@@ -9,6 +9,10 @@ export async function GET(req: NextRequest) {
   const today = new Date().toISOString().slice(0, 10)
   const from = searchParams.get('from') ?? today
   const to   = searchParams.get('to')   ?? today
+  const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
+  if (!isDate(from) || !isDate(to)) {
+    return NextResponse.json({ error: 'from y to deben tener formato YYYY-MM-DD' }, { status: 400 })
+  }
   const doses = await getDoses(from, to)
   return NextResponse.json(doses)
 }
@@ -19,6 +23,9 @@ export async function POST(req: NextRequest) {
 
   if (!date || !slot || !user || given === undefined) {
     return NextResponse.json({ error: 'date, slot, user y given son requeridos' }, { status: 400 })
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: 'date debe tener formato YYYY-MM-DD' }, { status: 400 })
   }
   if (slot !== 'am' && slot !== 'pm') {
     return NextResponse.json({ error: 'slot debe ser am o pm' }, { status: 400 })
