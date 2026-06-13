@@ -1,40 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put, del } from '@vercel/blob'
+import { del } from '@vercel/blob'
 import { getEstudios, addEstudio, getEstudioUrl, deleteEstudio } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
-export const maxDuration = 60
 
 export async function GET() {
   return NextResponse.json(await getEstudios())
 }
 
-// Subida server-side: el archivo llega como multipart/form-data, lo mandamos al
-// Blob store y guardamos la metadata. Más robusto que el client-upload detrás
-// del rewrite del shell. Límite de payload de Vercel: ~4.5 MB por archivo.
+// Guarda la metadata después de que el navegador subió el archivo al Blob
+// (client-upload vía /api/estudios/upload).
 export async function POST(req: NextRequest) {
-  const form = await req.formData()
-  const file = form.get('file')
-  const fecha = String(form.get('fecha') ?? '')
-  const titulo = String(form.get('titulo') ?? '').trim()
-  const tipo = String(form.get('tipo') ?? 'otro')
-
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'archivo requerido' }, { status: 400 })
+  const b = await req.json() as {
+    fecha?: string; titulo?: string; tipo?: string
+    blobUrl?: string; pathname?: string; contentType?: string; size?: number
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+  if (!b.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(b.fecha)) {
     return NextResponse.json({ error: 'fecha debe ser YYYY-MM-DD' }, { status: 400 })
   }
-  if (!titulo) {
-    return NextResponse.json({ error: 'título requerido' }, { status: 400 })
+  if (!b.titulo?.trim() || !b.blobUrl || !b.pathname) {
+    return NextResponse.json({ error: 'titulo, blobUrl y pathname requeridos' }, { status: 400 })
   }
-
-  const blob = await put(file.name, file, { access: 'private', addRandomSuffix: true })
   const estudio = await addEstudio({
-    fecha, titulo, tipo,
-    blobUrl: blob.url, pathname: blob.pathname,
-    contentType: file.type, size: file.size,
+    fecha: b.fecha,
+    titulo: b.titulo.trim(),
+    tipo: b.tipo ?? 'otro',
+    blobUrl: b.blobUrl,
+    pathname: b.pathname,
+    contentType: b.contentType ?? '',
+    size: b.size ?? 0,
   })
   return NextResponse.json(estudio)
 }
