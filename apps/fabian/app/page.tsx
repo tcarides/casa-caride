@@ -54,7 +54,7 @@ export default function FabianPage() {
   const [user, setUser]         = useState<Caretaker | null>(null)
   const [userReady, setReady]   = useState(false)
   const [doses, setDoses]       = useState<Dose[]>([])
-  const [saving, setSaving]     = useState<Slot | null>(null)
+  const [saving, setSaving]     = useState<string | null>(null)
   const [notifState, setNotif]  = useState<'unsupported' | 'off' | 'on' | 'busy'>('unsupported')
   const [testSent, setTestSent] = useState(false)
 
@@ -131,13 +131,13 @@ export default function FabianPage() {
     setUser(u)
   }
 
-  async function toggle(slot: Slot) {
+  async function toggle(date: string, slot: Slot) {
     if (!user || saving) return
-    const date     = arDate(0)
+    const key      = `${date}:${slot}`
     const existing = doses.find(d => d.date === date && d.slot === slot)
     const give     = !existing
 
-    setSaving(slot)
+    setSaving(key)
     // Optimistic UI
     setDoses(prev =>
       give
@@ -223,7 +223,7 @@ export default function FabianPage() {
         <div className="fab-label">Hoy</div>
         {SLOTS.map(({ slot, label, time, icon }) => {
           const dose = doseMap.get(doseKey(today, slot))
-          const busy = saving === slot
+          const busy = saving === `${today}:${slot}`
           return (
             <div key={slot} className={`dose-card${dose ? ' done' : ''}`}>
               <div className="dose-top">
@@ -248,7 +248,7 @@ export default function FabianPage() {
                 )}
                 <button
                   className={`dose-btn ${dose ? 'dose-btn-undo' : 'dose-btn-give'}`}
-                  onClick={() => toggle(slot)}
+                  onClick={() => toggle(today, slot)}
                   disabled={busy}
                 >
                   {busy ? '…' : dose ? 'Deshacer' : 'Yo lo di'}
@@ -289,18 +289,27 @@ export default function FabianPage() {
         {history.length > 0 && (
           <div className="fab-history">
             <div className="fab-label">Historial</div>
+            <p className="fab-history-hint">Tocá una dosis para marcarla o corregirla.</p>
             {history.map(date => (
               <div key={date} className="history-row">
                 <span className="history-date">{fmtDate(date)}</span>
                 <div className="history-slots">
-                  {SLOTS.map(({ slot, icon }) => {
-                    const d = doseMap.get(doseKey(date, slot))
+                  {SLOTS.map(({ slot, icon, label }) => {
+                    const d    = doseMap.get(doseKey(date, slot))
+                    const busy = saving === `${date}:${slot}`
                     return (
-                      <div key={slot} className={`history-slot${d ? ' done' : ''}`}>
-                        <div className="hs-dot">✓</div>
+                      <button
+                        key={slot}
+                        className={`history-slot${d ? ' done' : ''}`}
+                        onClick={() => toggle(date, slot)}
+                        disabled={busy}
+                        title={d ? `Le dio ${NAMES[d.givenBy]} — tocá para deshacer` : `Marcar ${label} de ${fmtDate(date)}`}
+                        aria-label={`${label} de ${fmtDate(date)}: ${d ? `dada por ${NAMES[d.givenBy]}` : 'pendiente'}`}
+                      >
+                        <span className="hs-dot">{busy ? '…' : '✓'}</span>
                         <span className="hs-icon">{icon}</span>
                         {d && <span className="hs-who">{d.givenBy[0].toUpperCase()}</span>}
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
