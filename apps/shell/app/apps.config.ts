@@ -37,11 +37,11 @@ export const APPS: MiniApp[] = [
   {
     slug: 'olivia',
     name: 'Olivia',
-    description: 'Guía diaria de paternidad',
+    description: 'Historia clínica del embarazo',
     href: '/olivia',
     emoji: '👶',
     hue: 'var(--app-olivia)',
-    kind: 'static',
+    kind: 'zone',
   },
   {
     slug: 'fixture',

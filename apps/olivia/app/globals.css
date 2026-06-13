@@ -1,0 +1,243 @@
+/* ── Olivia — historia clínica (tokens del DS vienen de /ds/styles.css) ── */
+
+:root {
+  --ol: #FF8FB1;   /* rosa de Olivia — igual que --app-olivia */
+}
+
+html, body { background: #0a0a0a; }
+
+body {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: var(--text-pri, #f2f2f0);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+.ol-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in oklab, #0a0a0a 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle, #2a2a2a);
+  padding: 10px 20px;
+}
+.ol-title { display: flex; align-items: center; gap: 10px; }
+.ol-dog { font-size: 28px; line-height: 1; flex-shrink: 0; }
+
+/* ── Tabs ── */
+.ol-tabs {
+  position: sticky;
+  top: 57px;
+  z-index: 19;
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: color-mix(in oklab, #0a0a0a 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle, #2a2a2a);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ol-tabs::-webkit-scrollbar { display: none; }
+.ol-tab {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-sec, #9a9a94);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+.ol-tab-icon { font-size: 18px; }
+.ol-tab.active { color: var(--ol); background: color-mix(in oklab, var(--ol) 14%, transparent); }
+
+/* ── Layout ── */
+.ol-body {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 18px 18px 60px;
+}
+.ol-loading, .ol-empty {
+  text-align: center;
+  color: var(--text-hint, #5a5a56);
+  font-size: 14px;
+  padding: 16px 0;
+}
+.ol-error { color: #ff7a7a; font-size: 13px; margin: 4px 0 0; }
+
+/* ── Hero / cuenta regresiva ── */
+.ol-hero {
+  background: linear-gradient(150deg, color-mix(in oklab, var(--ol) 12%, #141414), #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: var(--r-xl, 24px);
+  padding: 22px;
+  margin-bottom: 16px;
+}
+.ol-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ol-hero-cap { display: block; font-size: 12px; font-weight: 700; color: var(--text-sec, #9a9a94); text-transform: uppercase; letter-spacing: .04em; }
+.ol-hero-num { display: block; font-size: 60px; font-weight: 700; line-height: 1; color: var(--ol); margin: 4px 0; }
+.ol-hero-sub { font-size: 14px; color: var(--text-sec, #9a9a94); }
+
+.ol-ring {
+  --pct: 0;
+  width: 92px; height: 92px; flex-shrink: 0;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: conic-gradient(var(--ol) calc(var(--pct) * 1%), var(--border-subtle, #2a2a2a) 0);
+}
+.ol-ring::before { content: ''; position: absolute; width: 70px; height: 70px; border-radius: 50%; background: #141414; }
+.ol-ring-pct { position: relative; font-size: 18px; font-weight: 700; color: var(--ol); }
+
+.ol-hero-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px dashed var(--border-subtle, #2a2a2a);
+  text-align: center;
+}
+.ol-stat-num { display: block; font-size: 18px; font-weight: 700; color: var(--text-pri, #f2f2f0); }
+.ol-stat-cap { font-size: 11px; color: var(--text-sec, #9a9a94); }
+
+.ol-link-btn {
+  margin-top: 14px;
+  background: none; border: none;
+  color: var(--ol); font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; padding: 0;
+}
+.ol-config-form { margin-top: 14px; display: grid; gap: 10px; }
+
+/* ── Card ── */
+.ol-card {
+  background: var(--surface-card, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: var(--r-xl, 24px);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.ol-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.ol-card-head h2 { font-size: 17px; font-weight: 600; margin: 0; }
+.ol-pill {
+  font-size: 12px; font-weight: 700; color: var(--text-sec, #9a9a94);
+  background: var(--surface-input, #1c1c1c); padding: 3px 10px; border-radius: 999px;
+}
+
+/* ── Forms ── */
+.ol-field { display: grid; gap: 5px; margin-bottom: 12px; }
+.ol-field > span { font-size: 12px; font-weight: 700; color: var(--text-sec, #9a9a94); }
+.ol-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ol-input {
+  width: 100%;
+  background: var(--surface-input, #1c1c1c);
+  border: 1.5px solid var(--border-subtle, #2a2a2a);
+  border-radius: 12px;
+  padding: 11px 13px;
+  font-family: inherit; font-size: 15px;
+  color: var(--text-pri, #f2f2f0);
+}
+.ol-input:focus { outline: none; border-color: var(--ol); }
+.ol-textarea { resize: vertical; min-height: 70px; }
+
+.ol-btn {
+  border: none;
+  background: var(--ol);
+  color: #0a0a0a;
+  font-family: inherit; font-weight: 800; font-size: 14px;
+  padding: 11px 18px; border-radius: 999px;
+  cursor: pointer; transition: transform .1s, opacity .15s;
+  white-space: nowrap;
+}
+.ol-btn:active { transform: scale(.96); }
+.ol-btn:disabled { opacity: .55; cursor: default; }
+.ol-btn-block { width: 100%; margin-top: 4px; }
+
+.ol-add-row { display: flex; gap: 8px; margin-top: 14px; }
+.ol-add-row .ol-input { flex: 1; }
+
+/* ── Checklist ── */
+.ol-check-group { margin-bottom: 14px; }
+.ol-check-cap { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ol); margin: 0 0 8px; }
+.ol-check-item { display: flex; align-items: center; gap: 11px; padding: 8px 0; }
+.ol-check-box {
+  width: 22px; height: 22px; flex-shrink: 0;
+  border: 2px solid var(--ol); border-radius: 7px;
+  background: transparent; color: #0a0a0a;
+  display: grid; place-items: center; font-size: 13px; font-weight: 800;
+  cursor: pointer; transition: background .15s;
+}
+.ol-check-item.done .ol-check-box { background: var(--ol); }
+.ol-check-text { flex: 1; font-size: 14.5px; cursor: pointer; }
+.ol-check-item.done .ol-check-text { text-decoration: line-through; color: var(--text-hint, #5a5a56); }
+
+.ol-del {
+  flex-shrink: 0;
+  background: none; border: none;
+  color: var(--text-hint, #5a5a56);
+  font-size: 20px; line-height: 1; cursor: pointer;
+  padding: 0 4px;
+}
+.ol-del:hover { color: #ff7a7a; }
+
+/* ── Estudios ── */
+.ol-estudio {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border-subtle, #2a2a2a);
+  text-decoration: none; color: inherit;
+}
+.ol-estudio:last-child { border-bottom: none; }
+.ol-estudio-ic { font-size: 26px; flex-shrink: 0; }
+.ol-estudio-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ol-estudio-tit { font-size: 15px; font-weight: 600; }
+.ol-estudio-meta { font-size: 12px; color: var(--text-sec, #9a9a94); }
+
+/* ── Turnos ── */
+.ol-turno {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  padding: 12px 14px; margin-bottom: 8px;
+  background: var(--surface-input, #1c1c1c);
+  border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 14px;
+}
+.ol-turno.futuro { border-color: var(--ol); }
+.ol-turno-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ol-turno-fecha { font-size: 13px; font-weight: 700; color: var(--text-pri, #f2f2f0); text-transform: capitalize; }
+.ol-turno-tit { font-size: 14px; color: var(--text-pri, #f2f2f0); }
+.ol-turno-notas { font-size: 13px; color: var(--text-sec, #9a9a94); }
+.ol-tag {
+  margin-left: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase;
+  color: #0a0a0a; background: var(--ol); padding: 1px 7px; border-radius: 999px;
+}
+
+/* ── Mediciones ── */
+.ol-medicion {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 0; border-bottom: 1px solid var(--border-subtle, #2a2a2a);
+}
+.ol-medicion:last-child { border-bottom: none; }
+.ol-medicion-tipo { font-size: 14px; font-weight: 600; flex: 1; }
+.ol-medicion-valor { font-size: 16px; font-weight: 800; color: var(--ol); }
+.ol-medicion-valor small { font-size: 11px; font-weight: 600; color: var(--text-sec, #9a9a94); }
+.ol-medicion-fecha { font-size: 12px; color: var(--text-sec, #9a9a94); width: 92px; text-align: right; }
+
+/* ── Notas ── */
+.ol-nota {
+  padding: 12px 14px; margin-bottom: 8px;
+  background: var(--surface-input, #1c1c1c);
+  border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 14px;
+  border-left: 3px solid var(--ol);
+}
+.ol-nota-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.ol-nota-cat { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ol); }
+.ol-nota-fecha { font-size: 12px; color: var(--text-sec, #9a9a94); flex: 1; }
+.ol-nota-texto { margin: 0; font-size: 14.5px; white-space: pre-wrap; }

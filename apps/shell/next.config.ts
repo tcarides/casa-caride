@@ -6,13 +6,13 @@ import type { NextConfig } from 'next'
  * un único origen mediante rewrites (patrón Multi-Zones de Next.js).
  *
  * - /super/* y /casas/* -> apps Next independientes (zonas core, obligatorias).
- * - /fabian/*           -> zona opcional: si falta FABIAN_URL no rompe el build,
- *                          simplemente no se cablea la ruta (el tile igual aparece).
- * - /olivia/* y /fixture/* -> estáticos servidos desde public/ (sin rewrite).
+ * - /fabian/* y /olivia/* -> zonas opcionales: si falta su _URL no rompe el
+ *                          build, simplemente no se cablea la ruta (el tile igual aparece).
+ * - /fixture/*          -> estático servido desde public/ (sin rewrite).
  *
- * En desarrollo las zonas corren en localhost (3001, 3002, 3003).
+ * En desarrollo las zonas corren en localhost (3001, 3002, 3003, 3004).
  * En producción se apuntan a las URLs de Vercel vía variables de entorno
- * (SUPER_URL / CASAS_URL / FABIAN_URL).
+ * (SUPER_URL / CASAS_URL / FABIAN_URL / OLIVIA_URL).
  */
 function zoneUrl(name: string, devPort: number, optional = false): string | null {
   const url = process.env[`${name}_URL`]
@@ -31,6 +31,7 @@ function zoneUrl(name: string, devPort: number, optional = false): string | null
 const SUPER_URL  = zoneUrl('SUPER', 3001)!
 const CASAS_URL  = zoneUrl('CASAS', 3002)!
 const FABIAN_URL = zoneUrl('FABIAN', 3003, true) // opcional: no rompe si falta
+const OLIVIA_URL = zoneUrl('OLIVIA', 3004, true) // opcional: no rompe si falta
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -39,8 +40,7 @@ const nextConfig: NextConfig = {
       { source: '/super/:path*', destination: `${SUPER_URL}/super/:path*` },
       { source: '/casas', destination: `${CASAS_URL}/casas` },
       { source: '/casas/:path*', destination: `${CASAS_URL}/casas/:path*` },
-      // Apps estáticas: URL limpia -> index.html en public/
-      { source: '/olivia', destination: '/olivia/index.html' },
+      // App estática: URL limpia -> index.html en public/
       { source: '/fixture', destination: '/fixture/index.html' },
     ]
 
@@ -49,6 +49,14 @@ const nextConfig: NextConfig = {
       rules.push(
         { source: '/fabian', destination: `${FABIAN_URL}/fabian` },
         { source: '/fabian/:path*', destination: `${FABIAN_URL}/fabian/:path*` },
+      )
+    }
+
+    // Zona Olivia: solo si su URL está configurada.
+    if (OLIVIA_URL) {
+      rules.push(
+        { source: '/olivia', destination: `${OLIVIA_URL}/olivia` },
+        { source: '/olivia/:path*', destination: `${OLIVIA_URL}/olivia/:path*` },
       )
     }
 
