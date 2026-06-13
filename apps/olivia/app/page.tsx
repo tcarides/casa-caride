@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { upload } from '@vercel/blob/client'
 
 /* ─────────────────────────── Tipos ─────────────────────────── */
 type Tab = 'resumen' | 'estudios' | 'turnos' | 'mediciones' | 'notas'
@@ -256,22 +257,25 @@ function EstudiosTab() {
 
   async function submit() {
     if (!file || !titulo.trim()) { setError('Elegí un archivo y poné un título'); return }
-    if (file.size > 4.4 * 1024 * 1024) {
-      setError('El archivo supera los 4 MB. Sacale una foto con menos resolución o comprimí el PDF.')
+    if (file.size > 10 * 1024 * 1024) {
+      setError('El archivo supera los 10 MB. Sacale una foto con menos resolución o comprimí el PDF.')
       return
     }
     setBusy(true); setError(null)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('fecha', fecha)
-      fd.append('titulo', titulo.trim())
-      fd.append('tipo', tipo)
-      const res = await fetch(`${API}/estudios`, { method: 'POST', body: fd })
-      if (!res.ok) {
-        const msg = await res.json().catch(() => ({})) as { error?: string }
-        throw new Error(msg.error ?? `Error ${res.status}`)
-      }
+      // Subida directa al Blob desde el navegador (soporta archivos grandes).
+      const blob = await upload(file.name, file, {
+        access: 'private',
+        handleUploadUrl: `${API}/estudios/upload`,
+        multipart: true,
+        contentType: file.type || undefined,
+      })
+      // Recién con el archivo ya subido, guardamos la metadata.
+      await jpost(`${API}/estudios`, {
+        fecha, titulo: titulo.trim(), tipo,
+        blobUrl: blob.url, pathname: blob.pathname,
+        contentType: blob.contentType ?? file.type, size: file.size,
+      })
       setTitulo(''); setFile(null)
       const input = document.getElementById('ol-file') as HTMLInputElement | null
       if (input) input.value = ''
@@ -308,7 +312,7 @@ function EstudiosTab() {
           <input className="ol-input" placeholder="Ej: Ecografía morfológica" value={titulo} onChange={e => setTitulo(e.target.value)} />
         </label>
         <label className="ol-field">
-          <span>Archivo (imagen o PDF, hasta 4 MB)</span>
+          <span>Archivo (imagen o PDF, hasta 10 MB)</span>
           <input id="ol-file" type="file" className="ol-input" accept="image/*,application/pdf"
             onChange={e => setFile(e.target.files?.[0] ?? null)} />
         </label>
