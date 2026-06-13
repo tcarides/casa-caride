@@ -325,7 +325,7 @@ function EstudiosTab() {
           : items.map(e => {
             const isImg = e.contentType.startsWith('image/')
             return (
-              <a key={e.id} href={e.blobUrl} target="_blank" rel="noopener noreferrer" className="ol-estudio">
+              <a key={e.id} href={`${API}/estudios/file?id=${e.id}`} target="_blank" rel="noopener noreferrer" className="ol-estudio">
                 <span className="ol-estudio-ic">{isImg ? '🖼️' : '📄'}</span>
                 <span className="ol-estudio-main">
                   <span className="ol-estudio-tit">{e.titulo}</span>

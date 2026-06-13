@@ -208,6 +208,14 @@ export async function getEstudioUrl(id: number): Promise<string | null> {
   return rows[0]?.blob_url ?? null
 }
 
+export async function getEstudioBlob(id: number): Promise<{ pathname: string; contentType: string; titulo: string } | null> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT pathname, content_type AS "contentType", titulo FROM olivia_estudios WHERE id = ${id}` as
+    { pathname: string; contentType: string; titulo: string }[]
+  return rows[0] ?? null
+}
+
 export async function deleteEstudio(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()

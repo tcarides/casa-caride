@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'título requerido' }, { status: 400 })
   }
 
-  const blob = await put(file.name, file, { access: 'public', addRandomSuffix: true })
+  const blob = await put(file.name, file, { access: 'private', addRandomSuffix: true })
   const estudio = await addEstudio({
     fecha, titulo, tipo,
     blobUrl: blob.url, pathname: blob.pathname,
