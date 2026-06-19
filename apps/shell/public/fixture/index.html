@@ -440,7 +440,7 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 
   <!-- ══ TAB GRUPOS ══ -->
   <div id="tab-grupos">
-    <div class="g-grid">
+    <div class="g-grid" id="grupos-grid">
       <div class="g-card"><div class="g-title">GRUPO A</div>
         <div class="g-team g-colhdr"><span class="g-name"></span><span class="g-stat">PJ</span><span class="g-stat">DG</span><span class="g-pts">Pts</span></div>
         <div class="g-team"><span class="g-name">🇲🇽 México</span><span class="g-stat">1</span><span class="g-stat">+2</span><span class="g-pts">3</span></div>
@@ -514,6 +514,7 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
         <div class="g-team"><span class="g-name">🇵🇦 Panamá</span><span class="g-stat">1</span><span class="g-stat">-1</span><span class="g-pts">0</span></div>
         <div class="g-team"><span class="g-name">🇭🇷 Croacia</span><span class="g-stat">1</span><span class="g-stat">-2</span><span class="g-pts">0</span></div></div>
     </div>
+    <div id="standings-updated" style="display:none;text-align:center;font-size:0.68rem;color:var(--text-hint);padding:4px 0 8px;"></div>
     <div class="final-c">
       <div class="fl">🏆 Gran Final</div>
       <div class="fd">Domingo 19 de julio de 2026</div>
@@ -687,6 +688,45 @@ addBroadcasters();
 tick();
 applyFilter();
 setInterval(tick,60000);
+
+/* ── Posiciones en vivo (football-data.org vía /api/fixture/standings) ── */
+function renderGroups(groups,updatedAt){
+  var grid=document.getElementById('grupos-grid');
+  if(!grid||!groups||!groups.length)return;
+  var html='';
+  for(var i=0;i<groups.length;i++){
+    var g=groups[i];
+    html+='<div class="g-card"><div class="g-title">GRUPO '+g.id+'</div>';
+    html+='<div class="g-team g-colhdr"><span class="g-name"></span><span class="g-stat">PJ</span><span class="g-stat">DG</span><span class="g-pts">Pts</span></div>';
+    for(var j=0;j<g.teams.length;j++){
+      var t=g.teams[j];
+      var cls='g-team'+(t.isArg?' arg':'');
+      var nm=t.flag+' '+t.name+(t.isArg?' 🏆':'');
+      html+='<div class="'+cls+'"><span class="g-name">'+nm+'</span>';
+      html+='<span class="g-stat">'+t.pj+'</span>';
+      html+='<span class="g-stat">'+t.dg+'</span>';
+      html+='<span class="g-pts">'+t.pts+'</span></div>';
+    }
+    html+='</div>';
+  }
+  grid.innerHTML=html;
+  var upd=document.getElementById('standings-updated');
+  if(upd&&updatedAt){
+    var d=new Date(updatedAt);
+    upd.textContent='📡 Actualizado '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    upd.style.display='block';
+  }
+}
+async function loadStandings(){
+  try{
+    var r=await fetch('/api/fixture/standings');
+    if(!r.ok)return;
+    var data=await r.json();
+    if(data.source==='live')renderGroups(data.groups,data.updatedAt);
+  }catch(e){}
+}
+loadStandings();
+setInterval(loadStandings,300000);
 </script>
 <script src="/casa-nav.js" defer></script>
 </body>
