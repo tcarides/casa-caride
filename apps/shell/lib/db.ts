@@ -129,6 +129,39 @@ export async function setAppAccess(email: string, appKey: string, enabled: boole
   `
 }
 
+/** Mapa email → apps habilitadas (para la grilla del admin). */
+export async function getAllAccess(): Promise<Record<string, string[]>> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT email, app_key FROM app_access WHERE enabled = TRUE`
+  const map: Record<string, string[]> = {}
+  for (const r of rows) {
+    const e = r.email as string
+    ;(map[e] ??= []).push(r.app_key as string)
+  }
+  return map
+}
+
+export async function addUser(
+  email: string, name: string, role: Role, userId: string | null = null,
+): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`
+    INSERT INTO users (email, name, role, user_id)
+    VALUES (${email.toLowerCase()}, ${name}, ${role}, ${userId})
+    ON CONFLICT (email) DO UPDATE SET name = ${name}, role = ${role}
+  `
+}
+
+export async function deleteUser(email: string): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  await sql`DELETE FROM app_access WHERE email = ${e}`
+  await sql`DELETE FROM users WHERE email = ${e}`
+}
+
 /**
  * ¿Puede este email usar esta app? Consulta directa (sin ensureSchema) pensada
  * para el middleware: para cuando se invoca, el esquema ya existe (el login lo
