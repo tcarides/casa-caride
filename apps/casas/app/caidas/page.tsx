@@ -1,21 +1,11 @@
 'use client'
-import { apiFetch } from '@/lib/api'
-
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
-import { toast } from 'sonner'
 import { ArrowLeft, Archive } from 'lucide-react'
 import PropertyCard from '@/components/PropertyCard'
 import PhotoModal from '@/components/PhotoModal'
 import UserSelector from '@/components/UserSelector'
-import type { Property, PropertyStatus, UserId } from '@/lib/types'
-
-const USER_STORAGE_KEY = 'casas:user'
-const VIEW_STORAGE_KEY = 'casas:view'
-
-const STATUS_LABELS: Record<PropertyStatus, string> = {
-  unseen: 'Sin ver', seen: 'Vista', maybe: 'Quizás', favorite: 'Favorita', discarded: 'Descartada',
-}
+import { useProperties } from '@/lib/useProperties'
 
 function fmtDate(iso?: string): string {
   if (!iso) return ''
@@ -24,41 +14,12 @@ function fmtDate(iso?: string): string {
 }
 
 export default function CaidasPage() {
-  const [allProperties, setAllProperties] = useState<Property[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [currentUser, setCurrentUser] = useState<UserId | null>(null)
-  const [userInitialized, setUserInitialized] = useState(false)
-  const [viewMode, setViewMode] = useState<'comfortable' | 'compact'>('comfortable')
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number; url: string } | null>(null)
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(USER_STORAGE_KEY) : null
-    if (saved === 'tomi' || saved === 'flori') setCurrentUser(saved)
-    const v = typeof window !== 'undefined' ? localStorage.getItem(VIEW_STORAGE_KEY) : null
-    if (v === 'compact' || v === 'comfortable') setViewMode(v)
-    setUserInitialized(true)
-  }, [])
-
-  const handleSelectUser = useCallback((u: UserId) => {
-    localStorage.setItem(USER_STORAGE_KEY, u)
-    setCurrentUser(u)
-  }, [])
-
-  const loadProperties = useCallback(async () => {
-    try {
-      setLoadError(null)
-      const res = await apiFetch('/api/properties')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setAllProperties(await res.json() as Property[])
-    } catch (e: unknown) {
-      setLoadError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { if (currentUser) loadProperties() }, [loadProperties, currentUser])
+  const {
+    allProperties, loading, loadError,
+    currentUser, userInitialized, selectUser,
+    viewMode, lightbox, setLightbox, openPhotos,
+    handleStatusChange, handleNotesChange, handleDiscontinuedChange,
+  } = useProperties()
 
   const caidas = useMemo(
     () => allProperties
@@ -67,64 +28,8 @@ export default function CaidasPage() {
     [allProperties]
   )
 
-  const applyStatus = useCallback(async (id: string, status: PropertyStatus): Promise<boolean> => {
-    if (!currentUser) return false
-    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, userId: currentUser }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Property
-      setAllProperties(prev => prev.map(p => p.id === id ? updated : p))
-      return true
-    }
-    return false
-  }, [currentUser])
-
-  const handleStatusChange = useCallback(async (id: string, status: PropertyStatus) => {
-    if (!currentUser) return
-    const prev = allProperties.find(p => p.id === id)?.userStatus[currentUser] ?? 'unseen'
-    const ok = await applyStatus(id, status)
-    if (ok && status !== prev) {
-      toast(`Marcada: ${STATUS_LABELS[status]}`, {
-        action: { label: 'Deshacer', onClick: () => { void applyStatus(id, prev) } },
-        duration: 4000,
-      })
-    }
-  }, [currentUser, allProperties, applyStatus])
-
-  const handleNotesChange = useCallback(async (id: string, notes: string) => {
-    if (!currentUser) return
-    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, userId: currentUser }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Property
-      setAllProperties(prev => prev.map(p => p.id === id ? updated : p))
-      toast('Nota guardada')
-    }
-  }, [currentUser])
-
-  const handleDiscontinuedChange = useCallback(async (id: string, discontinued: boolean) => {
-    if (!currentUser) return
-    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ discontinued, userId: currentUser }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Property
-      setAllProperties(prev => prev.map(p => p.id === id ? updated : p))
-      if (!discontinued) toast('Restaurada a publicadas')
-    }
-  }, [currentUser])
-
-  const openPhotos = useCallback((p: Property) => {
-    if (p.photos.length) setLightbox({ photos: p.photos, index: 0, url: p.url })
-  }, [])
-
   if (!userInitialized) return <div className="min-h-screen bg-slate-900" />
-  if (!currentUser) return <UserSelector onSelect={handleSelectUser} />
+  if (!currentUser) return <UserSelector onSelect={selectUser} />
 
   const gridClass = viewMode === 'compact'
     ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2'
