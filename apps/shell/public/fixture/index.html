@@ -755,8 +755,18 @@ async function loadStandings(){
     else showStatic('standings-updated',data.reason);
   }catch(e){showStatic('standings-updated','red');}
 }
-loadStandings();
-setInterval(loadStandings,300000);
+/* Solo pedimos datos en vivo mientras dura el Mundial (11 jun – 19 jul 2026).
+   Fuera de esa ventana no tiene sentido llamar a la API: queda la tabla estática. */
+function torneoEnCurso(){
+  var now=new Date();
+  var start=new Date(2026,5,11,0,0);   // 11 jun 2026 00:00
+  var end=new Date(2026,6,20,6,0);     // 20 jul 2026 06:00 (después de la final)
+  return now>=start && now<=end;
+}
+if(torneoEnCurso()){
+  loadStandings();
+  setInterval(loadStandings,300000);
+}
 
 /* ── Resultados de partidos jugados (football-data.org) ── */
 function normTeam(s){return normalize(s).replace(/[^a-z. ]/g,"").replace(/\s+/g," ").trim();}
@@ -800,8 +810,10 @@ async function loadMatches(){
     else showStatic('results-updated',data.reason);
   }catch(e){showStatic('results-updated','red');}
 }
-loadMatches();
-setInterval(loadMatches,300000);
+if(torneoEnCurso()){
+  loadMatches();
+  setInterval(loadMatches,300000);
+}
 </script>
 <script src="/casa-nav.js" defer></script>
 </body>
