@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { getDoses, getAllSubs, deleteSub } from '@/lib/db'
+import { arDate, arSlot } from '@/lib/time'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,28 +15,28 @@ function initVapid(): boolean {
   return true
 }
 
-// Argentina = UTC-3 fijo
-function arNow() {
-  return new Date(Date.now() - 3 * 60 * 60 * 1000)
-}
-
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
 
   // Solo el cron de Vercel (que manda el Bearer con CRON_SECRET) puede disparar
   // notificaciones reales. La prueba manual se hace con una notificación local
   // desde el cliente (ver botón "Probar notificación" en la app).
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const secret = process.env.CRON_SECRET
+  if (secret) {
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+  } else if (process.env.VERCEL) {
+    // En producción sin CRON_SECRET no podemos verificar el origen: cerramos.
+    return NextResponse.json({ error: 'cron sin CRON_SECRET configurado' }, { status: 503 })
   }
 
   if (!initVapid()) {
     return NextResponse.json({ error: 'VAPID no configurado' }, { status: 500 })
   }
 
-  const now   = arNow()
-  const today = now.toISOString().slice(0, 10)
-  const slot  = now.getUTCHours() < 12 ? 'am' : 'pm'
+  const today = arDate()
+  const slot  = arSlot()
   const label = slot === 'am' ? 'mañana 🌅' : 'noche 🌙'
 
   const doses   = await getDoses(today, today)

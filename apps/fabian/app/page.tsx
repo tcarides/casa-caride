@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { arDate } from '@/lib/time'
 
 type Caretaker = 'tomi' | 'flori'
 type Slot = 'am' | 'pm'
@@ -21,12 +22,6 @@ function urlBase64ToUint8Array(b64: string): ArrayBuffer {
   const buf = new Uint8Array(raw.length)
   for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i)
   return buf.buffer as ArrayBuffer
-}
-
-// Argentina = UTC-3 fijo (no hay horario de verano)
-function arDate(offsetDays = 0): string {
-  const ms = Date.now() - 3 * 60 * 60 * 1000 - offsetDays * 86_400_000
-  return new Date(ms).toISOString().slice(0, 10)
 }
 
 function relTime(iso: string): string {
