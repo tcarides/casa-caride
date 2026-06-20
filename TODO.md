@@ -13,19 +13,23 @@
 - [ ] **Setear `CRON_SECRET` en `casa-caride-fabian`** (Vercel → Settings → Environment Variables).
   Vercel lo manda como `Authorization: Bearer` en cada ejecución del cron, así el endpoint
   `/fabian/api/cron/notify` queda cerrado a cualquier llamada externa.
+  > El código ya exige el secret: en producción, si falta `CRON_SECRET`, el endpoint responde 503.
 
 ## Mejoras de código (cuando haya tiempo)
 
-- [ ] **Migrar el lint a ESLint flat config.** `next lint` quedó deprecado en Next 16; el script
-  `"lint": "next lint"` está roto en las 4 apps (por eso el CI usa solo `build`, que igual
-  hace type-check).
-- [ ] **Pasar `apps/super` a TypeScript.** Es la única app en JS (`jsconfig.json`); el resto del
-  monorepo es TS.
 - [ ] **UI optimista con recuperación en súper.** Al borrar/agregar ítems se actualiza la pantalla
-  antes de confirmar con el server; falta feedback/undo si la red falla.
-- [ ] **Extraer un hook `useProperties()` en casas.** `loadProperties` + `handleStatusChange` están
-  duplicados casi idénticos en home, oportunidades y caídas.
-- [ ] **Centralizar la hora de Argentina (UTC-3).** La lógica está copiada en el cliente de fabián
-  y en el cron; conviene un helper compartido.
-- [ ] **Tokens del design system en olivia y fixture.** Quedan colores hardcodeados (`#181818`,
-  `#1b1f2b`, rgba sueltos) que ya existen como tokens; olivia además carga fuentes distintas a las del DS.
+  antes de confirmar con el server (con rollback vía re-fetch si falla); falta un undo explícito
+  como el de casas.
+
+## Hecho
+
+- [x] **Migrar el lint a ESLint flat config.** `eslint.base.mjs` compartido (flat config nativo de
+  `eslint-config-next` v16); las 5 apps tienen `"lint": "eslint ."` y el CI corre `npm run lint`.
+- [x] **Pasar `apps/super` a TypeScript.** tsconfig strict, tipos compartidos en `lib/types`, page,
+  layout, lib y route handlers tipados. Ya no queda `jsconfig.json`.
+- [x] **Extraer un hook `useProperties()` en casas.** Centraliza estado, usuario, lightbox y los
+  handlers de status/notas/discontinued (antes duplicados en home, oportunidades y caídas).
+- [x] **Centralizar la hora de Argentina (UTC-3).** `apps/fabian/lib/time.ts` (`arNow`/`arDate`/`arSlot`),
+  usado por el cliente y el cron.
+- [x] **Tokens del design system en olivia y fixture.** Se reemplazaron los colores hardcodeados con
+  token equivalente; olivia ya usaba las fuentes del DS vía `var(--font-sans)`.

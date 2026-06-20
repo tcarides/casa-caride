@@ -1,10 +1,10 @@
 /* ── Olivia — historia clínica (tokens del DS vienen de /ds/styles.css) ── */
 
 :root {
-  --ol: #FF8FB1;   /* rosa de Olivia — igual que --app-olivia */
+  --ol: var(--app-olivia, #FF8FB1);   /* rosa de Olivia (token del DS) */
 }
 
-html, body { background: #0a0a0a; }
+html, body { background: var(--bg-0, #0a0a0a); }
 
 body {
   font-family: var(--font-sans, system-ui, sans-serif);
@@ -18,7 +18,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: color-mix(in oklab, #0a0a0a 88%, transparent);
+  background: color-mix(in oklab, var(--bg-0) 88%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle, #2a2a2a);
@@ -35,7 +35,7 @@ body {
   display: flex;
   gap: 4px;
   padding: 8px 12px;
-  background: color-mix(in oklab, #0a0a0a 88%, transparent);
+  background: color-mix(in oklab, var(--bg-0) 88%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle, #2a2a2a);
@@ -80,7 +80,7 @@ body {
 
 /* ── Hero / cuenta regresiva ── */
 .ol-hero {
-  background: linear-gradient(150deg, color-mix(in oklab, var(--ol) 12%, #141414), #141414);
+  background: linear-gradient(150deg, color-mix(in oklab, var(--ol) 12%, var(--bg-1)), var(--bg-1));
   border: 1px solid var(--border-subtle, #2a2a2a);
   border-radius: var(--r-xl, 24px);
   padding: 22px;
@@ -98,7 +98,7 @@ body {
   display: grid; place-items: center;
   background: conic-gradient(var(--ol) calc(var(--pct) * 1%), var(--border-subtle, #2a2a2a) 0);
 }
-.ol-ring::before { content: ''; position: absolute; width: 70px; height: 70px; border-radius: 50%; background: #141414; }
+.ol-ring::before { content: ''; position: absolute; width: 70px; height: 70px; border-radius: 50%; background: var(--bg-1, #141414); }
 .ol-ring-pct { position: relative; font-size: 18px; font-weight: 700; color: var(--ol); }
 
 .ol-hero-stats {
@@ -152,7 +152,7 @@ body {
 .ol-btn {
   border: none;
   background: var(--ol);
-  color: #0a0a0a;
+  color: var(--on-accent, #0a0a0a);
   font-family: inherit; font-weight: 800; font-size: 14px;
   padding: 11px 18px; border-radius: 999px;
   cursor: pointer; transition: transform .1s, opacity .15s;
@@ -172,7 +172,7 @@ body {
 .ol-check-box {
   width: 22px; height: 22px; flex-shrink: 0;
   border: 2px solid var(--ol); border-radius: 7px;
-  background: transparent; color: #0a0a0a;
+  background: transparent; color: var(--on-accent, #0a0a0a);
   display: grid; place-items: center; font-size: 13px; font-weight: 800;
   cursor: pointer; transition: background .15s;
 }
@@ -216,7 +216,7 @@ body {
 .ol-turno-notas { font-size: 13px; color: var(--text-sec, #9a9a94); }
 .ol-tag {
   margin-left: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase;
-  color: #0a0a0a; background: var(--ol); padding: 1px 7px; border-radius: 999px;
+  color: var(--on-accent, #0a0a0a); background: var(--ol); padding: 1px 7px; border-radius: 999px;
 }
 
 /* ── Mediciones ── */
