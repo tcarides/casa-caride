@@ -14,6 +14,8 @@
     "start": "turbo run start"
   },
   "devDependencies": {
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.9",
     "turbo": "^2.5.0"
   },
   "packageManager": "npm@11.9.0"
