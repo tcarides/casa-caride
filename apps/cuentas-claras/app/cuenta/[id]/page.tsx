@@ -29,6 +29,9 @@ export default function CuentaPage() {
   const [gFile, setGFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [contactos, setContactos] = useState<{ name: string; alias: string }[]>([])
+  const descRef = useRef<HTMLInputElement>(null)
+  const pNameRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const r = await fetch(`${API}/cuentas/${id}`)
@@ -36,6 +39,16 @@ export default function CuentaPage() {
     setLoading(false)
   }, [id])
   useEffect(() => { void load() }, [load])
+
+  // Libreta de alias para autocompletar al agregar participantes.
+  useEffect(() => {
+    fetch(`${API}/contactos`).then((r) => r.ok ? r.json() : []).then(setContactos).catch(() => {})
+  }, [])
+
+  // Default del pagador: el primer participante (evita un click por gasto).
+  useEffect(() => {
+    if (d && !gPagador && d.participantes.length) setGPagador(String(d.participantes[0].id))
+  }, [d, gPagador])
 
   if (loading) return <main className="cc"><p className="cc-empty">Cargando…</p></main>
   if (!d) return <main className="cc"><p className="cc-empty">No se encontró la cuenta.</p></main>
@@ -55,18 +68,27 @@ export default function CuentaPage() {
       body: JSON.stringify({ name: pName.trim(), alias: pAlias.trim() }),
     })
     setPName(''); setPAlias(''); await load()
+    pNameRef.current?.focus() // seguir agregando sin volver a tocar el campo
+  }
+  function onPName(v: string) {
+    setPName(v)
+    const c = contactos.find((c) => c.name.toLowerCase() === v.trim().toLowerCase())
+    if (c) setPAlias(c.alias) // autocompleta el alias de un contacto conocido
   }
   async function delParticipante(pid: number) {
-    await fetch(`${API}/participantes/${pid}`, { method: 'DELETE' }); await load()
+    setD((prev) => prev ? { ...prev, participantes: prev.participantes.filter((p) => p.id !== pid) } : prev)
+    const r = await fetch(`${API}/participantes/${pid}`, { method: 'DELETE' })
+    if (!r.ok) await load()
   }
   async function editAlias(p: Participante) {
     const alias = prompt(`Alias / CBU de ${p.name} (para transferirle):`, p.alias ?? '')
     if (alias == null) return
-    await fetch(`${API}/participantes/${p.id}`, {
+    setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((x) => x.id === p.id ? { ...x, alias: alias.trim() || null } : x) } : prev)
+    const r = await fetch(`${API}/participantes/${p.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: p.name, alias }),
     })
-    await load()
+    if (!r.ok) await load()
   }
   async function addGasto(e: React.FormEvent) {
     e.preventDefault()
@@ -92,22 +114,26 @@ export default function CuentaPage() {
           comprobanteUrl, comprobantePath,
         }),
       })
-      setGDesc(''); setGMonto(''); setGFile(null)
+      setGDesc(''); setGMonto(''); setGFile(null) // se mantiene el pagador elegido
       if (fileRef.current) fileRef.current.value = ''
       await load()
+      descRef.current?.focus() // listo para cargar el próximo gasto
     } finally {
       setUploading(false)
     }
   }
   async function delGasto(gid: number) {
-    await fetch(`${API}/gastos/${gid}`, { method: 'DELETE' }); await load()
+    setD((prev) => prev ? { ...prev, gastos: prev.gastos.filter((g) => g.id !== gid) } : prev)
+    const r = await fetch(`${API}/gastos/${gid}`, { method: 'DELETE' })
+    if (!r.ok) await load()
   }
   async function setEstado(pid: number, estado: EstadoCarga) {
-    await fetch(`${API}/participantes/${pid}`, {
+    setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((p) => p.id === pid ? { ...p, estado } : p) } : prev)
+    const r = await fetch(`${API}/participantes/${pid}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ estado }),
     })
-    await load()
+    if (!r.ok) await load()
   }
   async function cerrar() {
     if (!confirm('¿Cerrar la cuenta y calcular quién le debe a quién?')) return
@@ -130,11 +156,12 @@ export default function CuentaPage() {
     await load()
   }
   async function togglePagado(l: Liquidacion) {
-    await fetch(`${API}/liquidaciones/${l.id}`, {
+    setD((prev) => prev ? { ...prev, liquidaciones: prev.liquidaciones.map((x) => x.id === l.id ? { ...x, pagado: !x.pagado } : x) } : prev)
+    const r = await fetch(`${API}/liquidaciones/${l.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pagado: !l.pagado }),
     })
-    await load()
+    if (!r.ok) await load()
   }
 
   return (
@@ -178,9 +205,13 @@ export default function CuentaPage() {
         </ul>
         {abierta && (
           <form className="cc-addrow" onSubmit={addParticipante}>
-            <input className="cc-input" value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Nombre" maxLength={60} />
+            <input ref={pNameRef} className="cc-input" value={pName} onChange={(e) => onPName(e.target.value)}
+              placeholder="Nombre" maxLength={60} list="cc-contactos" autoComplete="off" />
             <input className="cc-input" value={pAlias} onChange={(e) => setPAlias(e.target.value)} placeholder="Alias (opcional)" maxLength={120} />
             <button className="cc-btn" type="submit" disabled={!pName.trim()}>+</button>
+            <datalist id="cc-contactos">
+              {contactos.map((c) => <option key={c.name} value={c.name} />)}
+            </datalist>
           </form>
         )}
       </section>
@@ -202,11 +233,15 @@ export default function CuentaPage() {
               {abierta && <button className="cc-mini" onClick={() => delGasto(g.id)} aria-label="Borrar">✕</button>}
             </li>
           ))}
-          {gastos.length === 0 && <li className="cc-empty">Sin gastos todavía.</li>}
+          {gastos.length === 0 && (
+            <li className="cc-empty">
+              {participantes.length === 0 ? 'Primero agregá participantes 👆' : 'Sin gastos todavía.'}
+            </li>
+          )}
         </ul>
         {abierta && participantes.length > 0 && (
           <form className="cc-addrow cc-gastoform" onSubmit={addGasto}>
-            <input className="cc-input" value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Qué (ej. carne)" maxLength={120} />
+            <input ref={descRef} className="cc-input" value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Qué (ej. carne)" maxLength={120} />
             <input className="cc-input cc-montoinput" value={gMonto} onChange={(e) => setGMonto(e.target.value)} placeholder="$" inputMode="decimal" />
             <select className="cc-input" value={gPagador} onChange={(e) => setGPagador(e.target.value)}>
               <option value="">¿Quién pagó?</option>
