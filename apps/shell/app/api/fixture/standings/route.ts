@@ -16,12 +16,15 @@ interface StandingRow {
 }
 
 interface GroupStanding {
-  group: string
+  stage?: string
+  type?: string
+  group: string | null
   table: StandingRow[]
 }
 
 interface FdApiResponse {
-  standings: GroupStanding[]
+  standings?: GroupStanding[]
+  season?: { currentMatchday?: number }
 }
 
 export async function GET() {
@@ -45,16 +48,19 @@ export async function GET() {
     }
 
     const raw = (await res.json()) as FdApiResponse
-    const standings = (raw.standings ?? []).filter(s => s.group?.startsWith('GROUP_'))
+    const all = raw.standings ?? []
+    const standings = all.filter(s => s.group?.startsWith('GROUP_'))
     if (!standings.length) {
-      return NextResponse.json({ source: 'static', reason: 'sin-grupos' }, {
+      const sample = all.slice(0, 2).map(s => (s.stage ?? '?') + '/' + (s.group ?? 'null')).join(',')
+      const reason = 'sin-grupos len=' + all.length + (sample ? ' ' + sample : '')
+      return NextResponse.json({ source: 'static', reason }, {
         headers: { 'Cache-Control': 'no-store' },
       })
     }
 
     const groups = standings
       .map(s => ({
-        id: s.group.replace('GROUP_', ''),
+        id: (s.group as string).replace('GROUP_', ''),
         teams: (s.table ?? []).map(row => {
           const mapped = TEAM[row.team.name]
           return {
