@@ -1,272 +1,276 @@
-"use client";
-import { apiFetch } from "@/lib/api";
+'use client'
+import { apiFetch } from '@/lib/api'
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback, useEffect, useRef, useState,
+  type Dispatch, type SetStateAction, type FormEvent, type ReactNode,
+} from 'react'
+import type { AppState, Category, EditForm, Group, Item } from '@/lib/types'
 
-const POLL_MS = 4000;
-const NO_CAT = "__none__";
+const POLL_MS = 4000
+const NO_CAT = '__none__'
 
-const norm = (s) =>
-  (s || "")
+const norm = (s: string): string =>
+  (s || '')
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
 
 export default function Home() {
-  const [categories, setCategories] = useState([]);
-  const [items, setItems] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-  const [view, setView] = useState("lista"); // "lista" | "catalogo"
-  const [draft, setDraft] = useState("");
-  const [draftCat, setDraftCat] = useState("");
-  const [catQuery, setCatQuery] = useState("");
-  const [listQuery, setListQuery] = useState("");
-  const [hideChecked, setHideChecked] = useState(false);
-  const [reordering, setReordering] = useState(false);
-  const [editing, setEditing] = useState(null); // item en edición
-  const pending = useRef(0);
+  const [categories, setCategories] = useState<Category[]>([])
+  const [items, setItems] = useState<Item[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [view, setView] = useState<'lista' | 'catalogo'>('lista')
+  const [draft, setDraft] = useState('')
+  const [draftCat, setDraftCat] = useState('')
+  const [catQuery, setCatQuery] = useState('')
+  const [listQuery, setListQuery] = useState('')
+  const [hideChecked, setHideChecked] = useState(false)
+  const [reordering, setReordering] = useState(false)
+  const [editing, setEditing] = useState<Item | null>(null) // item en edición
+  const pending = useRef(0)
 
   // ---------- carga + sincronización ----------
   const fetchState = useCallback(async () => {
-    if (pending.current > 0) return;
+    if (pending.current > 0) return
     try {
-      const res = await apiFetch("/api/state", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
+      const res = await apiFetch('/api/state', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = (await res.json()) as AppState
       if (pending.current === 0) {
-        setCategories(data.categories || []);
-        setItems(data.items || []);
+        setCategories(data.categories || [])
+        setItems(data.items || [])
       }
     } catch {
       /* sin conexión: reintenta en el próximo poll */
     } finally {
-      setLoaded(true);
+      setLoaded(true)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    fetchState();
-    const id = setInterval(fetchState, POLL_MS);
-    const onFocus = () => fetchState();
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
+    fetchState()
+    const id = setInterval(fetchState, POLL_MS)
+    const onFocus = () => fetchState()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
     return () => {
-      clearInterval(id);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [fetchState]);
+      clearInterval(id)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [fetchState])
 
-  async function mutate(fn) {
-    pending.current += 1;
+  async function mutate(fn: () => Promise<void>) {
+    pending.current += 1
     try {
-      await fn();
+      await fn()
     } catch {
-      await fetchState();
+      await fetchState()
     } finally {
-      pending.current -= 1;
+      pending.current -= 1
     }
   }
 
   // ---------- items ----------
-  function patchLocal(id, changes) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...changes } : i)));
+  function patchLocal(id: Item['id'], changes: Partial<Item>) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...changes } : i)))
   }
 
-  async function patchItem(item, payload, optimistic) {
-    patchLocal(item.id, optimistic ?? payload);
+  async function patchItem(item: Item, payload: Partial<Item>, optimistic?: Partial<Item>) {
+    patchLocal(item.id, optimistic ?? payload)
     await mutate(async () => {
       const res = await apiFetch(`/api/items/${item.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("patch");
-    });
+      })
+      if (!res.ok) throw new Error('patch')
+    })
   }
 
-  const setNeeded = (item, needed) =>
-    patchItem(item, { needed }, needed ? { needed } : { needed, checked: false });
-  const setChecked = (item, checked) => patchItem(item, { checked }, { checked });
-  const setQuantity = (item, quantity) => {
-    const q = Math.max(1, Math.min(99, quantity));
-    return patchItem(item, { quantity: q }, { quantity: q });
-  };
+  const setNeeded = (item: Item, needed: boolean) =>
+    patchItem(item, { needed }, needed ? { needed } : { needed, checked: false })
+  const setChecked = (item: Item, checked: boolean) => patchItem(item, { checked }, { checked })
+  const setQuantity = (item: Item, quantity: number) => {
+    const q = Math.max(1, Math.min(99, quantity))
+    return patchItem(item, { quantity: q }, { quantity: q })
+  }
 
-  async function saveEdit(item, form) {
-    const name = form.name.trim();
-    if (!name) return;
-    const categoryId = form.categoryId ? Number(form.categoryId) : null;
-    const quantity = Math.max(1, Math.min(99, Number(form.quantity) || 1));
-    const note = form.note.trim();
-    setEditing(null);
+  async function saveEdit(item: Item, form: EditForm) {
+    const name = form.name.trim()
+    if (!name) return
+    const categoryId = form.categoryId ? Number(form.categoryId) : null
+    const quantity = Math.max(1, Math.min(99, Number(form.quantity) || 1))
+    const note = form.note.trim()
+    setEditing(null)
     await patchItem(
       item,
       { name, categoryId, quantity, note },
       { name, categoryId, quantity, note: note || null }
-    );
+    )
   }
 
-  async function addItem(e) {
-    e.preventDefault();
-    const name = draft.trim();
-    if (!name) return;
-    setDraft("");
-    const categoryId = draftCat ? Number(draftCat) : null;
-    const tempId = "tmp-" + Date.now();
+  async function addItem(e: FormEvent) {
+    e.preventDefault()
+    const name = draft.trim()
+    if (!name) return
+    setDraft('')
+    const categoryId = draftCat ? Number(draftCat) : null
+    const tempId = 'tmp-' + Date.now()
     setItems((prev) => [
       ...prev,
       { id: tempId, name, categoryId, needed: true, checked: false, quantity: 1, note: null },
-    ]);
+    ])
     await mutate(async () => {
-      const res = await apiFetch("/api/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, categoryId, needed: true }),
-      });
-      if (!res.ok) throw new Error("add");
-      const saved = await res.json();
-      setItems((prev) => prev.map((i) => (i.id === tempId ? saved : i)));
-    });
+      })
+      if (!res.ok) throw new Error('add')
+      const saved = (await res.json()) as Item
+      setItems((prev) => prev.map((i) => (i.id === tempId ? saved : i)))
+    })
   }
 
-  async function deleteItem(item) {
-    if (!confirm(`¿Eliminar "${item.name}" del catálogo?`)) return;
-    setEditing(null);
-    setItems((prev) => prev.filter((i) => i.id !== item.id));
-    if (typeof item.id === "string" && item.id.startsWith("tmp-")) return;
+  async function deleteItem(item: Item) {
+    if (!confirm(`¿Eliminar "${item.name}" del catálogo?`)) return
+    setEditing(null)
+    setItems((prev) => prev.filter((i) => i.id !== item.id))
+    if (typeof item.id === 'string' && item.id.startsWith('tmp-')) return
     await mutate(async () => {
-      const res = await apiFetch(`/api/items/${item.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("delete");
-    });
+      const res = await apiFetch(`/api/items/${item.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('delete')
+    })
   }
 
   // ---------- categorías ----------
   async function addCategory() {
-    const name = prompt("Nombre de la nueva sección:");
-    if (name == null) return;
-    const clean = name.trim();
-    if (!clean) return;
+    const name = prompt('Nombre de la nueva sección:')
+    if (name == null) return
+    const clean = name.trim()
+    if (!clean) return
     await mutate(async () => {
-      const res = await apiFetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await apiFetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: clean }),
-      });
-      if (!res.ok) throw new Error("cat");
-      const cat = await res.json();
-      setCategories((prev) => [...prev, cat]);
-    });
+      })
+      if (!res.ok) throw new Error('cat')
+      const cat = (await res.json()) as Category
+      setCategories((prev) => [...prev, cat])
+    })
   }
 
-  async function renameCategory(cat) {
-    const next = prompt("Renombrar sección:", cat.name);
-    if (next == null) return;
-    const name = next.trim();
-    if (!name || name === cat.name) return;
-    setCategories((prev) => prev.map((c) => (c.id === cat.id ? { ...c, name } : c)));
+  async function renameCategory(cat: { id: number; name: string }) {
+    const next = prompt('Renombrar sección:', cat.name)
+    if (next == null) return
+    const name = next.trim()
+    if (!name || name === cat.name) return
+    setCategories((prev) => prev.map((c) => (c.id === cat.id ? { ...c, name } : c)))
     await mutate(async () => {
       const res = await apiFetch(`/api/categories/${cat.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
-      });
-      if (!res.ok) throw new Error("rename-cat");
-    });
+      })
+      if (!res.ok) throw new Error('rename-cat')
+    })
   }
 
-  async function moveCategory(catId, dir) {
-    const idx = categories.findIndex((c) => c.id === catId);
-    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
-    if (idx < 0 || swapIdx < 0 || swapIdx >= categories.length) return;
-    const a = categories[idx];
-    const b = categories[swapIdx];
-    const next = [...categories];
-    next[idx] = { ...b, position: a.position };
-    next[swapIdx] = { ...a, position: b.position };
-    setCategories(next);
+  async function moveCategory(catId: number, dir: 'up' | 'down') {
+    const idx = categories.findIndex((c) => c.id === catId)
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+    if (idx < 0 || swapIdx < 0 || swapIdx >= categories.length) return
+    const a = categories[idx]
+    const b = categories[swapIdx]
+    const next = [...categories]
+    next[idx] = { ...b, position: a.position }
+    next[swapIdx] = { ...a, position: b.position }
+    setCategories(next)
     await mutate(async () => {
       await Promise.all([
         apiFetch(`/api/categories/${a.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ position: b.position }),
         }),
         apiFetch(`/api/categories/${b.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ position: a.position }),
         }),
-      ]);
-    });
+      ])
+    })
   }
 
   // ---------- reset ----------
   async function resetTrip() {
-    if (!confirm("¿Terminar la compra? Se va a vaciar la lista (el catálogo queda).")) return;
-    setItems((prev) => prev.map((i) => ({ ...i, needed: false, checked: false })));
+    if (!confirm('¿Terminar la compra? Se va a vaciar la lista (el catálogo queda).')) return
+    setItems((prev) => prev.map((i) => ({ ...i, needed: false, checked: false })))
     await mutate(async () => {
-      const res = await apiFetch("/api/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope: "trip" }),
-      });
-      if (!res.ok) throw new Error("reset");
-    });
+      const res = await apiFetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'trip' }),
+      })
+      if (!res.ok) throw new Error('reset')
+    })
   }
 
   async function uncheckAll() {
-    setItems((prev) => prev.map((i) => ({ ...i, checked: false })));
+    setItems((prev) => prev.map((i) => ({ ...i, checked: false })))
     await mutate(async () => {
-      const res = await apiFetch("/api/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope: "checked" }),
-      });
-      if (!res.ok) throw new Error("uncheck");
-    });
+      const res = await apiFetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'checked' }),
+      })
+      if (!res.ok) throw new Error('uncheck')
+    })
   }
 
   // ---------- agrupado ----------
-  function groupItems(list) {
-    const byCat = new Map();
+  function groupItems(list: Item[]): Group[] {
+    const byCat = new Map<string, Item[]>()
     for (const it of list) {
-      const key = it.categoryId == null ? NO_CAT : String(it.categoryId);
-      if (!byCat.has(key)) byCat.set(key, []);
-      byCat.get(key).push(it);
+      const key = it.categoryId == null ? NO_CAT : String(it.categoryId)
+      if (!byCat.has(key)) byCat.set(key, [])
+      byCat.get(key)!.push(it)
     }
-    const groups = [];
+    const groups: Group[] = []
     for (const cat of categories) {
-      const arr = byCat.get(String(cat.id));
-      if (arr && arr.length) groups.push({ id: cat.id, name: cat.name, items: arr });
+      const arr = byCat.get(String(cat.id))
+      if (arr && arr.length) groups.push({ id: cat.id, name: cat.name, items: arr })
     }
-    const none = byCat.get(NO_CAT);
-    if (none && none.length) groups.push({ id: null, name: "Sin categoría", items: none });
-    return groups;
+    const none = byCat.get(NO_CAT)
+    if (none && none.length) groups.push({ id: null, name: 'Sin categoría', items: none })
+    return groups
   }
 
-  const neededItems = items.filter((i) => i.needed);
-  const boughtCount = neededItems.filter((i) => i.checked).length;
+  const neededItems = items.filter((i) => i.needed)
+  const boughtCount = neededItems.filter((i) => i.checked).length
 
-  let listSource = hideChecked ? neededItems.filter((i) => !i.checked) : neededItems;
-  if (listQuery) listSource = listSource.filter((i) => norm(i.name).includes(norm(listQuery)));
-  const listaGroups = groupItems(listSource);
+  let listSource = hideChecked ? neededItems.filter((i) => !i.checked) : neededItems
+  if (listQuery) listSource = listSource.filter((i) => norm(i.name).includes(norm(listQuery)))
+  const listaGroups = groupItems(listSource)
 
   const catFiltered = catQuery
     ? items.filter((i) => norm(i.name).includes(norm(catQuery)))
-    : items;
-  const catalogGroups = groupItems(catFiltered);
+    : items
+  const catalogGroups = groupItems(catFiltered)
 
   // ---------- resumen ----------
-  let summary = "Cargando…";
+  let summary = 'Cargando…'
   if (loaded) {
-    if (view === "lista") {
+    if (view === 'lista') {
       if (neededItems.length === 0)
-        summary = "Lista vacía — marcá productos en el Catálogo";
-      else if (boughtCount === neededItems.length) summary = "¡Compra completa! 🎉";
-      else summary = `${boughtCount} de ${neededItems.length} comprados`;
+        summary = 'Lista vacía — marcá productos en el Catálogo'
+      else if (boughtCount === neededItems.length) summary = '¡Compra completa! 🎉'
+      else summary = `${boughtCount} de ${neededItems.length} comprados`
     } else {
-      summary = `${items.length} productos · ${neededItems.length} en la lista`;
+      summary = `${items.length} productos · ${neededItems.length} en la lista`
     }
   }
 
@@ -282,14 +286,14 @@ export default function Home() {
           </div>
           <div className="tabs" role="tablist">
             <button
-              className={"tab" + (view === "lista" ? " active" : "")}
-              onClick={() => setView("lista")}
+              className={'tab' + (view === 'lista' ? ' active' : '')}
+              onClick={() => setView('lista')}
             >
-              Lista{neededItems.length ? ` · ${neededItems.length}` : ""}
+              Lista{neededItems.length ? ` · ${neededItems.length}` : ''}
             </button>
             <button
-              className={"tab" + (view === "catalogo" ? " active" : "")}
-              onClick={() => setView("catalogo")}
+              className={'tab' + (view === 'catalogo' ? ' active' : '')}
+              onClick={() => setView('catalogo')}
             >
               Catálogo
             </button>
@@ -298,7 +302,7 @@ export default function Home() {
       </header>
 
       <main>
-        {view === "lista" ? (
+        {view === 'lista' ? (
           <ListaView
             groups={listaGroups}
             loaded={loaded}
@@ -337,7 +341,7 @@ export default function Home() {
         )}
       </main>
 
-      {view === "lista" && neededItems.length > 0 && (
+      {view === 'lista' && neededItems.length > 0 && (
         <footer className="app-footer">
           <button className="footer-btn" onClick={uncheckAll} disabled={boughtCount === 0}>
             Destildar comprados
@@ -358,11 +362,11 @@ export default function Home() {
         />
       )}
     </>
-  );
+  )
 }
 
 // ===================== Cantidad =====================
-function QtyStepper({ item, onQty }) {
+function QtyStepper({ item, onQty }: { item: Item; onQty: (item: Item, quantity: number) => void }) {
   return (
     <div className="qty" onClick={(e) => e.stopPropagation()}>
       <button
@@ -384,11 +388,17 @@ function QtyStepper({ item, onQty }) {
         +
       </button>
     </div>
-  );
+  )
 }
 
 // ===================== Buscador =====================
-function SearchBox({ query, setQuery, placeholder }) {
+function SearchBox({
+  query, setQuery, placeholder,
+}: {
+  query: string
+  setQuery: Dispatch<SetStateAction<string>>
+  placeholder: string
+}) {
   return (
     <div className="search-wrap">
       <span className="search-icon" aria-hidden>🔍</span>
@@ -401,15 +411,30 @@ function SearchBox({ query, setQuery, placeholder }) {
         aria-label="Buscar producto"
       />
       {query && (
-        <button className="search-clear" aria-label="Limpiar" onClick={() => setQuery("")}>
+        <button className="search-clear" aria-label="Limpiar" onClick={() => setQuery('')}>
           ✕
         </button>
       )}
     </div>
-  );
+  )
 }
 
 // ===================== Vista LISTA =====================
+interface ListaViewProps {
+  groups: Group[]
+  loaded: boolean
+  query: string
+  setQuery: Dispatch<SetStateAction<string>>
+  hasItems: boolean
+  hideChecked: boolean
+  setHideChecked: Dispatch<SetStateAction<boolean>>
+  boughtCount: number
+  onToggle: (it: Item) => void
+  onRemove: (it: Item) => void
+  onQty: (item: Item, quantity: number) => void
+  onEdit: (it: Item) => void
+}
+
 function ListaView({
   groups,
   loaded,
@@ -423,12 +448,12 @@ function ListaView({
   onRemove,
   onQty,
   onEdit,
-}) {
-  let emptyMsg = null;
+}: ListaViewProps) {
+  let emptyMsg: ReactNode = null
   if (loaded && groups.length === 0) {
-    if (query) emptyMsg = "No hay productos que coincidan.";
+    if (query) emptyMsg = 'No hay productos que coincidan.'
     else if (hideChecked && hasItems)
-      emptyMsg = "¡Todo lo que falta ya está comprado! 🎉";
+      emptyMsg = '¡Todo lo que falta ya está comprado! 🎉'
     else
       emptyMsg = (
         <>
@@ -436,7 +461,7 @@ function ListaView({
           <br />
           Andá a <strong>Catálogo</strong> y tocá lo que necesitás.
         </>
-      );
+      )
   }
 
   return (
@@ -446,11 +471,11 @@ function ListaView({
           <SearchBox query={query} setQuery={setQuery} placeholder="Buscar en la lista…" />
           <button
             type="button"
-            className={"toggle-chip" + (hideChecked ? " active" : "")}
+            className={'toggle-chip' + (hideChecked ? ' active' : '')}
             onClick={() => setHideChecked((v) => !v)}
           >
             <span className="toggle-dot" />
-            {hideChecked ? "Mostrando solo lo que falta" : "Ocultar comprados"}
+            {hideChecked ? 'Mostrando solo lo que falta' : 'Ocultar comprados'}
             {boughtCount > 0 && <span className="toggle-badge">{boughtCount}</span>}
           </button>
         </>
@@ -462,20 +487,20 @@ function ListaView({
         const ordered = [
           ...g.items.filter((i) => !i.checked),
           ...g.items.filter((i) => i.checked),
-        ];
+        ]
         return (
-          <section key={g.id ?? "none"} className="cat-section">
+          <section key={g.id ?? 'none'} className="cat-section">
             <h2 className="cat-title">{g.name}</h2>
             <ul className="list">
               {ordered.map((it) => (
-                <li key={it.id} className={"list-item" + (it.checked ? " done" : "")}>
+                <li key={it.id} className={'list-item' + (it.checked ? ' done' : '')}>
                   <button
                     type="button"
                     className="check"
-                    aria-label={it.checked ? "Desmarcar" : "Marcar comprado"}
+                    aria-label={it.checked ? 'Desmarcar' : 'Marcar comprado'}
                     onClick={() => onToggle(it)}
                   >
-                    {it.checked ? "✓" : ""}
+                    {it.checked ? '✓' : ''}
                   </button>
                   <div className="item-main" onClick={() => onToggle(it)}>
                     <span className="name">{it.name}</span>
@@ -502,13 +527,34 @@ function ListaView({
               ))}
             </ul>
           </section>
-        );
+        )
       })}
     </>
-  );
+  )
 }
 
 // ===================== Vista CATÁLOGO =====================
+interface CatalogoViewProps {
+  groups: Group[]
+  categories: Category[]
+  loaded: boolean
+  draft: string
+  setDraft: Dispatch<SetStateAction<string>>
+  draftCat: string
+  setDraftCat: Dispatch<SetStateAction<string>>
+  query: string
+  setQuery: Dispatch<SetStateAction<string>>
+  reordering: boolean
+  setReordering: Dispatch<SetStateAction<boolean>>
+  onAdd: (e: FormEvent) => void
+  onAddCategory: () => void
+  onRenameCategory: (cat: { id: number; name: string }) => void
+  onMoveCategory: (catId: number, dir: 'up' | 'down') => void
+  onToggleNeeded: (it: Item) => void
+  onEdit: (it: Item) => void
+  onQty: (item: Item, quantity: number) => void
+}
+
 function CatalogoView({
   groups,
   categories,
@@ -528,7 +574,7 @@ function CatalogoView({
   onToggleNeeded,
   onEdit,
   onQty,
-}) {
+}: CatalogoViewProps) {
   return (
     <>
       <SearchBox query={query} setQuery={setQuery} placeholder="Buscar producto…" />
@@ -568,21 +614,21 @@ function CatalogoView({
         </button>
         <button
           type="button"
-          className={"ghost-btn" + (reordering ? " active" : "")}
+          className={'ghost-btn' + (reordering ? ' active' : '')}
           onClick={() => setReordering((v) => !v)}
         >
-          {reordering ? "Listo" : "⇅ Ordenar"}
+          {reordering ? 'Listo' : '⇅ Ordenar'}
         </button>
       </div>
 
       {loaded && groups.length === 0 && (
         <p className="empty-state">
-          {query ? "No hay productos que coincidan." : "El catálogo está vacío."}
+          {query ? 'No hay productos que coincidan.' : 'El catálogo está vacío.'}
         </p>
       )}
 
       {groups.map((g, gi) => (
-        <section key={g.id ?? "none"} className="cat-section">
+        <section key={g.id ?? 'none'} className="cat-section">
           <div className="cat-head">
             <h2 className="cat-title">{g.name}</h2>
             {reordering && g.id != null ? (
@@ -592,7 +638,7 @@ function CatalogoView({
                   className="icon-btn"
                   aria-label="Subir sección"
                   disabled={gi === 0}
-                  onClick={() => onMoveCategory(g.id, "up")}
+                  onClick={() => onMoveCategory(g.id!, 'up')}
                 >
                   ↑
                 </button>
@@ -600,7 +646,7 @@ function CatalogoView({
                   type="button"
                   className="icon-btn"
                   aria-label="Bajar sección"
-                  onClick={() => onMoveCategory(g.id, "down")}
+                  onClick={() => onMoveCategory(g.id!, 'down')}
                 >
                   ↓
                 </button>
@@ -608,7 +654,7 @@ function CatalogoView({
                   type="button"
                   className="icon-btn"
                   aria-label="Renombrar sección"
-                  onClick={() => onRenameCategory({ id: g.id, name: g.name })}
+                  onClick={() => onRenameCategory({ id: g.id!, name: g.name })}
                 >
                   ✎
                 </button>
@@ -617,14 +663,14 @@ function CatalogoView({
           </div>
           <ul className="list">
             {g.items.map((it) => (
-              <li key={it.id} className={"list-item catalog" + (it.needed ? " needed" : "")}>
+              <li key={it.id} className={'list-item catalog' + (it.needed ? ' needed' : '')}>
                 <button
                   type="button"
                   className="check"
-                  aria-label={it.needed ? "Sacar de la lista" : "Agregar a la lista"}
+                  aria-label={it.needed ? 'Sacar de la lista' : 'Agregar a la lista'}
                   onClick={() => onToggleNeeded(it)}
                 >
-                  {it.needed ? "✓" : ""}
+                  {it.needed ? '✓' : ''}
                 </button>
                 <div className="item-main" onClick={() => onToggleNeeded(it)}>
                   <span className="name">{it.name}</span>
@@ -645,19 +691,27 @@ function CatalogoView({
         </section>
       ))}
     </>
-  );
+  )
 }
 
 // ===================== Modal de edición =====================
-function EditModal({ item, categories, onClose, onSave, onDelete }) {
-  const [name, setName] = useState(item.name);
-  const [categoryId, setCategoryId] = useState(item.categoryId ? String(item.categoryId) : "");
-  const [quantity, setQuantity] = useState(item.quantity || 1);
-  const [note, setNote] = useState(item.note || "");
+interface EditModalProps {
+  item: Item
+  categories: Category[]
+  onClose: () => void
+  onSave: (item: Item, form: EditForm) => void
+  onDelete: (item: Item) => void
+}
 
-  function submit(e) {
-    e.preventDefault();
-    onSave(item, { name, categoryId, quantity, note });
+function EditModal({ item, categories, onClose, onSave, onDelete }: EditModalProps) {
+  const [name, setName] = useState(item.name)
+  const [categoryId, setCategoryId] = useState(item.categoryId ? String(item.categoryId) : '')
+  const [quantity, setQuantity] = useState(item.quantity || 1)
+  const [note, setNote] = useState(item.note || '')
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    onSave(item, { name, categoryId, quantity, note })
   }
 
   return (
@@ -743,5 +797,5 @@ function EditModal({ item, categories, onClose, onSave, onDelete }) {
         </form>
       </div>
     </div>
-  );
+  )
 }

@@ -1,28 +1,30 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
-let _sql;
+type Sql = NeonQueryFunction<false, false>
+
+let _sql: Sql | undefined
 
 /**
  * Devuelve el cliente SQL de Neon, creándolo la primera vez.
  * Lee la cadena de conexión desde las variables de entorno que
  * inyecta la integración de Postgres/Neon en Vercel.
  */
-export function getSql() {
-  if (_sql) return _sql;
+export function getSql(): Sql {
+  if (_sql) return _sql
   const connectionString =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL;
+    process.env.POSTGRES_PRISMA_URL
   if (!connectionString) {
     throw new Error(
-      "Falta la variable de entorno de la base de datos (DATABASE_URL / POSTGRES_URL)."
-    );
+      'Falta la variable de entorno de la base de datos (DATABASE_URL / POSTGRES_URL).'
+    )
   }
-  _sql = neon(connectionString);
-  return _sql;
+  _sql = neon(connectionString)
+  return _sql
 }
 
-let schemaReady = false;
+let schemaReady = false
 
 /**
  * Crea/actualiza las tablas si hace falta.
@@ -31,9 +33,9 @@ let schemaReady = false;
  *      needed  = está marcado para esta compra
  *      checked = ya lo agarré (tachado)
  */
-export async function ensureSchema() {
-  if (schemaReady) return;
-  const sql = getSql();
+export async function ensureSchema(): Promise<void> {
+  if (schemaReady) return
+  const sql = getSql()
 
   await sql`
     CREATE TABLE IF NOT EXISTS categories (
@@ -41,7 +43,7 @@ export async function ensureSchema() {
       name     TEXT NOT NULL,
       position INT NOT NULL DEFAULT 0
     )
-  `;
+  `
 
   await sql`
     CREATE TABLE IF NOT EXISTS items (
@@ -55,15 +57,15 @@ export async function ensureSchema() {
       position    INT NOT NULL DEFAULT 0,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
-  `;
+  `
 
   // Migración desde el modelo anterior (tabla items con solo name/done).
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS category_id BIGINT`;
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS needed BOOLEAN NOT NULL DEFAULT FALSE`;
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS checked BOOLEAN NOT NULL DEFAULT FALSE`;
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS quantity INT NOT NULL DEFAULT 1`;
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS note TEXT`;
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS position INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS category_id BIGINT`
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS needed BOOLEAN NOT NULL DEFAULT FALSE`
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS checked BOOLEAN NOT NULL DEFAULT FALSE`
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS quantity INT NOT NULL DEFAULT 1`
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS note TEXT`
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS position INT NOT NULL DEFAULT 0`
 
-  schemaReady = true;
+  schemaReady = true
 }
