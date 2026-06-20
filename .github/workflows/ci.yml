@@ -21,6 +21,9 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       # `next build` hace el type-check completo de cada app, así que un PR que
       # rompa tipos o el build de una zona se frena antes del merge.
       - name: Build
