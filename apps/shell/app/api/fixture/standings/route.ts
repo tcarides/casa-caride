@@ -49,7 +49,9 @@ export async function GET() {
 
     const raw = (await res.json()) as FdApiResponse
     const all = raw.standings ?? []
-    const standings = all.filter(s => s.group?.startsWith('GROUP_'))
+    // football-data devuelve los grupos como group: "Group A" (stage "ALL").
+    const isGroup = (g: string | null): g is string => !!g && /^group[_\s]/i.test(g)
+    const standings = all.filter(s => isGroup(s.group))
     if (!standings.length) {
       const sample = all.slice(0, 2).map(s => (s.stage ?? '?') + '/' + (s.group ?? 'null')).join(',')
       const reason = 'sin-grupos len=' + all.length + (sample ? ' ' + sample : '')
@@ -60,7 +62,7 @@ export async function GET() {
 
     const groups = standings
       .map(s => ({
-        id: (s.group as string).replace('GROUP_', ''),
+        id: (s.group as string).replace(/^group[_\s]+/i, '').trim().toUpperCase(),
         teams: (s.table ?? []).map(row => {
           const mapped = TEAM[row.team.name]
           return {
