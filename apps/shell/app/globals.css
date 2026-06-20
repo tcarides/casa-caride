@@ -356,3 +356,22 @@ body {
   transition: transform .1s, background .15s;
 }
 .login__btn:active { transform: scale(.97); }
+
+/* ── Barra de usuario (launcher) ── */
+.home__userbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin: 4px 0 18px; flex-wrap: wrap;
+}
+.home__who { font-size: 0.8rem; color: var(--text-sec); }
+.home__useractions { display: flex; align-items: center; gap: 14px; }
+.home__userlink {
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: 0.8rem; font-weight: 700; color: var(--accent);
+  font-family: inherit; text-decoration: none;
+}
+.home__signout { color: var(--text-sec); }
+.home__denied {
+  font-size: 0.85rem; color: var(--warning);
+  background: var(--warning-soft); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 16px;
+}

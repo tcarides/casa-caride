@@ -128,3 +128,17 @@ export async function setAppAccess(email: string, appKey: string, enabled: boole
     ON CONFLICT (email, app_key) DO UPDATE SET enabled = ${enabled}
   `
 }
+
+/**
+ * ¿Puede este email usar esta app? Consulta directa (sin ensureSchema) pensada
+ * para el middleware: para cuando se invoca, el esquema ya existe (el login lo
+ * crea). El admin se resuelve antes, sin tocar la DB.
+ */
+export async function isAppAllowed(email: string, appKey: string): Promise<boolean> {
+  const sql = getSql()
+  const rows = await sql`
+    SELECT enabled FROM app_access
+    WHERE email = ${email.toLowerCase()} AND app_key = ${appKey}
+  `
+  return rows.length > 0 && rows[0].enabled === true
+}
