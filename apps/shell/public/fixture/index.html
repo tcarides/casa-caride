@@ -740,13 +740,20 @@ function renderGroups(groups,updatedAt){
     upd.style.display='block';
   }
 }
+function showStatic(id,reason){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.textContent='⚠️ Sin datos en vivo'+(reason?' ('+reason+')':'');
+  el.style.display='block';
+}
 async function loadStandings(){
   try{
     var r=await fetch('/api/fixture/standings');
-    if(!r.ok)return;
+    if(!r.ok){showStatic('standings-updated','http-'+r.status);return;}
     var data=await r.json();
     if(data.source==='live')renderGroups(data.groups,data.updatedAt);
-  }catch(e){}
+    else showStatic('standings-updated',data.reason);
+  }catch(e){showStatic('standings-updated','red');}
 }
 loadStandings();
 setInterval(loadStandings,300000);
@@ -787,10 +794,11 @@ function injectResults(results,updatedAt){
 async function loadMatches(){
   try{
     var r=await fetch("/api/fixture/matches");
-    if(!r.ok)return;
+    if(!r.ok){showStatic('results-updated','http-'+r.status);return;}
     var data=await r.json();
     if(data.source==="live")injectResults(data.results,data.updatedAt);
-  }catch(e){}
+    else showStatic('results-updated',data.reason);
+  }catch(e){showStatic('results-updated','red');}
 }
 loadMatches();
 setInterval(loadMatches,300000);

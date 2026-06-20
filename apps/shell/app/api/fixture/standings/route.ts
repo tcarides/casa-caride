@@ -27,7 +27,7 @@ interface FdApiResponse {
 export async function GET() {
   const key = process.env.FOOTBALL_DATA_KEY
   if (!key) {
-    return NextResponse.json({ source: 'static' }, {
+    return NextResponse.json({ source: 'static', reason: 'no-key' }, {
       headers: { 'Cache-Control': 'no-store' },
     })
   }
@@ -39,13 +39,18 @@ export async function GET() {
     })
 
     if (!res.ok) {
-      return NextResponse.json({ source: 'static', error: res.status }, {
+      return NextResponse.json({ source: 'static', reason: 'fd-' + res.status }, {
         headers: { 'Cache-Control': 'no-store' },
       })
     }
 
     const raw = (await res.json()) as FdApiResponse
     const standings = (raw.standings ?? []).filter(s => s.group?.startsWith('GROUP_'))
+    if (!standings.length) {
+      return NextResponse.json({ source: 'static', reason: 'sin-grupos' }, {
+        headers: { 'Cache-Control': 'no-store' },
+      })
+    }
 
     const groups = standings
       .map(s => ({
@@ -69,7 +74,7 @@ export async function GET() {
       { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=60' } },
     )
   } catch {
-    return NextResponse.json({ source: 'static' }, {
+    return NextResponse.json({ source: 'static', reason: 'excepcion' }, {
       headers: { 'Cache-Control': 'no-store' },
     })
   }
