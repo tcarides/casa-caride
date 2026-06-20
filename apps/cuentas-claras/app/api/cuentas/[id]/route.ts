@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getCuenta, getParticipantes, getGastos, getLiquidaciones,
-  closeCuenta, reopenCuenta, deleteCuenta,
+  closeCuenta, reopenCuenta, deleteCuenta, getPendientes,
 } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -21,9 +21,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const id = Number((await params).id)
   const b = (await req.json().catch(() => ({}))) as { action?: string }
-  if (b.action === 'cerrar') await closeCuenta(id)
-  else if (b.action === 'reabrir') await reopenCuenta(id)
-  else return NextResponse.json({ error: 'acción inválida' }, { status: 400 })
+  if (b.action === 'cerrar') {
+    const pendientes = await getPendientes(id)
+    if (pendientes.length > 0) {
+      return NextResponse.json(
+        { error: 'pendientes', pendientes: pendientes.map((p) => p.name) },
+        { status: 409 },
+      )
+    }
+    await closeCuenta(id)
+  } else if (b.action === 'reabrir') {
+    await reopenCuenta(id)
+  } else {
+    return NextResponse.json({ error: 'acción inválida' }, { status: 400 })
+  }
   return NextResponse.json({ ok: true })
 }
 

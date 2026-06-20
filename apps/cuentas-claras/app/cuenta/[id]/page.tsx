@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
-interface Participante { id: number; name: string; alias: string | null }
+type EstadoCarga = 'pendiente' | 'listo' | 'sin_gastos'
+interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga }
 interface Gasto { id: number; descripcion: string; monto: number; pagadorId: number; comprobanteUrl: string | null }
 interface Liquidacion { id: number; fromId: number; toId: number; monto: number; pagado: boolean }
 interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada' }
@@ -101,12 +102,24 @@ export default function CuentaPage() {
   async function delGasto(gid: number) {
     await fetch(`${API}/gastos/${gid}`, { method: 'DELETE' }); await load()
   }
+  async function setEstado(pid: number, estado: EstadoCarga) {
+    await fetch(`${API}/participantes/${pid}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado }),
+    })
+    await load()
+  }
   async function cerrar() {
     if (!confirm('¿Cerrar la cuenta y calcular quién le debe a quién?')) return
-    await fetch(`${API}/cuentas/${id}`, {
+    const r = await fetch(`${API}/cuentas/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'cerrar' }),
     })
+    if (r.status === 409) {
+      const data = await r.json().catch(() => ({})) as { pendientes?: string[] }
+      alert(`Todavía falta que confirmen: ${(data.pendientes ?? []).join(', ')}.\nMarcalos como "Cargó" o "No gastó", o recordáles que carguen sus gastos.`)
+      return
+    }
     await load()
   }
   async function reabrir() {
@@ -139,16 +152,29 @@ export default function CuentaPage() {
       <section className="cc-card">
         <h2 className="cc-sec">Participantes ({participantes.length})</h2>
         <ul className="cc-list">
-          {participantes.map((p) => (
-            <li key={p.id} className="cc-item">
-              <div className="cc-item-main">
-                <span className="cc-item-name">{p.name}</span>
-                <span className="cc-item-sub">{p.alias ? `alias: ${p.alias}` : 'sin alias'}</span>
-              </div>
-              <button className="cc-mini" onClick={() => editAlias(p)} aria-label="Editar alias">✎</button>
-              {abierta && <button className="cc-mini" onClick={() => delParticipante(p.id)} aria-label="Quitar">✕</button>}
-            </li>
-          ))}
+          {participantes.map((p) => {
+            const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
+            const waCargar = `https://wa.me/?text=${encodeURIComponent(`Hola ${p.name}, antes de cerrar "${cuenta.name}" cargá tus gastos (o avisá que no gastaste): ${pageUrl}`)}`
+            return (
+              <li key={p.id} className="cc-item">
+                <div className="cc-item-main">
+                  <span className="cc-item-name">{p.name} <EstadoBadge estado={p.estado} /></span>
+                  <span className="cc-item-sub">{p.alias ? `alias: ${p.alias}` : 'sin alias'}</span>
+                  {abierta && (
+                    <div className="cc-estado">
+                      <button className={'cc-chip' + (p.estado === 'listo' ? ' on' : '')} onClick={() => setEstado(p.id, p.estado === 'listo' ? 'pendiente' : 'listo')}>Cargó ✓</button>
+                      <button className={'cc-chip' + (p.estado === 'sin_gastos' ? ' on' : '')} onClick={() => setEstado(p.id, p.estado === 'sin_gastos' ? 'pendiente' : 'sin_gastos')}>No gastó</button>
+                      {p.estado === 'pendiente' && (
+                        <a className="cc-chip cc-wa" href={waCargar} target="_blank" rel="noopener noreferrer">📲 recordar</a>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button className="cc-mini" onClick={() => editAlias(p)} aria-label="Editar alias">✎</button>
+                {abierta && <button className="cc-mini" onClick={() => delParticipante(p.id)} aria-label="Quitar">✕</button>}
+              </li>
+            )
+          })}
         </ul>
         {abierta && (
           <form className="cc-addrow" onSubmit={addParticipante}>
@@ -200,10 +226,21 @@ export default function CuentaPage() {
 
       {/* Cerrar / Liquidación */}
       {abierta ? (
-        <button className="cc-btn cc-btn-block" onClick={cerrar}
-          disabled={participantes.length < 2 || gastos.length === 0}>
-          Cerrar y calcular deudas
-        </button>
+        <>
+          {(() => {
+            const pendientes = participantes.filter((p) => p.estado === 'pendiente')
+            return pendientes.length > 0 ? (
+              <p className="cc-aviso">
+                Antes de cerrar, falta confirmar a: <strong>{pendientes.map((p) => p.name).join(', ')}</strong>.
+                Marcalos como <em>Cargó</em> / <em>No gastó</em>, o tocá 📲 para que carguen su gasto.
+              </p>
+            ) : null
+          })()}
+          <button className="cc-btn cc-btn-block" onClick={cerrar}
+            disabled={participantes.length < 2 || gastos.length === 0 || participantes.some((p) => p.estado === 'pendiente')}>
+            Cerrar y calcular deudas
+          </button>
+        </>
       ) : (
         <section className="cc-card">
           <h2 className="cc-sec">Quién le debe a quién</h2>
@@ -235,4 +272,10 @@ export default function CuentaPage() {
       )}
     </main>
   )
+}
+
+function EstadoBadge({ estado }: { estado: EstadoCarga }) {
+  if (estado === 'listo') return <span className="cc-estbadge listo">cargó</span>
+  if (estado === 'sin_gastos') return <span className="cc-estbadge sin">no gastó</span>
+  return <span className="cc-estbadge pend">pendiente</span>
 }

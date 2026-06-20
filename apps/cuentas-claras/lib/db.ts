@@ -23,12 +23,14 @@ export interface Cuenta {
   createdAt: string
   closedAt: string | null
 }
+export type EstadoCarga = 'pendiente' | 'listo' | 'sin_gastos'
 export interface Participante {
   id: number
   cuentaId: number
   name: string
   alias: string | null
   userEmail: string | null
+  estado: EstadoCarga
 }
 export interface Gasto {
   id: number
@@ -71,6 +73,8 @@ export async function ensureSchema(): Promise<void> {
       user_email TEXT
     )
   `
+  // Estado de carga: pendiente (default) | listo (ya cargó) | sin_gastos (no gastó).
+  await sql`ALTER TABLE participantes ADD COLUMN IF NOT EXISTS estado_carga TEXT NOT NULL DEFAULT 'pendiente'`
   await sql`
     CREATE TABLE IF NOT EXISTS gastos (
       id BIGSERIAL PRIMARY KEY,
@@ -148,10 +152,11 @@ export async function deleteCuenta(id: number): Promise<void> {
 export async function getParticipantes(cuentaId: number): Promise<Participante[]> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, cuenta_id, name, alias, user_email FROM participantes WHERE cuenta_id = ${cuentaId} ORDER BY id ASC`
+  const rows = await sql`SELECT id, cuenta_id, name, alias, user_email, estado_carga FROM participantes WHERE cuenta_id = ${cuentaId} ORDER BY id ASC`
   return rows.map((r) => ({
     id: Number(r.id), cuentaId: Number(r.cuenta_id), name: r.name as string,
     alias: (r.alias as string | null) ?? null, userEmail: (r.user_email as string | null) ?? null,
+    estado: ((r.estado_carga as EstadoCarga) ?? 'pendiente'),
   }))
 }
 
@@ -173,6 +178,18 @@ export async function deleteParticipante(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()
   await sql`DELETE FROM participantes WHERE id = ${id}`
+}
+
+export async function setEstadoCarga(id: number, estado: EstadoCarga): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`UPDATE participantes SET estado_carga = ${estado} WHERE id = ${id}`
+}
+
+/** Cuántos participantes siguen en "pendiente" (no se puede cerrar si > 0). */
+export async function getPendientes(cuentaId: number): Promise<Participante[]> {
+  const parts = await getParticipantes(cuentaId)
+  return parts.filter((p) => p.estado === 'pendiente')
 }
 
 // ── Gastos ──
@@ -197,6 +214,8 @@ export async function addGasto(
     INSERT INTO gastos (cuenta_id, descripcion, monto_centavos, pagador_id, comprobante_url, comprobante_path)
     VALUES (${cuentaId}, ${descripcion}, ${monto}, ${pagadorId}, ${comprobanteUrl}, ${comprobantePath})
   `
+  // Quien tiene un gasto cargado ya no está "pendiente" (lo cargó él o un 3ro por él).
+  await sql`UPDATE participantes SET estado_carga = 'listo' WHERE id = ${pagadorId} AND estado_carga = 'pendiente'`
 }
 
 export async function deleteGasto(id: number): Promise<void> {

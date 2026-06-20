@@ -82,3 +82,17 @@ body {
 
 .cc-attach { cursor: pointer; }
 .cc-attach.cc-on { background: color-mix(in oklab, var(--cc) 22%, transparent); border-color: var(--cc); color: var(--cc); }
+
+/* Estado de carga por participante */
+.cc-estbadge { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+  padding: 2px 7px; border-radius: 999px; vertical-align: middle; }
+.cc-estbadge.pend { color: var(--warning, #ff9500); background: var(--warning-soft, rgba(255,149,0,.14)); }
+.cc-estbadge.listo { color: var(--success, #34c77b); background: var(--success-soft, rgba(52,199,123,.14)); }
+.cc-estbadge.sin { color: var(--text-sec); background: var(--surface-input); }
+.cc-estado { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cc-chip { font-size: 0.72rem; font-weight: 700; cursor: pointer; text-decoration: none;
+  border: 1px solid var(--border-subtle, #2a2a2a); background: var(--surface-input, #1e1e1e);
+  color: var(--text-sec); border-radius: 999px; padding: 4px 10px; font-family: inherit; }
+.cc-chip.on { background: var(--cc); border-color: var(--cc); color: var(--on-accent, #0a0a0a); }
+.cc-aviso { font-size: 0.82rem; color: var(--warning, #ff9500);
+  background: var(--warning-soft, rgba(255,149,0,.14)); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
