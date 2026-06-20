@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { APPS } from '@/app/apps.config'
 
@@ -59,7 +60,7 @@ export async function ensureSchema(): Promise<void> {
     CREATE TABLE IF NOT EXISTS invites (
       token       TEXT PRIMARY KEY,
       note        TEXT,
-      apps_preset TEXT[] NOT NULL DEFAULT '{}',
+      apps_preset TEXT NOT NULL DEFAULT '',
       created_by  TEXT,
       expires_at  TIMESTAMPTZ,
       used_by     TEXT,
@@ -174,4 +175,81 @@ export async function isAppAllowed(email: string, appKey: string): Promise<boole
     WHERE email = ${email.toLowerCase()} AND app_key = ${appKey}
   `
   return rows.length > 0 && rows[0].enabled === true
+}
+
+// ── Invitaciones ──
+export interface Invite {
+  token: string
+  note: string
+  apps: string[]
+}
+
+export async function createInvite(
+  note: string, apps: string[], createdBy: string, days = 7,
+): Promise<string> {
+  await ensureSchema()
+  const sql = getSql()
+  const token = randomBytes(16).toString('base64url')
+  const expires = new Date(Date.now() + days * 86_400_000).toISOString()
+  await sql`
+    INSERT INTO invites (token, note, apps_preset, created_by, expires_at)
+    VALUES (${token}, ${note}, ${apps.join(',')}, ${createdBy}, ${expires})
+  `
+  return token
+}
+
+/** Invitación válida (existe, sin usar, no vencida) o null. */
+export async function getValidInvite(token: string): Promise<Invite | null> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT note, apps_preset, used_by, expires_at FROM invites WHERE token = ${token}`
+  if (!rows.length) return null
+  const r = rows[0]
+  if (r.used_by) return null
+  if (r.expires_at && new Date(r.expires_at as string) < new Date()) return null
+  const preset = (r.apps_preset as string) || ''
+  return { token, note: (r.note as string) ?? '', apps: preset ? preset.split(',') : [] }
+}
+
+/** Crea el usuario (member) con las apps del preset y marca la invitación usada. */
+export async function consumeInvite(
+  token: string, email: string, name: string, apps: string[],
+): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  await sql`
+    INSERT INTO users (email, name, role) VALUES (${e}, ${name}, 'member')
+    ON CONFLICT (email) DO NOTHING
+  `
+  for (const app of apps) {
+    await sql`
+      INSERT INTO app_access (email, app_key, enabled) VALUES (${e}, ${app}, TRUE)
+      ON CONFLICT (email, app_key) DO UPDATE SET enabled = TRUE
+    `
+  }
+  await sql`UPDATE invites SET used_by = ${e}, used_at = NOW() WHERE token = ${token}`
+}
+
+export interface PendingInvite { token: string; note: string; apps: string[]; expiresAt: string | null }
+export async function listPendingInvites(): Promise<PendingInvite[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`
+    SELECT token, note, apps_preset, expires_at FROM invites
+    WHERE used_by IS NULL AND (expires_at IS NULL OR expires_at > NOW())
+    ORDER BY created_at DESC
+  `
+  return rows.map((r) => ({
+    token: r.token as string,
+    note: (r.note as string) ?? '',
+    apps: ((r.apps_preset as string) || '') ? (r.apps_preset as string).split(',') : [],
+    expiresAt: (r.expires_at as string) ?? null,
+  }))
+}
+
+export async function deleteInvite(token: string): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`DELETE FROM invites WHERE token = ${token}`
 }

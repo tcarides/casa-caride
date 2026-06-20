@@ -40,6 +40,6 @@ export default auth(async (req) => {
 
 export const config = {
   matcher: [
-    '/((?!api/auth|login|_next/static|_next/image|ds/|sw\\.js|manifest\\.webmanifest|icon-|apple-touch|favicon).*)',
+    '/((?!api/auth|login|invite|_next/static|_next/image|ds/|sw\\.js|manifest\\.webmanifest|icon-|apple-touch|favicon).*)',
   ],
 }
