@@ -139,6 +139,13 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 .state-tag.soon { background:var(--accent); color:var(--on-accent); }
 .arg-card.played-arg { opacity:.6; border-left-color:var(--border-strong); }
 
+/* ── Resultado de partidos ya jugados (Partidos) ── */
+.m-card.played.has-score { opacity:.78; }
+.m-card .hs.score { color:var(--text-pri); font-weight:900; font-size:1.25rem; }
+.m-card.played .hs.score { color:var(--text-pri); }
+.m-card .hs.score small { display:block; font-size:0.52rem; color:var(--success);
+             font-weight:800; letter-spacing:.4px; margin-top:2px; }
+
 /* ── Canal de TV (Argentina) ── */
 .m-card .tv, .arg-card .tv { font-size:0.68rem; color:var(--success); font-weight:700;
              margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -742,6 +749,44 @@ async function loadStandings(){
 }
 loadStandings();
 setInterval(loadStandings,300000);
+
+/* ── Resultados de partidos jugados (football-data.org) ── */
+function normTeam(s){return normalize(s).replace(/[^a-z. ]/g,"").replace(/\s+/g," ").trim();}
+function injectResults(results){
+  if(!results||!results.length)return;
+  var map={};
+  for(var i=0;i<results.length;i++){
+    var r=results[i];
+    var a=normTeam(r.home),b=normTeam(r.away);
+    map[[a,b].sort().join("|")]={home:a,hs:r.homeScore,as:r.awayScore};
+  }
+  var cards=document.querySelectorAll("#tab-cal .m-card");
+  for(var c=0;c<cards.length;c++){
+    var tEl=cards[c].querySelector(".teams");
+    var hsEl=cards[c].querySelector(".hs");
+    if(!tEl||!hsEl)continue;
+    var parts=tEl.textContent.split(" vs ");
+    if(parts.length!==2)continue;
+    var left=normTeam(parts[0]),right=normTeam(parts[1]);
+    var hit=map[[left,right].sort().join("|")];
+    if(!hit)continue;
+    var ls=(hit.home===left)?hit.hs:hit.as;
+    var rs=(hit.home===left)?hit.as:hit.hs;
+    hsEl.classList.add("score");
+    hsEl.innerHTML=ls+"-"+rs+"<small>Final</small>";
+    cards[c].classList.add("has-score","played");
+  }
+}
+async function loadMatches(){
+  try{
+    var r=await fetch("/api/fixture/matches");
+    if(!r.ok)return;
+    var data=await r.json();
+    if(data.source==="live")injectResults(data.results);
+  }catch(e){}
+}
+loadMatches();
+setInterval(loadMatches,300000);
 </script>
 <script src="/casa-nav.js" defer></script>
 </body>
