@@ -171,6 +171,26 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
           letter-spacing:.3px; color:var(--text-hint); }
 .g-team.arg .g-pts { color:var(--app-fixture); }
 
+/* ── Llaves eliminatorias (bracket) ── */
+.bk-head { margin-top:22px; }
+.bk-hint { font-size:0.7rem; color:var(--text-hint); margin-bottom:8px; }
+.bk-wrap { overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;
+           border:1px solid var(--border-subtle); border-radius:12px; background:var(--surface-card);
+           padding:14px 10px; }
+.bk-canvas { position:relative; }
+.bk-svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+.bk-col-lbl { position:absolute; font-size:0.62rem; font-weight:800; letter-spacing:.4px;
+              text-transform:uppercase; color:var(--text-hint); transform:translateX(-50%); }
+.bk-box { position:absolute; background:var(--surface-input); border:1px solid var(--border-subtle);
+          border-radius:8px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column;
+          justify-content:center; overflow:hidden; }
+.bk-box .bk-t { font-size:0.74rem; color:var(--text-pri); padding:3px 8px; white-space:nowrap;
+                overflow:hidden; text-overflow:ellipsis; }
+.bk-box .bk-t + .bk-t { border-top:1px solid var(--border-subtle); }
+.bk-box.bk-ph .bk-t { color:var(--text-hint); }
+.bk-box.bk-final { background:linear-gradient(135deg,#3a3000,#262000); border-color:var(--accent); }
+.bk-box.bk-final .bk-t { color:var(--accent); font-weight:800; text-align:center; }
+
 /* ── Final card ── */
 .final-c { background:linear-gradient(135deg,#F5C400,#FFD600); color:var(--on-accent);
            border-radius:14px; padding:18px; margin-top:14px;
@@ -523,6 +543,18 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
         <div class="g-team"><span class="g-name">🇭🇷 Croacia</span><span class="g-stat">1</span><span class="g-stat">-2</span><span class="g-pts">0</span></div></div>
     </div>
     <div id="standings-updated" style="display:none;text-align:center;font-size:0.68rem;color:var(--text-hint);padding:4px 0 8px;"></div>
+
+    <!-- ══ Llaves eliminatorias (16avos → Final) ══ -->
+    <div class="bk-head">
+      <p class="sec-title" style="margin-bottom:2px;">Llaves eliminatorias</p>
+      <p class="bk-hint">◀ Deslizá para ver todas las rondas ▶</p>
+    </div>
+    <div class="bk-wrap" id="bk-wrap">
+      <div class="bk-canvas" id="bk-canvas">
+        <svg class="bk-svg" id="bk-svg"></svg>
+      </div>
+    </div>
+
     <div class="final-c">
       <div class="fl">🏆 Gran Final</div>
       <div class="fd">Domingo 19 de julio de 2026</div>
@@ -814,6 +846,95 @@ if(torneoEnCurso()){
   loadMatches();
   setInterval(loadMatches,300000);
 }
+
+/* ── Llaves eliminatorias: árbol conectado (16avos → Final) ── */
+/* Cruces de 16avos en orden de bracket (cada par alimenta un octavos).
+   Octavos en adelante son placeholders que se completan al avanzar el torneo. */
+var BK_R32=[
+  ["1° E","Mejor 3°"],["1° I","Mejor 3°"],
+  ["2° A","2° B"],["1° F","2° C"],
+  ["1° A","Mejor 3°"],["1° L","Mejor 3°"],
+  ["1° C","2° F"],["2° E","2° I"],
+  ["1° D","Mejor 3°"],["1° G","Mejor 3°"],
+  ["2° K","2° L"],["1° H","2° J"],
+  ["1° J","2° H"],["2° D","2° G"],
+  ["1° B","Mejor 3°"],["1° K","Mejor 3°"]
+];
+function renderBracket(){
+  var canvas=document.getElementById("bk-canvas");
+  var svg=document.getElementById("bk-svg");
+  if(!canvas||!svg)return;
+  var BOXW=140, BOXH=46, VGAP=12, HGAP=42, TOP=20;
+  var counts=[16,8,4,2,1];
+  var labels=["16avos","Octavos","Cuartos","Semis","Final"];
+  var W=(counts.length-1)*(BOXW+HGAP)+BOXW;
+  var H=TOP+counts[0]*(BOXH+VGAP);
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
+  // limpiar (dejar el svg)
+  var old=canvas.querySelectorAll(".bk-box,.bk-col-lbl");
+  for(var o=0;o<old.length;o++)old[o].remove();
+  svg.setAttribute("width",W); svg.setAttribute("height",H);
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  // centros verticales por ronda
+  var centers=[];
+  var c0=[];
+  for(var i=0;i<counts[0];i++)c0.push(TOP+i*(BOXH+VGAP)+BOXH/2);
+  centers.push(c0);
+  for(var r=1;r<counts.length;r++){
+    var prev=centers[r-1], cur=[];
+    for(var j=0;j<counts[r];j++)cur.push((prev[2*j]+prev[2*j+1])/2);
+    centers.push(cur);
+  }
+  // conectores SVG
+  var paths="";
+  for(var rr=1;rr<counts.length;rr++){
+    var childX=(rr-1)*(BOXW+HGAP)+BOXW;
+    var midX=childX+HGAP/2;
+    var parentX=rr*(BOXW+HGAP);
+    for(var k=0;k<counts[rr];k++){
+      var y0=centers[rr-1][2*k], y1=centers[rr-1][2*k+1], yp=centers[rr][k];
+      paths+="M"+childX+" "+y0+" H"+midX;
+      paths+=" M"+childX+" "+y1+" H"+midX;
+      paths+=" M"+midX+" "+y0+" V"+y1;
+      paths+=" M"+midX+" "+yp+" H"+parentX;
+    }
+  }
+  var p=document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("d",paths);
+  p.setAttribute("fill","none");
+  p.setAttribute("stroke","#4a4a4a");
+  p.setAttribute("stroke-width","1.5");
+  svg.innerHTML=""; svg.appendChild(p);
+  // etiquetas de columna + cajas
+  for(var rc=0;rc<counts.length;rc++){
+    var x=rc*(BOXW+HGAP);
+    var lbl=document.createElement("div");
+    lbl.className="bk-col-lbl";
+    lbl.textContent=labels[rc];
+    lbl.style.left=(x+BOXW/2)+"px"; lbl.style.top="0px";
+    canvas.appendChild(lbl);
+    for(var b=0;b<counts[rc];b++){
+      var box=document.createElement("div");
+      var teams;
+      if(rc===0){ teams=BK_R32[b]; }
+      else if(rc===counts.length-1){ box.className="bk-final"; teams=["Finalista","Finalista"]; }
+      else { box.className="bk-ph"; teams=["Ganador","Ganador"]; }
+      box.className=("bk-box "+(box.className||"")).trim();
+      box.style.width=BOXW+"px"; box.style.height=BOXH+"px";
+      box.style.left=x+"px";
+      box.style.top=(centers[rc][b]-BOXH/2)+"px";
+      for(var t=0;t<teams.length;t++){
+        var sp=document.createElement("span");
+        sp.className="bk-t"+(teams[t]==="1° J"?" bk-arg":"");
+        if(teams[t]==="1° J")sp.style.color="var(--app-fixture)",sp.style.fontWeight="700";
+        sp.textContent=teams[t];
+        box.appendChild(sp);
+      }
+      canvas.appendChild(box);
+    }
+  }
+}
+renderBracket();
 </script>
 <script src="/casa-nav.js" defer></script>
 </body>
