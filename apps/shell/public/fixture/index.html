@@ -270,6 +270,7 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
       <button type="button" class="fbtn" data-filter="arg">🇦🇷 Solo Argentina</button>
     </div>
     <div class="no-results" id="no-results">😕 No se encontraron partidos para esa búsqueda.</div>
+    <div id="results-updated" style="display:none;text-align:center;font-size:0.68rem;color:var(--text-hint);padding:0 0 8px;"></div>
     <div class="tv-note"><span>📺</span><span><b>TV en Argentina:</b> todos los partidos por <b>DSports (DirecTV)</b>. Por TV abierta (<b>TV Pública / Telefe</b>): Argentina, la apertura y la fase eliminatoria. La grilla de TV abierta puede ajustarse cerca del torneo.</span></div>
     <div class="cal-body">
 <div class="day-block"><div class="day-hdr">Jue 11 de junio</div>
@@ -735,7 +736,7 @@ function renderGroups(groups,updatedAt){
   var upd=document.getElementById('standings-updated');
   if(upd&&updatedAt){
     var d=new Date(updatedAt);
-    upd.textContent='📡 Actualizado '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    upd.textContent='📡 Posiciones actualizadas '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+' hs';
     upd.style.display='block';
   }
 }
@@ -752,7 +753,7 @@ setInterval(loadStandings,300000);
 
 /* ── Resultados de partidos jugados (football-data.org) ── */
 function normTeam(s){return normalize(s).replace(/[^a-z. ]/g,"").replace(/\s+/g," ").trim();}
-function injectResults(results){
+function injectResults(results,updatedAt){
   if(!results||!results.length)return;
   var map={};
   for(var i=0;i<results.length;i++){
@@ -776,13 +777,19 @@ function injectResults(results){
     hsEl.innerHTML=ls+"-"+rs+"<small>Final</small>";
     cards[c].classList.add("has-score","played");
   }
+  var upd=document.getElementById("results-updated");
+  if(upd&&updatedAt){
+    var d=new Date(updatedAt);
+    upd.textContent="📡 Resultados actualizados "+d.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})+" hs";
+    upd.style.display="block";
+  }
 }
 async function loadMatches(){
   try{
     var r=await fetch("/api/fixture/matches");
     if(!r.ok)return;
     var data=await r.json();
-    if(data.source==="live")injectResults(data.results);
+    if(data.source==="live")injectResults(data.results,data.updatedAt);
   }catch(e){}
 }
 loadMatches();
