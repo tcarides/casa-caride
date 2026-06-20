@@ -96,3 +96,5 @@ body {
 .cc-chip.on { background: var(--cc); border-color: var(--cc); color: var(--on-accent, #0a0a0a); }
 .cc-aviso { font-size: 0.82rem; color: var(--warning, #ff9500);
   background: var(--warning-soft, rgba(255,149,0,.14)); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
+
+.cc-headrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

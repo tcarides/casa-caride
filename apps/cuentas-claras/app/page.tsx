@@ -51,10 +51,11 @@ export default function Home() {
 
   return (
     <main className="cc">
-      <header className="cc-header">
+      <header className="cc-header cc-headrow">
         <div className="cc-title"><span className="cc-logo" aria-hidden>🧾</span>
           <div><h1>Cuentas Claras</h1><p>Dividí asados y eventos sin vueltas</p></div>
         </div>
+        <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
       </header>
 
       <form className="cc-newform" onSubmit={crear}>

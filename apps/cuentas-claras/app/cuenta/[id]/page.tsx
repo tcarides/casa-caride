@@ -30,6 +30,8 @@ export default function CuentaPage() {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const [contactos, setContactos] = useState<{ name: string; alias: string }[]>([])
+  const [grupos, setGrupos] = useState<{ id: number; name: string; miembros: number }[]>([])
+  const [grupoSel, setGrupoSel] = useState('')
   const descRef = useRef<HTMLInputElement>(null)
   const pNameRef = useRef<HTMLInputElement>(null)
 
@@ -40,9 +42,10 @@ export default function CuentaPage() {
   }, [id])
   useEffect(() => { void load() }, [load])
 
-  // Libreta de alias para autocompletar al agregar participantes.
+  // Libreta de alias + mis grupos (para autocompletar e importar).
   useEffect(() => {
     fetch(`${API}/contactos`).then((r) => r.ok ? r.json() : []).then(setContactos).catch(() => {})
+    fetch(`${API}/grupos`).then((r) => r.ok ? r.json() : []).then(setGrupos).catch(() => {})
   }, [])
 
   // Default del pagador: el primer participante (evita un click por gasto).
@@ -74,6 +77,14 @@ export default function CuentaPage() {
     setPName(v)
     const c = contactos.find((c) => c.name.toLowerCase() === v.trim().toLowerCase())
     if (c) setPAlias(c.alias) // autocompleta el alias de un contacto conocido
+  }
+  async function importarGrupo() {
+    if (!grupoSel) return
+    await fetch(`${API}/cuentas/${id}/importar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grupoId: Number(grupoSel) }),
+    })
+    setGrupoSel(''); await load()
   }
   async function delParticipante(pid: number) {
     setD((prev) => prev ? { ...prev, participantes: prev.participantes.filter((p) => p.id !== pid) } : prev)
@@ -213,6 +224,15 @@ export default function CuentaPage() {
               {contactos.map((c) => <option key={c.name} value={c.name} />)}
             </datalist>
           </form>
+        )}
+        {abierta && grupos.length > 0 && (
+          <div className="cc-addrow">
+            <select className="cc-input" value={grupoSel} onChange={(e) => setGrupoSel(e.target.value)}>
+              <option value="">Importar un grupo…</option>
+              {grupos.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.miembros})</option>)}
+            </select>
+            <button className="cc-btn cc-ghost" type="button" onClick={importarGrupo} disabled={!grupoSel}>Importar</button>
+          </div>
         )}
       </section>
 
