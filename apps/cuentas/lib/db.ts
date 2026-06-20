@@ -205,6 +205,14 @@ export async function deleteGasto(id: number): Promise<void> {
   await sql`DELETE FROM gastos WHERE id = ${id}`
 }
 
+/** pathname del comprobante (para servirlo privado por id de gasto). */
+export async function getGastoComprobante(id: number): Promise<string | null> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT comprobante_path FROM gastos WHERE id = ${id}`
+  return rows.length ? ((rows[0].comprobante_path as string | null) ?? null) : null
+}
+
 // ── Cierre / liquidaciones ──
 export async function getLiquidaciones(cuentaId: number): Promise<Liquidacion[]> {
   await ensureSchema()

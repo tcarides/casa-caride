@@ -79,3 +79,6 @@ body {
 .cc-deuda:last-child { border-bottom: none; }
 .cc-deuda.pagada { opacity: .5; }
 .cc-deuda.pagada .cc-item-name { text-decoration: line-through; }
+
+.cc-attach { cursor: pointer; }
+.cc-attach.cc-on { background: color-mix(in oklab, var(--cc) 22%, transparent); border-color: var(--cc); color: var(--cc); }

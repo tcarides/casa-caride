@@ -1,6 +1,7 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { upload } from '@vercel/blob/client'
 
 interface Participante { id: number; name: string; alias: string | null }
 interface Gasto { id: number; descripcion: string; monto: number; pagadorId: number; comprobanteUrl: string | null }
@@ -24,6 +25,9 @@ export default function CuentaPage() {
   const [gDesc, setGDesc] = useState('')
   const [gMonto, setGMonto] = useState('')
   const [gPagador, setGPagador] = useState('')
+  const [gFile, setGFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const r = await fetch(`${API}/cuentas/${id}`)
@@ -67,11 +71,32 @@ export default function CuentaPage() {
     e.preventDefault()
     const monto = toCentavos(gMonto)
     if (!gDesc.trim() || monto <= 0 || !gPagador) return
-    await fetch(`${API}/cuentas/${id}/gastos`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ descripcion: gDesc.trim(), monto, pagadorId: Number(gPagador) }),
-    })
-    setGDesc(''); setGMonto(''); await load()
+    setUploading(true)
+    try {
+      let comprobanteUrl: string | null = null
+      let comprobantePath: string | null = null
+      if (gFile) {
+        const blob = await upload(gFile.name, gFile, {
+          access: 'private', // se sirve autenticado por /cuentas/api/file
+          handleUploadUrl: '/cuentas/api/upload',
+          multipart: true,
+        })
+        comprobanteUrl = blob.url
+        comprobantePath = blob.pathname
+      }
+      await fetch(`${API}/cuentas/${id}/gastos`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          descripcion: gDesc.trim(), monto, pagadorId: Number(gPagador),
+          comprobanteUrl, comprobantePath,
+        }),
+      })
+      setGDesc(''); setGMonto(''); setGFile(null)
+      if (fileRef.current) fileRef.current.value = ''
+      await load()
+    } finally {
+      setUploading(false)
+    }
   }
   async function delGasto(gid: number) {
     await fetch(`${API}/gastos/${gid}`, { method: 'DELETE' }); await load()
@@ -145,6 +170,9 @@ export default function CuentaPage() {
                 <span className="cc-item-sub">pagó {nameOf(g.pagadorId)}</span>
               </div>
               <span className="cc-monto">{money(g.monto)}</span>
+              {g.comprobanteUrl && (
+                <a className="cc-mini" href={`/cuentas/api/file?gasto=${g.id}`} target="_blank" rel="noopener noreferrer" aria-label="Ver comprobante">📎</a>
+              )}
               {abierta && <button className="cc-mini" onClick={() => delGasto(g.id)} aria-label="Borrar">✕</button>}
             </li>
           ))}
@@ -158,7 +186,14 @@ export default function CuentaPage() {
               <option value="">¿Quién pagó?</option>
               {participantes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button className="cc-btn" type="submit" disabled={!gDesc.trim() || toCentavos(gMonto) <= 0 || !gPagador}>+</button>
+            <label className={'cc-mini cc-attach' + (gFile ? ' cc-on' : '')} title="Adjuntar comprobante">
+              📎
+              <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden
+                onChange={(e) => setGFile(e.target.files?.[0] ?? null)} />
+            </label>
+            <button className="cc-btn" type="submit" disabled={uploading || !gDesc.trim() || toCentavos(gMonto) <= 0 || !gPagador}>
+              {uploading ? '…' : '+'}
+            </button>
           </form>
         )}
       </section>
