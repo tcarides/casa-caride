@@ -9,7 +9,7 @@ interface Liquidacion { id: number; fromId: number; toId: number; monto: number;
 interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada' }
 interface Detail { cuenta: Cuenta; participantes: Participante[]; gastos: Gasto[]; liquidaciones: Liquidacion[] }
 
-const API = '/cuentas/api'
+const API = '/cuentas-claras/api'
 const money = (c: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(c / 100)
 const toCentavos = (s: string) => Math.round((parseFloat(s.replace(',', '.')) || 0) * 100)
@@ -77,8 +77,8 @@ export default function CuentaPage() {
       let comprobantePath: string | null = null
       if (gFile) {
         const blob = await upload(gFile.name, gFile, {
-          access: 'private', // se sirve autenticado por /cuentas/api/file
-          handleUploadUrl: '/cuentas/api/upload',
+          access: 'private', // se sirve autenticado por /cuentas-claras/api/file
+          handleUploadUrl: '/cuentas-claras/api/upload',
           multipart: true,
         })
         comprobanteUrl = blob.url
@@ -127,7 +127,7 @@ export default function CuentaPage() {
   return (
     <main className="cc">
       <header className="cc-header">
-        <a className="cc-back" href="/cuentas">← Cuentas</a>
+        <a className="cc-back" href="/cuentas-claras">← Cuentas</a>
         <div className="cc-title">
           <div><h1>{cuenta.name}</h1>
             <p>{abierta ? 'Abierta' : 'Cerrada'} · {money(total)} en {gastos.length} gasto{gastos.length === 1 ? '' : 's'}</p>
@@ -171,7 +171,7 @@ export default function CuentaPage() {
               </div>
               <span className="cc-monto">{money(g.monto)}</span>
               {g.comprobanteUrl && (
-                <a className="cc-mini" href={`/cuentas/api/file?gasto=${g.id}`} target="_blank" rel="noopener noreferrer" aria-label="Ver comprobante">📎</a>
+                <a className="cc-mini" href={`/cuentas-claras/api/file?gasto=${g.id}`} target="_blank" rel="noopener noreferrer" aria-label="Ver comprobante">📎</a>
               )}
               {abierta && <button className="cc-mini" onClick={() => delGasto(g.id)} aria-label="Borrar">✕</button>}
             </li>

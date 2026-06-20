@@ -64,10 +64,10 @@ export const APPS: MiniApp[] = [
     kind: 'zone',
   },
   {
-    slug: 'cuentas',
+    slug: 'cuentas-claras',
     name: 'Cuentas Claras',
     description: 'Dividí asados y eventos sin vueltas',
-    href: '/cuentas',
+    href: '/cuentas-claras',
     emoji: '🧾',
     hue: 'var(--app-cuentas)',
     kind: 'zone',

@@ -8,7 +8,7 @@ interface Cuenta {
   createdAt: string
 }
 
-const API = '/cuentas/api'
+const API = '/cuentas-claras/api'
 
 export default function Home() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([])
@@ -39,7 +39,7 @@ export default function Home() {
       })
       if (r.ok) {
         const { id } = await r.json()
-        window.location.href = `/cuentas/cuenta/${id}`
+        window.location.href = `/cuentas-claras/cuenta/${id}`
       }
     } finally {
       setCreating(false)
@@ -81,7 +81,7 @@ export default function Home() {
 
 function CuentaRow({ c }: { c: Cuenta }) {
   return (
-    <a className="cc-row" href={`/cuentas/cuenta/${c.id}`}>
+    <a className="cc-row" href={`/cuentas-claras/cuenta/${c.id}`}>
       <span className="cc-row-name">{c.name}</span>
       <span className={'cc-badge' + (c.status === 'cerrada' ? ' cerrada' : '')}>
         {c.status === 'cerrada' ? 'cerrada' : 'abierta'}
