@@ -3,7 +3,6 @@ import { apiFetch } from '@/lib/api'
 
 import { useEffect, useMemo, useState, useCallback, useDeferredValue, useRef } from 'react'
 import Link from 'next/link'
-import { toast } from 'sonner'
 import {
   Map as MapIcon, Link2, RefreshCw, LayoutGrid, Rows3, ArrowUpDown,
   SlidersHorizontal, X, Repeat, List, Loader2, Archive, Sparkles,
@@ -16,6 +15,7 @@ import UserSelector from '@/components/UserSelector'
 import StatsBar from '@/components/StatsBar'
 import type { Property, Filters, PropertyStatus, UserId } from '@/lib/types'
 import { USER_LABELS } from '@/lib/types'
+import { useProperties } from '@/lib/useProperties'
 
 const DEFAULT_FILTERS: Filters = {
   zona: [], tipo: [], source: [], status: [],
@@ -118,73 +118,30 @@ function applySort(properties: Property[], sort: SortKey, user: UserId): Propert
 }
 
 const SCRAPER_ENABLED = !process.env.NEXT_PUBLIC_VERCEL_ENV
-const USER_STORAGE_KEY = 'casas:user'
-const VIEW_STORAGE_KEY = 'casas:view'
-type ViewMode = 'comfortable' | 'compact'
 
 export default function HomePage() {
-  const [allProperties, setAllProperties] = useState<Property[]>([])
+  const {
+    allProperties,
+    loading, loadError, loadProperties,
+    currentUser, userInitialized, selectUser, switchUser,
+    viewMode, setViewMode,
+    lightbox, setLightbox, openPhotos,
+    handleStatusChange, handleNotesChange, handleDiscontinuedChange,
+  } = useProperties()
+
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
   const [sort, setSort] = useState<SortKey>('recommended')
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const PER_PAGE = 48
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [currentUser, setCurrentUser] = useState<UserId | null>(null)
-  const [userInitialized, setUserInitialized] = useState(false)
   const [pendingDupes, setPendingDupes] = useState<number>(0)
-  const [viewMode, setViewMode] = useState<ViewMode>('comfortable')
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number; url: string } | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(USER_STORAGE_KEY) : null
-    if (saved === 'tomi' || saved === 'flori') setCurrentUser(saved)
-    const savedView = typeof window !== 'undefined' ? localStorage.getItem(VIEW_STORAGE_KEY) : null
-    if (savedView === 'compact' || savedView === 'comfortable') setViewMode(savedView)
-    setUserInitialized(true)
-  }, [])
-
-  const handleSetView = useCallback((v: ViewMode) => {
-    localStorage.setItem(VIEW_STORAGE_KEY, v)
-    setViewMode(v)
-  }, [])
-
-  const handleSelectUser = useCallback((u: UserId) => {
-    localStorage.setItem(USER_STORAGE_KEY, u)
-    setCurrentUser(u)
-  }, [])
-
-  const handleSwitchUser = useCallback(() => {
-    localStorage.removeItem(USER_STORAGE_KEY)
-    setCurrentUser(null)
-  }, [])
-
   const deferredFilters = useDeferredValue(filters)
   const deferredSort = useDeferredValue(sort)
-
-  const loadProperties = useCallback(async () => {
-    try {
-      setLoadError(null)
-      const res = await apiFetch('/api/properties')
-      if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`)
-      }
-      const data = await res.json() as Property[]
-      setAllProperties(data)
-    } catch (e: unknown) {
-      setLoadError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { if (currentUser) loadProperties() }, [loadProperties, currentUser])
 
   useEffect(() => {
     if (!currentUser) return
@@ -230,59 +187,6 @@ export default function HomePage() {
     setPage(1)
   }, [])
 
-  // Aplica un status (sin toast). Devuelve true si ok.
-  const applyStatus = useCallback(async (id: string, status: PropertyStatus): Promise<boolean> => {
-    if (!currentUser) return false
-    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, userId: currentUser }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Property
-      setAllProperties(prev => prev.map(p => p.id === id ? updated : p))
-      return true
-    }
-    return false
-  }, [currentUser])
-
-  const handleStatusChange = useCallback(async (id: string, status: PropertyStatus) => {
-    if (!currentUser) return
-    const prev = allProperties.find(p => p.id === id)?.userStatus[currentUser] ?? 'unseen'
-    const ok = await applyStatus(id, status)
-    if (ok && status !== prev) {
-      toast(`Marcada: ${STATUS_LABELS[status]}`, {
-        action: { label: 'Deshacer', onClick: () => { void applyStatus(id, prev) } },
-        duration: 4000,
-      })
-    }
-  }, [currentUser, allProperties, applyStatus])
-
-  const handleNotesChange = useCallback(async (id: string, notes: string) => {
-    if (!currentUser) return
-    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, userId: currentUser }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Property
-      setAllProperties(prev => prev.map(p => p.id === id ? updated : p))
-      toast('Nota guardada')
-    }
-  }, [currentUser])
-
-  const handleDiscontinuedChange = useCallback(async (id: string, discontinued: boolean) => {
-    if (!currentUser) return
-    const res = await apiFetch(`/api/properties/${encodeURIComponent(id)}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ discontinued, userId: currentUser }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Property
-      setAllProperties(prev => prev.map(p => p.id === id ? updated : p))
-    }
-  }, [currentUser])
-
   const handleToggleStatusFilter = useCallback((s: PropertyStatus) => {
     if (s === 'seen') {
       const reviewed: PropertyStatus[] = ['seen', 'favorite', 'discarded']
@@ -297,10 +201,6 @@ export default function HomePage() {
       })
     }
   }, [filters.status, handleFilterChange])
-
-  const openPhotos = useCallback((p: Property) => {
-    if (p.photos.length) setLightbox({ photos: p.photos, index: 0, url: p.url })
-  }, [])
 
   // ── Navegación por teclado (desktop) ──
   useEffect(() => {
@@ -362,7 +262,7 @@ export default function HomePage() {
     return <div className="min-h-screen bg-slate-900" />
   }
   if (!currentUser) {
-    return <UserSelector onSelect={handleSelectUser} />
+    return <UserSelector onSelect={selectUser} />
   }
 
   const gridClass = viewMode === 'compact'
@@ -394,11 +294,11 @@ export default function HomePage() {
 
           {/* Toggle de vista */}
           <div className="flex rounded-lg overflow-hidden border border-slate-600">
-            <button onClick={() => handleSetView('comfortable')} title="Vista cómoda" aria-label="Vista cómoda"
+            <button onClick={() => setViewMode('comfortable')} title="Vista cómoda" aria-label="Vista cómoda"
               className={`px-2 py-1.5 transition-colors ${viewMode === 'comfortable' ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
               <Rows3 size={15} />
             </button>
-            <button onClick={() => handleSetView('compact')} title="Vista compacta" aria-label="Vista compacta"
+            <button onClick={() => setViewMode('compact')} title="Vista compacta" aria-label="Vista compacta"
               className={`px-2 py-1.5 transition-colors ${viewMode === 'compact' ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
               <LayoutGrid size={15} />
             </button>
@@ -434,7 +334,7 @@ export default function HomePage() {
             {caidasCount > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 rounded-full">{caidasCount}</span>}
           </Link>
 
-          <button onClick={handleSwitchUser}
+          <button onClick={switchUser}
             className="text-xs text-slate-300 hover:text-white transition-colors inline-flex items-center gap-1 pl-1"
             title="Cambiar usuario">
             <Repeat size={13} /> {USER_LABELS[currentUser]}
