@@ -689,6 +689,21 @@ tick();
 applyFilter();
 setInterval(tick,60000);
 
+/* ── Al abrir Partidos, saltar al día de hoy (o a la próxima jornada) ── */
+function scrollToToday(){
+  var target=document.querySelector("#tab-cal .day-block.today")
+           ||document.querySelector("#tab-cal .day-block.next-up");
+  if(!target)return;
+  var header=document.querySelector("header");
+  var offset=(header?header.offsetHeight:0)+8;
+  var y=target.getBoundingClientRect().top+window.pageYOffset-offset;
+  window.scrollTo({top:y<0?0:y,behavior:"smooth"});
+}
+var rCal=document.getElementById("r-cal");
+if(rCal)rCal.addEventListener("change",function(){
+  if(rCal.checked)requestAnimationFrame(function(){setTimeout(scrollToToday,60);});
+});
+
 /* ── Posiciones en vivo (football-data.org vía /api/fixture/standings) ── */
 function renderGroups(groups,updatedAt){
   var grid=document.getElementById('grupos-grid');
