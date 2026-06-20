@@ -1,0 +1,81 @@
+/* ── Cuentas Claras (tokens del DS vienen de /ds/styles.css) ── */
+:root { --cc: var(--app-cuentas, #2DD4BF); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { background: var(--bg-0, #0a0a0a); }
+body {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: var(--text-pri, #f2f2f0);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cc { max-width: 560px; margin: 0 auto; padding: 16px 16px 60px; }
+
+/* Header */
+.cc-header { margin-bottom: 16px; }
+.cc-back { font-size: 0.85rem; color: var(--text-sec); text-decoration: none; display: inline-block; margin-bottom: 10px; }
+.cc-title { display: flex; align-items: center; gap: 12px; }
+.cc-logo { font-size: 34px; line-height: 1; }
+.cc-title h1 { font-size: 1.4rem; font-weight: 800; }
+.cc-title p { font-size: 0.8rem; color: var(--text-sec); margin-top: 2px; }
+
+/* Botones / inputs */
+.cc-btn {
+  background: var(--cc); color: var(--on-accent, #0a0a0a); border: none; cursor: pointer;
+  font-weight: 800; font-size: 0.95rem; border-radius: 12px; padding: 11px 16px; font-family: inherit;
+  transition: transform .1s, opacity .15s; white-space: nowrap;
+}
+.cc-btn:active { transform: scale(.97); }
+.cc-btn:disabled { opacity: .5; cursor: default; }
+.cc-btn-block { width: 100%; margin-top: 8px; }
+.cc-ghost { background: transparent; border: 1.5px solid var(--border-subtle); color: var(--text-sec); }
+.cc-input {
+  background: var(--surface-input, #1e1e1e); border: 1.5px solid var(--border-subtle, #2a2a2a);
+  border-radius: 12px; padding: 11px 13px; color: var(--text-pri); font-family: inherit; font-size: 0.95rem;
+  width: 100%; outline: none;
+}
+.cc-input:focus { border-color: var(--cc); }
+.cc-montoinput { max-width: 110px; }
+
+/* Crear cuenta + listado */
+.cc-newform { display: flex; gap: 8px; margin-bottom: 20px; }
+.cc-sec { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-sec); font-weight: 800; margin: 18px 0 8px; }
+.cc-perhead { color: var(--cc); text-transform: none; letter-spacing: 0; }
+.cc-empty { text-align: center; color: var(--text-hint, #5a5a56); font-size: 0.9rem; padding: 20px 0; }
+.cc-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--surface-card, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; text-decoration: none; color: inherit;
+}
+.cc-row-name { font-weight: 700; }
+.cc-badge { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--cc); background: color-mix(in oklab, var(--cc) 14%, transparent); padding: 3px 9px; border-radius: 999px; }
+.cc-badge.cerrada { color: var(--text-sec); background: var(--surface-input); }
+
+/* Cards / listas */
+.cc-card { background: var(--surface-card, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.cc-list { list-style: none; }
+.cc-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
+.cc-item:last-child { border-bottom: none; }
+.cc-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cc-item-name { font-weight: 600; font-size: 0.95rem; }
+.cc-item-sub { font-size: 0.72rem; color: var(--text-hint, #5a5a56); word-break: break-all; }
+.cc-monto { font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+.cc-mini {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--border-subtle, #2a2a2a); background: var(--surface-input, #1e1e1e);
+  color: var(--text-sec); font-size: 0.95rem; display: grid; place-items: center; text-decoration: none;
+}
+.cc-mini.cc-on { background: var(--success, #34c77b); border-color: var(--success); color: #06210f; }
+.cc-wa { color: var(--success, #34c77b); }
+.cc-addrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.cc-addrow .cc-input { flex: 1; min-width: 90px; }
+.cc-gastoform { align-items: stretch; }
+
+/* Deudas */
+.cc-deuda { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
+.cc-deuda:last-child { border-bottom: none; }
+.cc-deuda.pagada { opacity: .5; }
+.cc-deuda.pagada .cc-item-name { text-decoration: line-through; }

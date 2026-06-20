@@ -13,6 +13,8 @@ export type MiniApp = {
   hue: string
   /** 'zone' = app Next vía rewrite · 'static' = HTML estático en public/ */
   kind: 'zone' | 'static'
+  /** Si es true, cualquier usuario logueado accede (sin permiso por-usuario). */
+  openToAll?: boolean
 }
 
 export const APPS: MiniApp[] = [
@@ -60,5 +62,15 @@ export const APPS: MiniApp[] = [
     emoji: '🐶',
     hue: 'var(--app-fabian)',
     kind: 'zone',
+  },
+  {
+    slug: 'cuentas',
+    name: 'Cuentas Claras',
+    description: 'Dividí asados y eventos sin vueltas',
+    href: '/cuentas',
+    emoji: '🧾',
+    hue: 'var(--app-cuentas)',
+    kind: 'zone',
+    openToAll: true,
   },
 ]

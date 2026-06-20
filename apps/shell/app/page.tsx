@@ -17,7 +17,9 @@ export default async function Home({
   const name = session?.user?.name ?? ''
 
   const enabled = isAdmin ? null : new Set(await getEnabledApps(email))
-  const apps = isAdmin ? APPS : APPS.filter((a) => enabled!.has(a.slug))
+  const apps = isAdmin
+    ? APPS
+    : APPS.filter((a) => a.openToAll || enabled!.has(a.slug))
   const deniedApp = denied ? APPS.find((a) => a.slug === denied) : null
 
   return (
