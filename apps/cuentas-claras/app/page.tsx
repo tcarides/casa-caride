@@ -15,6 +15,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [me, setMe] = useState<{ name: string } | null>(null)
+  const [meReady, setMeReady] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -26,6 +28,9 @@ export default function Home() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    fetch(`${API}/me`).then((r) => r.ok ? r.json() : null).then(setMe).catch(() => {}).finally(() => setMeReady(true))
+  }, [])
 
   async function crear(e: React.FormEvent) {
     e.preventDefault()
@@ -55,7 +60,14 @@ export default function Home() {
         <div className="cc-title"><span className="cc-logo" aria-hidden>🧾</span>
           <div><h1>Cuentas Claras</h1><p>Dividí asados y eventos sin vueltas</p></div>
         </div>
-        <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
+        <div className="cc-headactions">
+          {meReady && (
+            <span className="cc-me" title={me ? 'Sesión detectada' : 'Sin sesión en la zona'}>
+              👤 {me ? me.name : 'no identificado'}
+            </span>
+          )}
+          <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
+        </div>
       </header>
 
       <form className="cc-newform" onSubmit={crear}>
