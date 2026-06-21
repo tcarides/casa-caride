@@ -68,6 +68,9 @@ export async function ensureSchema(): Promise<void> {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+  // Multi-uso: max_usos = 1 (una persona) · 0 (ilimitado) · N (hasta N). usos = contador.
+  await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS max_usos INTEGER NOT NULL DEFAULT 1`
+  await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS usos INTEGER NOT NULL DEFAULT 0`
 
   // Seed idempotente de usuarios iniciales.
   for (const u of SEED_USERS) {
@@ -185,33 +188,43 @@ export interface Invite {
 }
 
 export async function createInvite(
-  note: string, apps: string[], createdBy: string, days = 7,
+  note: string, apps: string[], createdBy: string, maxUsos = 1, days = 7,
 ): Promise<string> {
   await ensureSchema()
   const sql = getSql()
   const token = randomBytes(16).toString('base64url')
   const expires = new Date(Date.now() + days * 86_400_000).toISOString()
   await sql`
-    INSERT INTO invites (token, note, apps_preset, created_by, expires_at)
-    VALUES (${token}, ${note}, ${apps.join(',')}, ${createdBy}, ${expires})
+    INSERT INTO invites (token, note, apps_preset, created_by, expires_at, max_usos)
+    VALUES (${token}, ${note}, ${apps.join(',')}, ${createdBy}, ${expires}, ${maxUsos})
   `
   return token
 }
 
-/** Invitación válida (existe, sin usar, no vencida) o null. */
+// ¿Sigue usable? max_usos: 1 = una persona (válido si no se usó) · 0 = ilimitado ·
+// N>1 = hasta N usos.
+function inviteUsable(r: Record<string, unknown>): boolean {
+  if (r.expires_at && new Date(r.expires_at as string) < new Date()) return false
+  const max = Number(r.max_usos ?? 1)
+  const usos = Number(r.usos ?? 0)
+  if (max === 1) return !r.used_by
+  if (max === 0) return true
+  return usos < max
+}
+
+/** Invitación válida (no vencida y con usos disponibles) o null. */
 export async function getValidInvite(token: string): Promise<Invite | null> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT note, apps_preset, used_by, expires_at FROM invites WHERE token = ${token}`
+  const rows = await sql`SELECT note, apps_preset, used_by, expires_at, max_usos, usos FROM invites WHERE token = ${token}`
   if (!rows.length) return null
   const r = rows[0]
-  if (r.used_by) return null
-  if (r.expires_at && new Date(r.expires_at as string) < new Date()) return null
+  if (!inviteUsable(r)) return null
   const preset = (r.apps_preset as string) || ''
   return { token, note: (r.note as string) ?? '', apps: preset ? preset.split(',') : [] }
 }
 
-/** Crea el usuario (member) con las apps del preset y marca la invitación usada. */
+/** Crea el usuario (member) con las apps del preset y registra el uso de la invitación. */
 export async function consumeInvite(
   token: string, email: string, name: string, apps: string[],
 ): Promise<void> {
@@ -228,16 +241,21 @@ export async function consumeInvite(
       ON CONFLICT (email, app_key) DO UPDATE SET enabled = TRUE
     `
   }
-  await sql`UPDATE invites SET used_by = ${e}, used_at = NOW() WHERE token = ${token}`
+  // Cuenta el uso; en single-use además marca used_by (registro del que entró).
+  await sql`UPDATE invites SET usos = usos + 1, used_at = NOW(), used_by = COALESCE(used_by, ${e}) WHERE token = ${token}`
 }
 
-export interface PendingInvite { token: string; note: string; apps: string[]; expiresAt: string | null }
+export interface PendingInvite {
+  token: string; note: string; apps: string[]; expiresAt: string | null
+  maxUsos: number; usos: number
+}
 export async function listPendingInvites(): Promise<PendingInvite[]> {
   await ensureSchema()
   const sql = getSql()
   const rows = await sql`
-    SELECT token, note, apps_preset, expires_at FROM invites
-    WHERE used_by IS NULL AND (expires_at IS NULL OR expires_at > NOW())
+    SELECT token, note, apps_preset, expires_at, max_usos, usos FROM invites
+    WHERE (expires_at IS NULL OR expires_at > NOW())
+      AND (max_usos = 0 OR (max_usos = 1 AND used_by IS NULL) OR (max_usos > 1 AND usos < max_usos))
     ORDER BY created_at DESC
   `
   return rows.map((r) => ({
@@ -245,6 +263,8 @@ export async function listPendingInvites(): Promise<PendingInvite[]> {
     note: (r.note as string) ?? '',
     apps: ((r.apps_preset as string) || '') ? (r.apps_preset as string).split(',') : [],
     expiresAt: (r.expires_at as string) ?? null,
+    maxUsos: Number(r.max_usos ?? 1),
+    usos: Number(r.usos ?? 0),
   }))
 }
 

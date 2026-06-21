@@ -46,7 +46,9 @@ export async function newInvite(formData: FormData) {
   const note = String(formData.get('note') ?? '').trim() || 'Invitado/a'
   // Apps tildadas: checkboxes con name="app" y value=slug.
   const apps = formData.getAll('app').map(String).filter((s) => APPS.some((a) => a.slug === s))
-  await createInvite(note, apps, session.user.email ?? '')
+  // "multi" tildado → link para varias personas (ilimitado hasta vencer); si no, 1 persona.
+  const maxUsos = formData.get('multi') ? 0 : 1
+  await createInvite(note, apps, session.user.email ?? '', maxUsos)
   revalidatePath('/admin')
 }
 
