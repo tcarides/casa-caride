@@ -235,6 +235,17 @@ export async function addGasto(
   await sql`UPDATE participantes SET estado_carga = 'listo' WHERE id = ${pagadorId} AND estado_carga = 'pendiente'`
 }
 
+export async function updateGasto(
+  id: number, descripcion: string, monto: number, pagadorId: number,
+): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`
+    UPDATE gastos SET descripcion = ${descripcion}, monto_centavos = ${monto}, pagador_id = ${pagadorId}
+    WHERE id = ${id}
+  `
+}
+
 export async function deleteGasto(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()

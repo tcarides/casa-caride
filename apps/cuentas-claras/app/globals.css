@@ -101,3 +101,5 @@ body {
 
 .cc-headactions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .cc-me { font-size: 0.7rem; color: var(--text-hint); white-space: nowrap; }
+
+.cc-danger { color: var(--danger, #ff4d4d); border-color: color-mix(in oklab, var(--danger) 40%, transparent); margin-top: 18px; }
