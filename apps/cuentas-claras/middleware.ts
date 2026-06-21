@@ -1,14 +1,18 @@
-import NextAuth from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server'
 
-// Gate de la zona: protege el acceso DIRECTO a casa-caride-cuentas-claras.vercel.app.
-// En el flujo normal (vía el shell) la cookie de sesión llega reenviada → req.auth
-// está presente y pasa. Sin sesión (entrada directa) → al login del shell.
-const { auth } = NextAuth({ trustHost: true, session: { strategy: 'jwt' }, providers: [] })
+// Gate de zona (defensa para acceso directo a la URL del proyecto). Chequea la
+// PRESENCIA de la cookie de sesión, sin decodificar (evita el wrapper de
+// Auth.js, que con basePath no corre bien en el middleware). En el flujo normal
+// la cookie llega reenviada por el shell → pasa. Directo (sin cookie) → al shell.
+const CANONICAL = 'https://casa-caride.vercel.app/cuentas-claras'
 
-export default auth((req) => {
-  if (req.auth) return
-  return Response.redirect(new URL('/login', 'https://casa-caride.vercel.app'))
-})
+export function middleware(req: NextRequest) {
+  const hasSession =
+    req.cookies.has('__Secure-authjs.session-token') ||
+    req.cookies.has('authjs.session-token')
+  if (!hasSession) return NextResponse.redirect(new URL(CANONICAL))
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],

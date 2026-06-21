@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { redirect } from 'next/navigation'
 import './globals.css'
+import { currentUser } from '@/lib/identity'
 
 export const metadata: Metadata = {
   title: 'Cuentas Claras',
@@ -14,7 +16,9 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Gate confiable (Node): sin sesión → al shell (que reenvía la cookie o pide login).
+  if (!(await currentUser())) redirect('https://casa-caride.vercel.app/cuentas-claras')
   return (
     <html lang="es">
       <body>
