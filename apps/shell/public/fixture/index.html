@@ -188,6 +188,7 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
                 overflow:hidden; text-overflow:ellipsis; }
 .bk-box .bk-t + .bk-t { border-top:1px solid var(--border-subtle); }
 .bk-box.bk-ph .bk-t { color:var(--text-hint); }
+.bk-box .bk-t.bk-resolved { font-weight:700; }
 .bk-box.bk-final { background:linear-gradient(135deg,#3a3000,#262000); border-color:var(--accent); }
 .bk-box.bk-final .bk-t { color:var(--accent); font-weight:800; text-align:center; }
 
@@ -783,7 +784,11 @@ async function loadStandings(){
     var r=await fetch('/api/fixture/standings');
     if(!r.ok){showStatic('standings-updated','http-'+r.status);return;}
     var data=await r.json();
-    if(data.source==='live')renderGroups(data.groups,data.updatedAt);
+    if(data.source==='live'){
+      renderGroups(data.groups,data.updatedAt);
+      computeClinched(data.groups); // resuelve posiciones ya definidas en la llave
+      renderBracket();
+    }
     else showStatic('standings-updated',data.reason);
   }catch(e){showStatic('standings-updated','red');}
 }
@@ -860,6 +865,43 @@ var BK_R32=[
   ["1° J","2° H"],["2° D","2° G"],
   ["1° B","Mejor 3°"],["1° K","Mejor 3°"]
 ];
+/* Posiciones YA DEFINIDAS matemáticamente (no importa lo que falte jugar).
+   Mapea "1° A" / "2° A" → equipo, cuando es imposible que cambie por puntos. */
+var BK_RESOLVED={};
+function computeClinched(groups){
+  BK_RESOLVED={};
+  if(!groups)return;
+  function ref(t){ return {flag:t.flag,name:t.name,isArg:t.isArg}; }
+  for(var i=0;i<groups.length;i++){
+    var g=groups[i];
+    // Grupo terminado (todos jugaron 3): el orden oficial de la API ya es
+    // definitivo (incluye diferencia de gol y demás criterios).
+    var terminado=g.teams.every(function(t){return t.pj>=3;});
+    if(terminado && g.teams.length>=2){
+      BK_RESOLVED["1° "+g.id]=ref(g.teams[0]);
+      BK_RESOLVED["2° "+g.id]=ref(g.teams[1]);
+      continue;
+    }
+    // Grupo en curso: solo resolvemos si está cerrado POR PUNTOS (imposible
+    // de igualar), para no afirmar algo que un desempate podría cambiar.
+    var ts=g.teams.map(function(t){
+      return {flag:t.flag,name:t.name,isArg:t.isArg,pts:t.pts,max:t.pts+3*(3-t.pj)};
+    });
+    function arribaDeTodos(x,pool){
+      for(var j=0;j<pool.length;j++){ if(pool[j]!==x && !(x.pts>pool[j].max)) return false; }
+      return true;
+    }
+    var pos1=null;
+    for(var a=0;a<ts.length;a++){ if(arribaDeTodos(ts[a],ts)){pos1=ts[a];break;} }
+    if(pos1){
+      BK_RESOLVED["1° "+g.id]=ref(pos1);
+      var rest=ts.filter(function(t){return t!==pos1;});
+      var pos2=null;
+      for(var b=0;b<rest.length;b++){ if(arribaDeTodos(rest[b],rest)){pos2=rest[b];break;} }
+      if(pos2)BK_RESOLVED["2° "+g.id]=ref(pos2);
+    }
+  }
+}
 function renderBracket(){
   var canvas=document.getElementById("bk-canvas");
   var svg=document.getElementById("bk-svg");
@@ -924,10 +966,14 @@ function renderBracket(){
       box.style.left=x+"px";
       box.style.top=(centers[rc][b]-BOXH/2)+"px";
       for(var t=0;t<teams.length;t++){
+        var raw=teams[t];
+        var res=(rc===0)?BK_RESOLVED[raw]:null; // equipo ya definido para ese puesto
+        var text=res?(res.flag+" "+res.name):raw;
+        var isArg=res?res.isArg:(raw==="1° J");
         var sp=document.createElement("span");
-        sp.className="bk-t"+(teams[t]==="1° J"?" bk-arg":"");
-        if(teams[t]==="1° J")sp.style.color="var(--app-fixture)",sp.style.fontWeight="700";
-        sp.textContent=teams[t];
+        sp.className="bk-t"+(isArg?" bk-arg":"")+(res?" bk-resolved":"");
+        if(isArg){sp.style.color="var(--app-fixture)";sp.style.fontWeight="700";}
+        sp.textContent=text;
         box.appendChild(sp);
       }
       canvas.appendChild(box);
