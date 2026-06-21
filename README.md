@@ -112,3 +112,12 @@ dominio principal.
    del shell.
 3. Sumá la entrada en `apps/shell/app/apps.config.ts` para que aparezca el tile
    en el launcher.
+4. **Favicon (norma):** en el `metadata` del `layout` de la app, usá siempre el
+   ícono de Casa Caride servido por el shell (no uno propio):
+
+   ```ts
+   icons: { icon: '/icon-192.png', apple: '/apple-touch-icon.png' }
+   ```
+
+   Los assets viven en `apps/shell/public/` y se sirven desde el apex, así que
+   todas las apps comparten el mismo favicon.
