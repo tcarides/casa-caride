@@ -13,9 +13,11 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Lista súper',
   },
+  // Favicon de Casa Caride (servido por el shell en el apex). NORMA: todas las
+  // apps usan estos paths absolutos para mantener el ícono unificado.
   icons: {
-    icon: '/super/icon-192.png',
-    apple: '/super/apple-touch-icon.png',
+    icon: '/icon-192.png',
+    apple: '/apple-touch-icon.png',
   },
 }
 

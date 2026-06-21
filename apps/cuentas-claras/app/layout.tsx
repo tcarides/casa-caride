@@ -6,6 +6,12 @@ import { currentUser } from '@/lib/identity'
 export const metadata: Metadata = {
   title: 'Cuentas Claras',
   description: 'Dividí asados y eventos sin vueltas: quién puso qué y quién le debe a quién.',
+  // Favicon de Casa Caride (servido por el shell en el apex). NORMA: todas las
+  // apps usan estos paths absolutos para mantener el ícono unificado.
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/apple-touch-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
