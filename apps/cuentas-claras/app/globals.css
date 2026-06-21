@@ -98,3 +98,6 @@ body {
   background: var(--warning-soft, rgba(255,149,0,.14)); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
 
 .cc-headrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+.cc-headactions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.cc-me { font-size: 0.7rem; color: var(--text-hint); white-space: nowrap; }

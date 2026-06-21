@@ -17,3 +17,14 @@ export async function currentEmail(): Promise<string | null> {
     return null
   }
 }
+
+export async function currentUser(): Promise<{ email: string; name: string } | null> {
+  try {
+    const session = await auth()
+    const email = session?.user?.email?.toLowerCase()
+    if (!email) return null
+    return { email, name: session?.user?.name ?? email }
+  } catch {
+    return null
+  }
+}
