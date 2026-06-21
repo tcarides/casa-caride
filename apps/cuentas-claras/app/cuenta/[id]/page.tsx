@@ -28,6 +28,7 @@ export default function CuentaPage() {
   const [gPagador, setGPagador] = useState('')
   const [gFile, setGFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [contactos, setContactos] = useState<{ name: string; alias: string }[]>([])
   const [grupos, setGrupos] = useState<{ id: number; name: string; miembros: number }[]>([])
@@ -101,30 +102,50 @@ export default function CuentaPage() {
     })
     if (!r.ok) await load()
   }
+  function startEdit(g: Gasto) {
+    setEditId(g.id)
+    setGDesc(g.descripcion)
+    setGMonto((g.monto / 100).toString())
+    setGPagador(String(g.pagadorId))
+    descRef.current?.focus()
+  }
+  function cancelEdit() {
+    setEditId(null); setGDesc(''); setGMonto(''); setGFile(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
   async function addGasto(e: React.FormEvent) {
     e.preventDefault()
     const monto = toCentavos(gMonto)
     if (!gDesc.trim() || monto <= 0 || !gPagador) return
     setUploading(true)
     try {
-      let comprobanteUrl: string | null = null
-      let comprobantePath: string | null = null
-      if (gFile) {
-        const blob = await upload(gFile.name, gFile, {
-          access: 'private', // se sirve autenticado por /cuentas-claras/api/file
-          handleUploadUrl: '/cuentas-claras/api/upload',
-          multipart: true,
+      if (editId) {
+        // Editar gasto existente (no se cambia el comprobante acá).
+        await fetch(`${API}/gastos/${editId}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ descripcion: gDesc.trim(), monto, pagadorId: Number(gPagador) }),
         })
-        comprobanteUrl = blob.url
-        comprobantePath = blob.pathname
+        setEditId(null)
+      } else {
+        let comprobanteUrl: string | null = null
+        let comprobantePath: string | null = null
+        if (gFile) {
+          const blob = await upload(gFile.name, gFile, {
+            access: 'private', // se sirve autenticado por /cuentas-claras/api/file
+            handleUploadUrl: '/cuentas-claras/api/upload',
+            multipart: true,
+          })
+          comprobanteUrl = blob.url
+          comprobantePath = blob.pathname
+        }
+        await fetch(`${API}/cuentas/${id}/gastos`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            descripcion: gDesc.trim(), monto, pagadorId: Number(gPagador),
+            comprobanteUrl, comprobantePath,
+          }),
+        })
       }
-      await fetch(`${API}/cuentas/${id}/gastos`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          descripcion: gDesc.trim(), monto, pagadorId: Number(gPagador),
-          comprobanteUrl, comprobantePath,
-        }),
-      })
       setGDesc(''); setGMonto(''); setGFile(null) // se mantiene el pagador elegido
       if (fileRef.current) fileRef.current.value = ''
       await load()
@@ -165,6 +186,11 @@ export default function CuentaPage() {
       body: JSON.stringify({ action: 'reabrir' }),
     })
     await load()
+  }
+  async function borrarCuenta() {
+    if (!confirm(`¿Borrar la cuenta "${cuenta.name}"? Se eliminan sus gastos y participantes. No se puede deshacer.`)) return
+    const r = await fetch(`${API}/cuentas/${id}`, { method: 'DELETE' })
+    if (r.ok) window.location.href = '/cuentas-claras'
   }
   async function togglePagado(l: Liquidacion) {
     setD((prev) => prev ? { ...prev, liquidaciones: prev.liquidaciones.map((x) => x.id === l.id ? { ...x, pagado: !x.pagado } : x) } : prev)
@@ -250,6 +276,7 @@ export default function CuentaPage() {
               {g.comprobanteUrl && (
                 <a className="cc-mini" href={`/cuentas-claras/api/file?gasto=${g.id}`} target="_blank" rel="noopener noreferrer" aria-label="Ver comprobante">📎</a>
               )}
+              {abierta && <button className="cc-mini" onClick={() => startEdit(g)} aria-label="Editar">✎</button>}
               {abierta && <button className="cc-mini" onClick={() => delGasto(g.id)} aria-label="Borrar">✕</button>}
             </li>
           ))}
@@ -267,13 +294,18 @@ export default function CuentaPage() {
               <option value="">¿Quién pagó?</option>
               {participantes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <label className={'cc-mini cc-attach' + (gFile ? ' cc-on' : '')} title="Adjuntar comprobante">
-              📎
-              <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden
-                onChange={(e) => setGFile(e.target.files?.[0] ?? null)} />
-            </label>
+            {!editId && (
+              <label className={'cc-mini cc-attach' + (gFile ? ' cc-on' : '')} title="Adjuntar comprobante">
+                📎
+                <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden
+                  onChange={(e) => setGFile(e.target.files?.[0] ?? null)} />
+              </label>
+            )}
+            {editId && (
+              <button className="cc-mini" type="button" onClick={cancelEdit} aria-label="Cancelar">✕</button>
+            )}
             <button className="cc-btn" type="submit" disabled={uploading || !gDesc.trim() || toCentavos(gMonto) <= 0 || !gPagador}>
-              {uploading ? '…' : '+'}
+              {uploading ? '…' : editId ? 'Guardar' : '+'}
             </button>
           </form>
         )}
@@ -325,6 +357,10 @@ export default function CuentaPage() {
           <button className="cc-btn cc-ghost cc-btn-block" onClick={reabrir}>Reabrir cuenta</button>
         </section>
       )}
+
+      <button className="cc-btn cc-ghost cc-btn-block cc-danger" onClick={borrarCuenta}>
+        Borrar cuenta
+      </button>
     </main>
   )
 }
