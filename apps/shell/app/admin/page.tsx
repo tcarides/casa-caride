@@ -97,11 +97,11 @@ export default async function AdminPage() {
       <section className="admin__add">
         <h2 className="admin__subtitle">Invitar por WhatsApp</h2>
         <p className="admin__hint">
-          Generá un link de un solo uso. La persona entra con su Google y queda
-          registrada con las apps que tildes.
+          Generá un link. La persona entra con su Google y queda registrada con
+          las apps que tildes.
         </p>
         <form action={newInvite} className="admin__inviteform">
-          <input className="admin__input" name="note" placeholder="Para quién (ej. Mamá)" />
+          <input className="admin__input" name="note" placeholder="Para quién (ej. Mamá, o 'Amigos')" />
           <div className="admin__appchecks">
             {APPS.map((a) => (
               <label key={a.slug} className="admin__check">
@@ -109,6 +109,9 @@ export default async function AdminPage() {
               </label>
             ))}
           </div>
+          <label className="admin__check">
+            <input type="checkbox" name="multi" /> 🔗 Link para varias personas (lo usan todos hasta que venza)
+          </label>
           <button type="submit" className="admin__addbtn">Crear invitación</button>
         </form>
 
@@ -123,7 +126,12 @@ export default async function AdminPage() {
               return (
                 <li key={inv.token} className="admin__invite">
                   <div className="admin__invite-main">
-                    <span className="admin__uname">{inv.note}</span>
+                    <span className="admin__uname">
+                      {inv.note}
+                      {inv.maxUsos === 0
+                        ? ` · 🔗 varios (${inv.usos} usaron)`
+                        : ` · 1 persona`}
+                    </span>
                     <span className="admin__umail">{appNames}</span>
                     <span className="admin__umail">{url}</span>
                   </div>
