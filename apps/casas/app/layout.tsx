@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next'
+import { redirect } from 'next/navigation'
 import '@fontsource-variable/inter'
 import { Toaster } from 'sonner'
 import './globals.css'
+import { currentUser } from '@/lib/identity'
 
 export const metadata: Metadata = {
   title: 'Casas — Zona Norte',
@@ -14,7 +16,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  if (!(await currentUser())) redirect('https://casa-caride.vercel.app/casas')
   return (
     <html lang="es">
       <body className="font-sans antialiased">

@@ -1,6 +1,8 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import { redirect } from 'next/navigation'
+import { currentUser } from '@/lib/identity'
 
 export const metadata: Metadata = {
   title: 'Lista del súper',
@@ -24,7 +26,8 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  if (!(await currentUser())) redirect('https://casa-caride.vercel.app/super')
   return (
     <html lang="es">
       <body>

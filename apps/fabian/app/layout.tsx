@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { redirect } from 'next/navigation'
 import './globals.css'
+import { currentUser } from '@/lib/identity'
 
 export const metadata: Metadata = {
   title: 'Fabián · Medicación',
@@ -14,7 +16,8 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  if (!(await currentUser())) redirect('https://casa-caride.vercel.app/fabian')
   return (
     <html lang="es">
       <body>
