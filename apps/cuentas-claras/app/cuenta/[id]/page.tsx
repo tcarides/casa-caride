@@ -51,9 +51,9 @@ export default function CuentaPage() {
   const [uploading, setUploading] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [contactos, setContactos] = useState<{ name: string; alias: string }[]>([])
   const [grupos, setGrupos] = useState<{ id: number; name: string; miembros: number }[]>([])
-  const [grupoSel, setGrupoSel] = useState('')
+  const [grupoFiltro, setGrupoFiltro] = useState('')
+  const [grupoMiembros, setGrupoMiembros] = useState<Contacto[]>([])
   const [misContactos, setMisContactos] = useState<Contacto[]>([])
   const [showContactos, setShowContactos] = useState(false)
   const [checked, setChecked] = useState<Record<string, boolean>>({})
@@ -68,13 +68,25 @@ export default function CuentaPage() {
   }, [id])
   useEffect(() => { void load() }, [load])
 
-  // Libreta de alias + mis grupos (para autocompletar e importar).
+  // Mis contactos (gente de mis grupos), mis grupos y mi identidad.
   useEffect(() => {
-    fetch(`${API}/contactos`).then((r) => r.ok ? r.json() : []).then(setContactos).catch(() => {})
     fetch(`${API}/grupos`).then((r) => r.ok ? r.json() : []).then(setGrupos).catch(() => {})
     fetch(`${API}/mis-contactos`).then((r) => r.ok ? r.json() : []).then(setMisContactos).catch(() => {})
     fetch(`${API}/me`).then((r) => r.ok ? r.json() : null).then(setMe).catch(() => {})
   }, [])
+
+  // Filtro de grupo para la lista de "mis contactos": al elegir un grupo,
+  // la lista se acota a sus miembros; "Todos" muestra todos mis contactos.
+  useEffect(() => {
+    setChecked({})
+    if (!grupoFiltro) { setGrupoMiembros([]); return }
+    fetch(`${API}/grupos/${grupoFiltro}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((g: { miembros?: { name: string; alias: string | null; userEmail: string | null }[] } | null) => {
+        setGrupoMiembros((g?.miembros ?? []).map((m) => ({ name: m.name, alias: m.alias, email: m.userEmail })))
+      })
+      .catch(() => {})
+  }, [grupoFiltro])
 
   // Default del pagador: el primer participante (evita un click por gasto).
   useEffect(() => {
@@ -93,8 +105,10 @@ export default function CuentaPage() {
   const myEmail = me?.email?.toLowerCase() ?? null
   const isMe = (p: Participante) => !!myEmail && p.userEmail?.toLowerCase() === myEmail
   const yaParticipa = new Set(participantes.map((p) => p.name.toLowerCase()))
-  const contactosDisponibles = misContactos.filter((c) => !yaParticipa.has(c.name.toLowerCase()))
+  const baseContactos = grupoFiltro ? grupoMiembros : misContactos
+  const contactosDisponibles = baseContactos.filter((c) => !yaParticipa.has(c.name.toLowerCase()))
   const nChecked = contactosDisponibles.filter((c) => checked[c.name]).length
+  const todosMarcados = contactosDisponibles.length > 0 && nChecked === contactosDisponibles.length
 
   async function addParticipante(e: React.FormEvent) {
     e.preventDefault()
@@ -108,16 +122,14 @@ export default function CuentaPage() {
   }
   function onPName(v: string) {
     setPName(v)
-    const c = contactos.find((c) => c.name.toLowerCase() === v.trim().toLowerCase())
-    if (c) setPAlias(c.alias) // autocompleta el alias de un contacto conocido
+    const c = misContactos.find((c) => c.name.toLowerCase() === v.trim().toLowerCase())
+    if (c?.alias) setPAlias(c.alias) // autocompleta el alias de un contacto conocido
   }
-  async function importarGrupo() {
-    if (!grupoSel) return
-    await fetch(`${API}/cuentas/${id}/importar`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grupoId: Number(grupoSel) }),
-    })
-    setGrupoSel(''); await load()
+  function toggleTodos() {
+    if (todosMarcados) { setChecked({}); return }
+    const all: Record<string, boolean> = {}
+    for (const c of contactosDisponibles) all[c.name] = true
+    setChecked(all)
   }
   async function guardarFecha(value: string) {
     const fecha = value || null
@@ -129,7 +141,7 @@ export default function CuentaPage() {
     })
   }
   async function addSeleccionados() {
-    const elegidos = misContactos.filter((c) => checked[c.name])
+    const elegidos = contactosDisponibles.filter((c) => checked[c.name])
     if (!elegidos.length) return
     for (const c of elegidos) {
       await fetch(`${API}/cuentas/${id}/participantes`, {
@@ -145,6 +157,11 @@ export default function CuentaPage() {
     if (!r.ok) await load()
   }
   async function editAlias(p: Participante) {
+    // Si está vinculado a un usuario, el alias se gestiona desde el grupo (item 6).
+    if (p.userEmail) {
+      alert(`El alias de ${p.name} está vinculado a su usuario y se edita desde Grupos, no acá.`)
+      return
+    }
     const alias = prompt(`Alias / CBU de ${p.name} (para transferirle):`, p.alias ?? '')
     if (alias == null) return
     setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((x) => x.id === p.id ? { ...x, alias: alias.trim() || null } : x) } : prev)
@@ -327,7 +344,11 @@ export default function CuentaPage() {
                     </div>
                   )}
                 </div>
-                <button className="cc-mini" onClick={() => editAlias(p)} aria-label="Editar alias">✎</button>
+                <button className="cc-mini" onClick={() => editAlias(p)}
+                  aria-label="Editar alias"
+                  title={p.userEmail ? 'Alias gestionado desde el grupo' : 'Editar alias'}>
+                  {p.userEmail ? '🔒' : '✎'}
+                </button>
                 {abierta && <button className="cc-mini" onClick={() => delParticipante(p.id)} aria-label="Quitar">✕</button>}
               </li>
             )
@@ -340,45 +361,53 @@ export default function CuentaPage() {
             <input className="cc-input" value={pAlias} onChange={(e) => setPAlias(e.target.value)} placeholder="Alias (opcional)" maxLength={120} />
             <button className="cc-btn" type="submit" disabled={!pName.trim()}>+</button>
             <datalist id="cc-contactos">
-              {contactos.map((c) => <option key={c.name} value={c.name} />)}
+              {misContactos.map((c) => <option key={c.name} value={c.name} />)}
             </datalist>
           </form>
         )}
-        {abierta && contactosDisponibles.length > 0 && (
+        {abierta && (misContactos.length > 0 || grupos.length > 0) && (
           <div className="cc-contactos">
             <button className="cc-chip" type="button" onClick={() => setShowContactos((v) => !v)}>
-              {showContactos ? '▲ Ocultar contactos' : `👥 Sumar desde mis contactos (${contactosDisponibles.length})`}
+              {showContactos ? '▲ Ocultar contactos' : '👥 Sumar desde mis contactos'}
             </button>
             {showContactos && (
               <>
-                <ul className="cc-checklist">
-                  {contactosDisponibles.map((c) => (
-                    <li key={c.name}>
-                      <label className="cc-check">
-                        <input type="checkbox" checked={!!checked[c.name]}
-                          onChange={(e) => setChecked((prev) => ({ ...prev, [c.name]: e.target.checked }))} />
-                        <span className="cc-check-main">
-                          <span className="cc-check-name">{c.name} {c.email && <span className="cc-soyyo on" title="Usuario registrado">🔗</span>}</span>
-                          {c.alias && <span className="cc-item-sub">alias: {c.alias}</span>}
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-                <button className="cc-btn cc-btn-block" type="button" disabled={nChecked === 0} onClick={addSeleccionados}>
-                  Agregar{nChecked > 0 ? ` (${nChecked})` : ''}
-                </button>
+                {grupos.length > 0 && (
+                  <select className="cc-input cc-grupofiltro" value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value)}>
+                    <option value="">Todos mis contactos</option>
+                    {grupos.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.miembros})</option>)}
+                  </select>
+                )}
+                {contactosDisponibles.length === 0 ? (
+                  <p className="cc-empty">No hay contactos para sumar acá.</p>
+                ) : (
+                  <>
+                    <div className="cc-checkhead">
+                      <button className="cc-soyyo" type="button" onClick={toggleTodos}>
+                        {todosMarcados ? 'Ninguno' : 'Todos'}
+                      </button>
+                    </div>
+                    <ul className="cc-checklist">
+                      {contactosDisponibles.map((c) => (
+                        <li key={c.name}>
+                          <label className="cc-check">
+                            <input type="checkbox" checked={!!checked[c.name]}
+                              onChange={(e) => setChecked((prev) => ({ ...prev, [c.name]: e.target.checked }))} />
+                            <span className="cc-check-main">
+                              <span className="cc-check-name">{c.name} {c.email && <span className="cc-soyyo on" title={c.email}>🔗</span>}</span>
+                              {c.alias && <span className="cc-item-sub">alias: {c.alias}</span>}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                    <button className="cc-btn cc-btn-block" type="button" disabled={nChecked === 0} onClick={addSeleccionados}>
+                      Agregar{nChecked > 0 ? ` (${nChecked})` : ''}
+                    </button>
+                  </>
+                )}
               </>
             )}
-          </div>
-        )}
-        {abierta && grupos.length > 0 && (
-          <div className="cc-addrow">
-            <select className="cc-input" value={grupoSel} onChange={(e) => setGrupoSel(e.target.value)}>
-              <option value="">Importar un grupo…</option>
-              {grupos.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.miembros})</option>)}
-            </select>
-            <button className="cc-btn cc-ghost" type="button" onClick={importarGrupo} disabled={!grupoSel}>Importar</button>
           </div>
         )}
       </section>

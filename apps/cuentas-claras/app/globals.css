@@ -96,6 +96,8 @@ body {
 .cc-check input { width: 18px; height: 18px; accent-color: var(--cc); flex-shrink: 0; }
 .cc-check-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cc-check-name { font-weight: 600; font-size: 0.95rem; }
+.cc-grupofiltro { margin-top: 10px; }
+.cc-checkhead { display: flex; justify-content: flex-end; margin-top: 8px; }
 
 /* Form de gasto (apilado, menos comprimido) */
 .cc-gastoform { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
