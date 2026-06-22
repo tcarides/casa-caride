@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   getCuenta, getParticipantes, getGastos, getLiquidaciones,
-  closeCuenta, reopenCuenta, deleteCuenta, getPendientes,
+  closeCuenta, reopenCuenta, deleteCuenta, getPendientes, setFecha,
 } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +20,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const id = Number((await params).id)
-  const b = (await req.json().catch(() => ({}))) as { action?: string }
+  const b = (await req.json().catch(() => ({}))) as { action?: string; fecha?: string | null }
+
+  // Fijar / limpiar la fecha del evento ('YYYY-MM-DD' o null).
+  if (b.fecha !== undefined) {
+    const f = b.fecha && /^\d{4}-\d{2}-\d{2}$/.test(b.fecha) ? b.fecha : null
+    await setFecha(id, f)
+    return NextResponse.json({ ok: true })
+  }
+
   if (b.action === 'cerrar') {
     const pendientes = await getPendientes(id)
     if (pendientes.length > 0) {

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const name = (b.name ?? '').trim().slice(0, 60)
   if (!name) return NextResponse.json({ error: 'nombre requerido' }, { status: 400 })
   const userEmail = (b.userEmail ?? '').trim().toLowerCase().slice(0, 200) || null
-  await addMiembro(grupoId, name, (b.alias ?? '').trim().slice(0, 120) || null, userEmail)
+  const alias = (b.alias ?? '').trim().slice(0, 120) || null
+  await addMiembro(grupoId, name, alias, userEmail)
   return NextResponse.json({ ok: true }, { status: 201 })
 }

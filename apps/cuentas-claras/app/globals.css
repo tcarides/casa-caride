@@ -76,7 +76,41 @@ body {
 .cc-wa { color: var(--success, #34c77b); }
 .cc-addrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .cc-addrow .cc-input { flex: 1; min-width: 90px; }
-.cc-gastoform { align-items: stretch; }
+
+/* Fecha del evento en el header */
+.cc-fecha { margin-top: 6px; }
+.cc-fecha-btn { font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  background: var(--surface-input, #1e1e1e); border: 1px solid var(--border-subtle, #2a2a2a);
+  color: var(--text-pri); border-radius: 999px; padding: 4px 11px; text-transform: capitalize; }
+.cc-fecha-add { color: var(--text-hint); text-transform: none; }
+.cc-fecha-input { max-width: 200px; padding: 7px 11px; }
+
+/* Sumar participantes desde mis contactos (multi-check) */
+.cc-contactos { margin-top: 12px; }
+.cc-checklist { list-style: none; margin: 10px 0; }
+.cc-checklist li { border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
+.cc-checklist li:last-child { border-bottom: none; }
+.cc-check { display: flex; align-items: center; gap: 10px; padding: 9px 2px; cursor: pointer; }
+.cc-check input { width: 18px; height: 18px; accent-color: var(--cc); flex-shrink: 0; }
+.cc-check-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cc-check-name { font-weight: 600; font-size: 0.95rem; }
+
+/* Form de gasto (apilado, menos comprimido) */
+.cc-gastoform { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.cc-gastoform-row { display: flex; gap: 8px; align-items: stretch; }
+.cc-gastoform-row > .cc-input,
+.cc-gastoform-row > .cc-btn,
+.cc-gastoform-row > .cc-attachlabel { flex: 1; }
+.cc-montowrap { position: relative; flex: 0 0 42%; display: flex; }
+.cc-montosign { position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  color: var(--text-hint); font-weight: 700; pointer-events: none; }
+.cc-montowrap .cc-montoinput { max-width: none; width: 100%; padding-left: 26px; font-weight: 700; }
+.cc-attachlabel { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+  border: 1.5px dashed var(--border-subtle, #2a2a2a); border-radius: 12px; padding: 11px 13px;
+  color: var(--text-sec); font-size: 0.9rem; min-width: 0; }
+.cc-attachlabel.cc-on { border-style: solid; border-color: var(--cc); color: var(--cc);
+  background: color-mix(in oklab, var(--cc) 10%, transparent); }
+.cc-attachtext { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 /* Deudas */
 .cc-deuda { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
@@ -109,7 +143,9 @@ body {
 
 .cc-headrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 
-.cc-headactions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* Acciones del header en columna: el chip de Grupos arriba y el nombre debajo,
+   así el título "Cuentas Claras" no se parte en dos líneas. */
+.cc-headactions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .cc-me { font-size: 0.7rem; color: var(--text-hint); white-space: nowrap; }
 
 .cc-danger { color: var(--danger, #ff4d4d); border-color: color-mix(in oklab, var(--danger) 40%, transparent); margin-top: 18px; }

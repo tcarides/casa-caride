@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 
 interface Miembro { id: number; name: string; alias: string | null; userEmail: string | null }
 interface Detail { grupo: { id: number; name: string }; miembros: Miembro[] }
-interface RegUser { name: string; email: string }
+interface RegUser { name: string; email: string; alias: string | null }
 const API = '/cuentas-claras/api'
 
 export default function GrupoPage() {
@@ -43,6 +43,7 @@ export default function GrupoPage() {
     if (!u) return
     setName(u.name)
     setLinkedEmail(u.email)
+    if (u.alias) setAlias(u.alias) // reusa el alias guardado del usuario
   }
   async function addMiembro(e: React.FormEvent) {
     e.preventDefault()

@@ -63,12 +63,12 @@ export default function Home() {
           <div><h1>Cuentas Claras</h1><p>Dividí asados y eventos sin vueltas</p></div>
         </div>
         <div className="cc-headactions">
+          <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
           {meReady && (
             <span className="cc-me" title={me ? 'Sesión detectada' : 'Sin sesión en la zona'}>
               👤 {me ? me.name : 'no identificado'}
             </span>
           )}
-          <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
         </div>
       </header>
 

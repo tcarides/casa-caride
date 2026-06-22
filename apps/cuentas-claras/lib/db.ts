@@ -20,6 +20,7 @@ export interface Cuenta {
   name: string
   status: 'abierta' | 'cerrada'
   ownerEmail: string | null
+  fecha: string | null // 'YYYY-MM-DD' del evento (opcional)
   createdAt: string
   closedAt: string | null
 }
@@ -64,6 +65,8 @@ export async function ensureSchema(): Promise<void> {
       closed_at TIMESTAMPTZ
     )
   `
+  // Fecha del evento (texto 'YYYY-MM-DD', sin tz): se muestra "viernes 27 de junio".
+  await sql`ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS fecha TEXT`
   await sql`
     CREATE TABLE IF NOT EXISTS participantes (
       id BIGSERIAL PRIMARY KEY,
@@ -124,6 +127,13 @@ export async function ensureSchema(): Promise<void> {
   // Vínculo opcional a un usuario registrado de Casa Caride: al importar el
   // grupo, el participante queda asociado a su email (ve la cuenta sin "soy yo").
   await sql`ALTER TABLE grupo_miembros ADD COLUMN IF NOT EXISTS user_email TEXT`
+  // Alias / CBU guardado por usuario (email): se reutiliza en toda cuenta o grupo.
+  await sql`
+    CREATE TABLE IF NOT EXISTS usuario_alias (
+      email TEXT PRIMARY KEY,
+      alias TEXT
+    )
+  `
   schemaReady = true
 }
 
@@ -136,7 +146,7 @@ export async function listCuentas(email: string | null): Promise<Cuenta[]> {
   const sql = getSql()
   const e = email?.toLowerCase() ?? null
   const rows = await sql`
-    SELECT id, name, status, owner_email, created_at, closed_at
+    SELECT id, name, status, owner_email, fecha, created_at, closed_at
     FROM cuentas c
     WHERE c.owner_email IS NULL
        OR lower(c.owner_email) = ${e}
@@ -148,7 +158,7 @@ export async function listCuentas(email: string | null): Promise<Cuenta[]> {
   `
   return rows.map((r) => ({
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
-    ownerEmail: (r.owner_email as string | null) ?? null,
+    ownerEmail: (r.owner_email as string | null) ?? null, fecha: (r.fecha as string | null) ?? null,
     createdAt: r.created_at as string, closedAt: (r.closed_at as string | null) ?? null,
   }))
 }
@@ -163,14 +173,21 @@ export async function createCuenta(name: string, ownerEmail: string | null): Pro
 export async function getCuenta(id: number): Promise<Cuenta | null> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, name, status, owner_email, created_at, closed_at FROM cuentas WHERE id = ${id}`
+  const rows = await sql`SELECT id, name, status, owner_email, fecha, created_at, closed_at FROM cuentas WHERE id = ${id}`
   if (!rows.length) return null
   const r = rows[0]
   return {
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
-    ownerEmail: (r.owner_email as string | null) ?? null,
+    ownerEmail: (r.owner_email as string | null) ?? null, fecha: (r.fecha as string | null) ?? null,
     createdAt: r.created_at as string, closedAt: (r.closed_at as string | null) ?? null,
   }
+}
+
+/** Fija (o limpia) la fecha del evento. Espera 'YYYY-MM-DD' o null. */
+export async function setFecha(id: number, fecha: string | null): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`UPDATE cuentas SET fecha = ${fecha} WHERE id = ${id}`
 }
 
 export async function deleteCuenta(id: number): Promise<void> {
@@ -197,8 +214,12 @@ export async function getParticipantes(cuentaId: number): Promise<Participante[]
 export async function addParticipante(cuentaId: number, name: string, alias: string | null, userEmail: string | null = null): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  await sql`INSERT INTO participantes (cuenta_id, name, alias, user_email) VALUES (${cuentaId}, ${name}, ${alias}, ${userEmail})`
-  if (alias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${alias}) ON CONFLICT (name) DO UPDATE SET alias = ${alias}`
+  // Si está vinculado a un usuario y no vino alias, reusamos el guardado del usuario.
+  let effAlias = alias
+  if (userEmail && !effAlias) effAlias = await getUserAlias(userEmail)
+  await sql`INSERT INTO participantes (cuenta_id, name, alias, user_email) VALUES (${cuentaId}, ${name}, ${effAlias}, ${userEmail})`
+  if (effAlias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${effAlias}) ON CONFLICT (name) DO UPDATE SET alias = ${effAlias}`
+  if (userEmail && effAlias) await setUserAlias(userEmail, effAlias)
 }
 
 export async function updateParticipante(id: number, name: string, alias: string | null): Promise<void> {
@@ -206,6 +227,36 @@ export async function updateParticipante(id: number, name: string, alias: string
   const sql = getSql()
   await sql`UPDATE participantes SET name = ${name}, alias = ${alias} WHERE id = ${id}`
   if (alias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${alias}) ON CONFLICT (name) DO UPDATE SET alias = ${alias}`
+  // Si el participante está vinculado a un usuario, guardamos su alias para reusarlo.
+  const rows = await sql`SELECT user_email FROM participantes WHERE id = ${id}`
+  const email = (rows[0]?.user_email as string | null) ?? null
+  if (email && alias) await setUserAlias(email, alias)
+}
+
+// ── Alias por usuario registrado (se reutiliza en cuentas y grupos) ──
+export async function getUserAlias(email: string): Promise<string | null> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT alias FROM usuario_alias WHERE email = ${email.toLowerCase()}`
+  return rows.length ? ((rows[0].alias as string | null) ?? null) : null
+}
+
+export async function getUserAliases(): Promise<Record<string, string>> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT email, alias FROM usuario_alias WHERE alias IS NOT NULL`
+  const map: Record<string, string> = {}
+  for (const r of rows) map[(r.email as string).toLowerCase()] = r.alias as string
+  return map
+}
+
+export async function setUserAlias(email: string, alias: string | null): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`
+    INSERT INTO usuario_alias (email, alias) VALUES (${email.toLowerCase()}, ${alias})
+    ON CONFLICT (email) DO UPDATE SET alias = ${alias}
+  `
 }
 
 export async function deleteParticipante(id: number): Promise<void> {
@@ -402,8 +453,35 @@ export async function getMiembros(grupoId: number): Promise<Miembro[]> {
 export async function addMiembro(grupoId: number, name: string, alias: string | null, userEmail: string | null = null): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  await sql`INSERT INTO grupo_miembros (grupo_id, name, alias, user_email) VALUES (${grupoId}, ${name}, ${alias}, ${userEmail})`
-  if (alias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${alias}) ON CONFLICT (name) DO UPDATE SET alias = ${alias}`
+  let effAlias = alias
+  if (userEmail && !effAlias) effAlias = await getUserAlias(userEmail)
+  await sql`INSERT INTO grupo_miembros (grupo_id, name, alias, user_email) VALUES (${grupoId}, ${name}, ${effAlias}, ${userEmail})`
+  if (effAlias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${effAlias}) ON CONFLICT (name) DO UPDATE SET alias = ${effAlias}`
+  if (userEmail && effAlias) await setUserAlias(userEmail, effAlias)
+}
+
+/** Mis contactos para sumar a una cuenta: miembros (distintos por nombre) de
+ *  los grupos donde soy dueño o miembro vinculado. Incluye registrados y de
+ *  texto libre; los registrados traen su email (para vincularse al importar). */
+export async function getMisContactos(email: string): Promise<{ name: string; alias: string | null; email: string | null }[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  const rows = await sql`
+    WITH mis_grupos AS (
+      SELECT id FROM grupos WHERE lower(owner_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+    )
+    SELECT DISTINCT ON (lower(m.name)) m.name, m.alias, m.user_email AS email
+    FROM grupo_miembros m
+    WHERE m.grupo_id IN (SELECT id FROM mis_grupos)
+    ORDER BY lower(m.name), m.id ASC
+  `
+  return rows.map((r) => ({
+    name: r.name as string, alias: (r.alias as string | null) ?? null,
+    email: (r.email as string | null) ?? null,
+  }))
 }
 
 /** Usuarios registrados con los que el solicitante comparte algún grupo
