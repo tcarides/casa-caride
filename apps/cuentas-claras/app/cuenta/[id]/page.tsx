@@ -100,6 +100,12 @@ export default function CuentaPage() {
   const abierta = cuenta.status === 'abierta'
   const total = gastos.reduce((s, g) => s + g.monto, 0)
   const porCabeza = participantes.length ? total / participantes.length : 0
+  // Pendientes arriba; los que ya cargaron / no gastaron, al final.
+  const participantesOrden = [...participantes].sort(
+    (a, b) => (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1),
+  )
+  // Deudas: las saldadas pasan al final (los morosos quedan arriba).
+  const liquidacionesOrden = [...liquidaciones].sort((a, b) => Number(a.pagado) - Number(b.pagado))
   const nameOf = (pid: number) => participantes.find((p) => p.id === pid)?.name ?? '?'
   const aliasOf = (pid: number) => participantes.find((p) => p.id === pid)?.alias ?? null
   const myEmail = me?.email?.toLowerCase() ?? null
@@ -315,14 +321,15 @@ export default function CuentaPage() {
       <section className="cc-card">
         <h2 className="cc-sec">Participantes ({participantes.length})</h2>
         <ul className="cc-list">
-          {participantes.map((p) => {
+          {participantesOrden.map((p) => {
             const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
             const waCargar = `https://wa.me/?text=${encodeURIComponent(`Hola ${p.name}, antes de cerrar "${cuenta.name}" cargá tus gastos (o avisá que no gastaste): ${pageUrl}`)}`
+            const resuelto = p.estado !== 'pendiente'
             return (
-              <li key={p.id} className="cc-item">
+              <li key={p.id} className={'cc-item' + (resuelto ? ' cc-item-done' : '')}>
                 <div className="cc-item-main">
                   <span className="cc-item-name">
-                    {p.name} <EstadoBadge estado={p.estado} />
+                    {p.name}
                     {me && (
                       <button
                         className={'cc-soyyo' + (isMe(p) ? ' on' : '')}
@@ -336,10 +343,16 @@ export default function CuentaPage() {
                   <span className="cc-item-sub">{p.alias ? `alias: ${p.alias}` : 'sin alias'}</span>
                   {abierta && (
                     <div className="cc-estado">
-                      <button className={'cc-chip' + (p.estado === 'listo' ? ' on' : '')} onClick={() => setEstado(p.id, p.estado === 'listo' ? 'pendiente' : 'listo')}>Cargó ✓</button>
-                      <button className={'cc-chip' + (p.estado === 'sin_gastos' ? ' on' : '')} onClick={() => setEstado(p.id, p.estado === 'sin_gastos' ? 'pendiente' : 'sin_gastos')}>No gastó</button>
-                      {p.estado === 'pendiente' && (
-                        <a className="cc-chip cc-wa" href={waCargar} target="_blank" rel="noopener noreferrer">📲 recordar</a>
+                      {p.estado === 'pendiente' ? (
+                        <>
+                          <button className="cc-chip" onClick={() => setEstado(p.id, 'listo')}>Cargó ✓</button>
+                          <button className="cc-chip" onClick={() => setEstado(p.id, 'sin_gastos')}>No gastó</button>
+                          <a className="cc-chip cc-wa" href={waCargar} target="_blank" rel="noopener noreferrer">📲 recordar</a>
+                        </>
+                      ) : (
+                        <button className="cc-chip cc-estado-done" onClick={() => setEstado(p.id, 'pendiente')} title="Deshacer">
+                          {p.estado === 'listo' ? '✓ cargó' : '— no gastó'} · deshacer
+                        </button>
                       )}
                     </div>
                   )}
@@ -495,7 +508,7 @@ export default function CuentaPage() {
             <p className="cc-empty">¡Está todo parejo! Nadie debe nada 🎉</p>
           ) : (
             <ul className="cc-list">
-              {liquidaciones.map((l) => {
+              {liquidacionesOrden.map((l) => {
                 const fromN = nameOf(l.fromId), toN = nameOf(l.toId), alias = aliasOf(l.toId)
                 const msg = `Hola ${fromN}, te recuerdo que del "${cuenta.name}" quedó pendiente transferirle ${money(l.monto)} a ${toN}${alias ? ` (alias: ${alias})` : ''}. ¡Gracias! 🙌`
                 const wa = `https://wa.me/?text=${encodeURIComponent(msg)}`
@@ -523,10 +536,4 @@ export default function CuentaPage() {
       </button>
     </main>
   )
-}
-
-function EstadoBadge({ estado }: { estado: EstadoCarga }) {
-  if (estado === 'listo') return <span className="cc-estbadge listo">cargó</span>
-  if (estado === 'sin_gastos') return <span className="cc-estbadge sin">no gastó</span>
-  return <span className="cc-estbadge pend">pendiente</span>
 }
