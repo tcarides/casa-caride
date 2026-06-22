@@ -13,8 +13,14 @@ export type MiniApp = {
   hue: string
   /** 'zone' = app Next vía rewrite · 'static' = HTML estático en public/ */
   kind: 'zone' | 'static'
-  /** Si es true, cualquier usuario logueado accede (sin permiso por-usuario). */
-  openToAll?: boolean
+  /**
+   * Nivel de acceso (default 'permission'):
+   *  - 'public'     → se usa sin login (se ve y funciona deslogueado).
+   *  - 'open'       → se ve en el launcher (incluso deslogueado), pero al hacer
+   *                   click pide login; logueado la usa cualquiera.
+   *  - 'permission' → requiere login + permiso del admin (no se ve deslogueado).
+   */
+  access?: 'public' | 'open' | 'permission'
 }
 
 export const APPS: MiniApp[] = [
@@ -53,6 +59,7 @@ export const APPS: MiniApp[] = [
     emoji: '⚽',
     hue: 'var(--app-fixture)',
     kind: 'static',
+    access: 'public',
   },
   {
     slug: 'fabian',
@@ -71,6 +78,6 @@ export const APPS: MiniApp[] = [
     emoji: '🧾',
     hue: 'var(--app-cuentas)',
     kind: 'zone',
-    openToAll: true,
+    access: 'open',
   },
 ]
