@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { del } from '@vercel/blob'
 import { getEstudios, addEstudio, getEstudioUrl, deleteEstudio } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  const denied = await requireSession()
+  if (denied) return denied
   return NextResponse.json(await getEstudios())
 }
 
 // Guarda la metadata después de que el navegador subió el archivo al Blob
 // (client-upload vía /api/estudios/upload).
 export async function POST(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const b = await req.json() as {
     fecha?: string; titulo?: string; tipo?: string
     blobUrl?: string; pathname?: string; contentType?: string; size?: number
@@ -34,6 +39,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const id = Number(new URL(req.url).searchParams.get('id'))
   if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
   const url = await getEstudioUrl(id)

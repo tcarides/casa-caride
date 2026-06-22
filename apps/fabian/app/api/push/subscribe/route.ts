@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { saveSub, deleteSub } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const { subscription, userId } = await req.json() as {
     subscription: { endpoint: string; keys?: { auth?: string; p256dh?: string } }
     userId: string
@@ -17,6 +20,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const { endpoint } = await req.json() as { endpoint: string }
   if (!endpoint) return NextResponse.json({ error: 'invalid' }, { status: 400 })
   await deleteSub(endpoint)

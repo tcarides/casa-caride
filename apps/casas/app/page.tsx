@@ -123,7 +123,7 @@ export default function HomePage() {
   const {
     allProperties,
     loading, loadError, loadProperties,
-    currentUser, userInitialized, selectUser, switchUser,
+    currentUser, fromSession, userInitialized, selectUser, switchUser,
     viewMode, setViewMode,
     lightbox, setLightbox, openPhotos,
     handleStatusChange, handleNotesChange, handleDiscontinuedChange,
@@ -334,11 +334,19 @@ export default function HomePage() {
             {caidasCount > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 rounded-full">{caidasCount}</span>}
           </Link>
 
-          <button onClick={switchUser}
-            className="text-xs text-slate-300 hover:text-white transition-colors inline-flex items-center gap-1 pl-1"
-            title="Cambiar usuario">
-            <Repeat size={13} /> {USER_LABELS[currentUser]}
-          </button>
+          {fromSession ? (
+            // Identidad de la sesión de Google: badge estático (no se cambia acá).
+            <span className="text-xs text-slate-300 inline-flex items-center gap-1 pl-1"
+              title="Sesión de Google">
+              {USER_LABELS[currentUser]}
+            </span>
+          ) : (
+            <button onClick={switchUser}
+              className="text-xs text-slate-300 hover:text-white transition-colors inline-flex items-center gap-1 pl-1"
+              title="Cambiar usuario">
+              <Repeat size={13} /> {USER_LABELS[currentUser]}
+            </button>
+          )}
         </div>
       </header>
 

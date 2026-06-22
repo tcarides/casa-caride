@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,8 @@ type Params = { params: Promise<{ id: string }> }
 
 // PATCH /api/items/:id  { needed?, checked?, name?, categoryId? }
 export async function PATCH(request: NextRequest, { params }: Params) {
+  const denied = await requireSession()
+  if (denied) return denied
   await ensureSchema()
   const sql = getSql()
   const { id } = await params
@@ -57,6 +60,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 // DELETE /api/items/:id  → elimina del catálogo
 export async function DELETE(request: NextRequest, { params }: Params) {
+  const denied = await requireSession()
+  if (denied) return denied
   await ensureSchema()
   const sql = getSql()
   const { id } = await params

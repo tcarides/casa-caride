@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { listCuentas, createCuenta } from '@/lib/db'
 import { currentEmail } from '@/lib/identity'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  return NextResponse.json(await listCuentas())
+  const denied = await requireSession()
+  if (denied) return denied
+  return NextResponse.json(await listCuentas(await currentEmail()))
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const b = (await req.json().catch(() => ({}))) as { name?: string }
   const name = (b.name ?? '').trim().slice(0, 80)
   if (!name) return NextResponse.json({ error: 'nombre requerido' }, { status: 400 })

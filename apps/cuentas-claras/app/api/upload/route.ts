@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 
 export const dynamic = 'force-dynamic'
@@ -6,6 +7,8 @@ export const dynamic = 'force-dynamic'
 // Genera el token para que el navegador suba el comprobante directo al Blob
 // (client-upload). La metadata del gasto se guarda después con POST del gasto.
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const denied = await requireSession()
+  if (denied) return denied
   const body = (await req.json()) as HandleUploadBody
   try {
     const result = await handleUpload({

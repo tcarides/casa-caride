@@ -7,14 +7,21 @@
  *
  * Patrón: inyecta la clásica flecha "atrás" como primer elemento del <header>
  * de cada app (alineada con su logo, heredando el color del header con
- * currentColor para verse nativa). Al tocarla, vuelve a Casa (el launcher).
+ * currentColor para verse nativa). Es el ÚNICO botón de "volver": sube un
+ * nivel — una subpágina (L3) vuelve a la home de su zona (L2) y la home de una
+ * zona (L2) vuelve al launcher (L1).
  */
 (function () {
   if (window.__casaNav) return;
   window.__casaNav = true;
 
-  // A dónde vuelve la flecha. '/' = launcher de Casa Caride.
-  var HOME = '/';
+  // A dónde sube la flecha desde la URL actual:
+  //  - subpágina (2+ segmentos, ej. /casas/oportunidades) → home de la zona (/casas).
+  //  - home de zona (1 segmento, ej. /casas) o launcher → Casa (/).
+  function backHref() {
+    var segs = location.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    return segs.length > 1 ? '/' + segs[0] : '/';
+  }
 
   var ARROW =
     '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -51,9 +58,14 @@
   function makeArrow() {
     var a = document.createElement('a');
     a.className = 'casa-back';
-    a.href = HOME;
-    a.setAttribute('aria-label', 'Volver a Casa Caride');
+    a.href = backHref();
+    a.setAttribute('aria-label', 'Volver');
     a.innerHTML = ARROW;
+    // Recalcula el destino al tocar (la URL pudo cambiar por navegación cliente).
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      location.href = backHref();
+    });
     return a;
   }
 

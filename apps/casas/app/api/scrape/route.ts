@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import path from 'path'
@@ -6,6 +7,8 @@ import path from 'path'
 const execAsync = promisify(exec)
 
 export async function POST() {
+  const denied = await requireSession()
+  if (denied) return denied
   try {
     const scraperDir = path.resolve(process.cwd(), '..', 'scraper')
     const { stdout, stderr } = await execAsync('npm run scrape', {

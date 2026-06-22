@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getPendingCandidates, countPendingCandidates } from '@/lib/dedupeDb'
 import { loadProperties } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  const denied = await requireSession()
+  if (denied) return denied
   const [candidates, total, properties] = await Promise.all([
     getPendingCandidates(50),
     countPendingCandidates(),

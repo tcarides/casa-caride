@@ -5,6 +5,7 @@ interface Cuenta {
   id: number
   name: string
   status: 'abierta' | 'cerrada'
+  ownerEmail: string | null
   createdAt: string
 }
 
@@ -15,8 +16,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
-  const [me, setMe] = useState<{ name: string } | null>(null)
+  const [me, setMe] = useState<{ email: string; name: string } | null>(null)
   const [meReady, setMeReady] = useState(false)
+  const myEmail = me?.email?.toLowerCase() ?? null
 
   const load = useCallback(async () => {
     try {
@@ -61,12 +63,12 @@ export default function Home() {
           <div><h1>Cuentas Claras</h1><p>Dividí asados y eventos sin vueltas</p></div>
         </div>
         <div className="cc-headactions">
+          <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
           {meReady && (
             <span className="cc-me" title={me ? 'Sesión detectada' : 'Sin sesión en la zona'}>
               👤 {me ? me.name : 'no identificado'}
             </span>
           )}
-          <a className="cc-chip" href="/cuentas-claras/grupos">👥 Grupos</a>
         </div>
       </header>
 
@@ -83,21 +85,30 @@ export default function Home() {
       ) : (
         <>
           {abiertas.length > 0 && <h2 className="cc-sec">Abiertas</h2>}
-          {abiertas.map((c) => <CuentaRow key={c.id} c={c} />)}
+          {abiertas.map((c) => <CuentaRow key={c.id} c={c} myEmail={myEmail} />)}
           {cerradas.length > 0 && <h2 className="cc-sec">Cerradas</h2>}
-          {cerradas.map((c) => <CuentaRow key={c.id} c={c} />)}
+          {cerradas.map((c) => <CuentaRow key={c.id} c={c} myEmail={myEmail} />)}
         </>
       )}
+
+      <p className="cc-hint">
+        Ves las cuentas que creaste y aquellas donde te marcaste como participante.
+        ¿Te falta una? Abrí su link y tocá <strong>“soy yo”</strong> en tu nombre.
+      </p>
     </main>
   )
 }
 
-function CuentaRow({ c }: { c: Cuenta }) {
+function CuentaRow({ c, myEmail }: { c: Cuenta; myEmail: string | null }) {
+  const compartida = !!c.ownerEmail && !!myEmail && c.ownerEmail.toLowerCase() !== myEmail
   return (
     <a className="cc-row" href={`/cuentas-claras/cuenta/${c.id}`}>
       <span className="cc-row-name">{c.name}</span>
-      <span className={'cc-badge' + (c.status === 'cerrada' ? ' cerrada' : '')}>
-        {c.status === 'cerrada' ? 'cerrada' : 'abierta'}
+      <span className="cc-row-tags">
+        {compartida && <span className="cc-badge compartida">compartida</span>}
+        <span className={'cc-badge' + (c.status === 'cerrada' ? ' cerrada' : '')}>
+          {c.status === 'cerrada' ? 'cerrada' : 'abierta'}
+        </span>
       </span>
     </a>
   )

@@ -7,6 +7,14 @@ const { auth } = NextAuth({
   trustHost: true,
   session: { strategy: 'jwt' },
   providers: [],
+  callbacks: {
+    session({ session, token }) {
+      if (session.user) {
+        ;(session.user as { role?: string }).role = (token.role as string) ?? 'member'
+      }
+      return session
+    },
+  },
 })
 
 export async function currentEmail(): Promise<string | null> {
@@ -18,12 +26,13 @@ export async function currentEmail(): Promise<string | null> {
   }
 }
 
-export async function currentUser(): Promise<{ email: string; name: string } | null> {
+export async function currentUser(): Promise<{ email: string; name: string; role: string } | null> {
   try {
     const session = await auth()
     const email = session?.user?.email?.toLowerCase()
     if (!email) return null
-    return { email, name: session?.user?.name ?? email }
+    const role = (session?.user as { role?: string } | undefined)?.role ?? 'member'
+    return { email, name: session?.user?.name ?? email, role }
   } catch {
     return null
   }

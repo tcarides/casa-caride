@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { updateUserStatus, updateNotes, setDiscontinued } from '@/lib/db'
 import type { PropertyStatus, UserId } from '@/lib/types'
 
@@ -9,6 +10,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireSession()
+  if (denied) return denied
   const { id } = await params
   const decodedId = decodeURIComponent(id)
   const body = await request.json() as { status?: string; notes?: string; userId?: string; discontinued?: boolean }

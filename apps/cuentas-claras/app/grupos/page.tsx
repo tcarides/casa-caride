@@ -31,7 +31,6 @@ export default function Grupos() {
   return (
     <main className="cc">
       <header className="cc-header">
-        <a className="cc-back" href="/cuentas-claras">← Cuentas</a>
         <div className="cc-title"><span className="cc-logo" aria-hidden>👥</span>
           <div><h1>Grupos de contactos</h1><p>Precargá a tu gente para sumarla de una</p></div>
         </div>

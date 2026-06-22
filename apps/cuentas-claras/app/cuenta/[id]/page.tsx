@@ -4,21 +4,42 @@ import { useParams } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
 type EstadoCarga = 'pendiente' | 'listo' | 'sin_gastos'
-interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga }
+interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga; userEmail: string | null }
 interface Gasto { id: number; descripcion: string; monto: number; pagadorId: number; comprobanteUrl: string | null }
 interface Liquidacion { id: number; fromId: number; toId: number; monto: number; pagado: boolean }
-interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada' }
+interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada'; fecha: string | null }
 interface Detail { cuenta: Cuenta; participantes: Participante[]; gastos: Gasto[]; liquidaciones: Liquidacion[] }
+interface Contacto { name: string; alias: string | null; email: string | null }
 
 const API = '/cuentas-claras/api'
 const money = (c: number) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(c / 100)
-const toCentavos = (s: string) => Math.round((parseFloat(s.replace(',', '.')) || 0) * 100)
+// "1.234,56" (formato AR: punto = miles, coma = decimales) → centavos.
+const fromMonto = (s: string) => s.replace(/\./g, '').replace(',', '.')
+const toCentavos = (s: string) => Math.round((parseFloat(fromMonto(s)) || 0) * 100)
+// Formatea lo que se va tipeando: separa miles con punto, deja una coma decimal.
+function formatMonto(raw: string): string {
+  const s = raw.replace(/[^\d,]/g, '')
+  const i = s.indexOf(',')
+  let intPart = i >= 0 ? s.slice(0, i) : s
+  const dec = i >= 0 ? ',' + s.slice(i + 1).replace(/,/g, '').slice(0, 2) : ''
+  intPart = intPart.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  if (intPart === '' && i >= 0) intPart = '0'
+  return intPart + dec
+}
+// 'YYYY-MM-DD' → "viernes 27 de junio" (sin la coma que mete es-AR).
+function fmtFecha(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d)
+    .toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace(',', '')
+}
 
 export default function CuentaPage() {
   const { id } = useParams<{ id: string }>()
   const [d, setD] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [me, setMe] = useState<{ email: string; name: string } | null>(null)
 
   // forms
   const [pName, setPName] = useState('')
@@ -33,6 +54,10 @@ export default function CuentaPage() {
   const [contactos, setContactos] = useState<{ name: string; alias: string }[]>([])
   const [grupos, setGrupos] = useState<{ id: number; name: string; miembros: number }[]>([])
   const [grupoSel, setGrupoSel] = useState('')
+  const [misContactos, setMisContactos] = useState<Contacto[]>([])
+  const [showContactos, setShowContactos] = useState(false)
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  const [editFecha, setEditFecha] = useState(false)
   const descRef = useRef<HTMLInputElement>(null)
   const pNameRef = useRef<HTMLInputElement>(null)
 
@@ -47,6 +72,8 @@ export default function CuentaPage() {
   useEffect(() => {
     fetch(`${API}/contactos`).then((r) => r.ok ? r.json() : []).then(setContactos).catch(() => {})
     fetch(`${API}/grupos`).then((r) => r.ok ? r.json() : []).then(setGrupos).catch(() => {})
+    fetch(`${API}/mis-contactos`).then((r) => r.ok ? r.json() : []).then(setMisContactos).catch(() => {})
+    fetch(`${API}/me`).then((r) => r.ok ? r.json() : null).then(setMe).catch(() => {})
   }, [])
 
   // Default del pagador: el primer participante (evita un click por gasto).
@@ -63,6 +90,11 @@ export default function CuentaPage() {
   const porCabeza = participantes.length ? total / participantes.length : 0
   const nameOf = (pid: number) => participantes.find((p) => p.id === pid)?.name ?? '?'
   const aliasOf = (pid: number) => participantes.find((p) => p.id === pid)?.alias ?? null
+  const myEmail = me?.email?.toLowerCase() ?? null
+  const isMe = (p: Participante) => !!myEmail && p.userEmail?.toLowerCase() === myEmail
+  const yaParticipa = new Set(participantes.map((p) => p.name.toLowerCase()))
+  const contactosDisponibles = misContactos.filter((c) => !yaParticipa.has(c.name.toLowerCase()))
+  const nChecked = contactosDisponibles.filter((c) => checked[c.name]).length
 
   async function addParticipante(e: React.FormEvent) {
     e.preventDefault()
@@ -87,6 +119,26 @@ export default function CuentaPage() {
     })
     setGrupoSel(''); await load()
   }
+  async function guardarFecha(value: string) {
+    const fecha = value || null
+    setD((prev) => prev ? { ...prev, cuenta: { ...prev.cuenta, fecha } } : prev)
+    setEditFecha(false)
+    await fetch(`${API}/cuentas/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha }),
+    })
+  }
+  async function addSeleccionados() {
+    const elegidos = misContactos.filter((c) => checked[c.name])
+    if (!elegidos.length) return
+    for (const c of elegidos) {
+      await fetch(`${API}/cuentas/${id}/participantes`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: c.name, alias: c.alias ?? '', userEmail: c.email ?? undefined }),
+      })
+    }
+    setChecked({}); setShowContactos(false); await load()
+  }
   async function delParticipante(pid: number) {
     setD((prev) => prev ? { ...prev, participantes: prev.participantes.filter((p) => p.id !== pid) } : prev)
     const r = await fetch(`${API}/participantes/${pid}`, { method: 'DELETE' })
@@ -102,10 +154,25 @@ export default function CuentaPage() {
     })
     if (!r.ok) await load()
   }
+  async function toggleSoyYo(p: Participante) {
+    if (!myEmail) return
+    const claim = p.userEmail?.toLowerCase() !== myEmail
+    // Optimista: me asigno a este y libero cualquier otro que tuviera mi email.
+    setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((x) => {
+      if (x.id === p.id) return { ...x, userEmail: claim ? (me?.email ?? null) : null }
+      if (claim && x.userEmail?.toLowerCase() === myEmail) return { ...x, userEmail: null }
+      return x
+    }) } : prev)
+    const r = await fetch(`${API}/participantes/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claim }),
+    })
+    if (!r.ok) await load()
+  }
   function startEdit(g: Gasto) {
     setEditId(g.id)
     setGDesc(g.descripcion)
-    setGMonto((g.monto / 100).toString())
+    setGMonto(formatMonto(String(g.monto / 100).replace('.', ',')))
     setGPagador(String(g.pagadorId))
     descRef.current?.focus()
   }
@@ -204,10 +271,25 @@ export default function CuentaPage() {
   return (
     <main className="cc">
       <header className="cc-header">
-        <a className="cc-back" href="/cuentas-claras">← Cuentas</a>
         <div className="cc-title">
           <div><h1>{cuenta.name}</h1>
             <p>{abierta ? 'Abierta' : 'Cerrada'} · {money(total)} en {gastos.length} gasto{gastos.length === 1 ? '' : 's'}</p>
+            <div className="cc-fecha">
+              {editFecha ? (
+                <input className="cc-input cc-fecha-input" type="date" autoFocus
+                  defaultValue={cuenta.fecha ?? ''}
+                  onChange={(e) => guardarFecha(e.target.value)}
+                  onBlur={() => setEditFecha(false)} />
+              ) : cuenta.fecha ? (
+                <button className="cc-fecha-btn" onClick={() => setEditFecha(true)} title="Cambiar fecha">
+                  📅 {fmtFecha(cuenta.fecha)}
+                </button>
+              ) : (
+                <button className="cc-fecha-btn cc-fecha-add" onClick={() => setEditFecha(true)}>
+                  📅 Agregar fecha
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -222,7 +304,18 @@ export default function CuentaPage() {
             return (
               <li key={p.id} className="cc-item">
                 <div className="cc-item-main">
-                  <span className="cc-item-name">{p.name} <EstadoBadge estado={p.estado} /></span>
+                  <span className="cc-item-name">
+                    {p.name} <EstadoBadge estado={p.estado} />
+                    {me && (
+                      <button
+                        className={'cc-soyyo' + (isMe(p) ? ' on' : '')}
+                        onClick={() => toggleSoyYo(p)}
+                        title={isMe(p) ? 'Sos vos (tocá para soltar)' : 'Marcar que este sos vos para ver la cuenta en tu lista'}
+                      >
+                        {isMe(p) ? '★ vos' : 'soy yo'}
+                      </button>
+                    )}
+                  </span>
                   <span className="cc-item-sub">{p.alias ? `alias: ${p.alias}` : 'sin alias'}</span>
                   {abierta && (
                     <div className="cc-estado">
@@ -250,6 +343,34 @@ export default function CuentaPage() {
               {contactos.map((c) => <option key={c.name} value={c.name} />)}
             </datalist>
           </form>
+        )}
+        {abierta && contactosDisponibles.length > 0 && (
+          <div className="cc-contactos">
+            <button className="cc-chip" type="button" onClick={() => setShowContactos((v) => !v)}>
+              {showContactos ? '▲ Ocultar contactos' : `👥 Sumar desde mis contactos (${contactosDisponibles.length})`}
+            </button>
+            {showContactos && (
+              <>
+                <ul className="cc-checklist">
+                  {contactosDisponibles.map((c) => (
+                    <li key={c.name}>
+                      <label className="cc-check">
+                        <input type="checkbox" checked={!!checked[c.name]}
+                          onChange={(e) => setChecked((prev) => ({ ...prev, [c.name]: e.target.checked }))} />
+                        <span className="cc-check-main">
+                          <span className="cc-check-name">{c.name} {c.email && <span className="cc-soyyo on" title="Usuario registrado">🔗</span>}</span>
+                          {c.alias && <span className="cc-item-sub">alias: {c.alias}</span>}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <button className="cc-btn cc-btn-block" type="button" disabled={nChecked === 0} onClick={addSeleccionados}>
+                  Agregar{nChecked > 0 ? ` (${nChecked})` : ''}
+                </button>
+              </>
+            )}
+          </div>
         )}
         {abierta && grupos.length > 0 && (
           <div className="cc-addrow">
@@ -287,26 +408,36 @@ export default function CuentaPage() {
           )}
         </ul>
         {abierta && participantes.length > 0 && (
-          <form className="cc-addrow cc-gastoform" onSubmit={addGasto}>
-            <input ref={descRef} className="cc-input" value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Qué (ej. carne)" maxLength={120} />
-            <input className="cc-input cc-montoinput" value={gMonto} onChange={(e) => setGMonto(e.target.value)} placeholder="$" inputMode="decimal" />
-            <select className="cc-input" value={gPagador} onChange={(e) => setGPagador(e.target.value)}>
-              <option value="">¿Quién pagó?</option>
-              {participantes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            {!editId && (
-              <label className={'cc-mini cc-attach' + (gFile ? ' cc-on' : '')} title="Adjuntar comprobante">
-                📎
-                <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden
-                  onChange={(e) => setGFile(e.target.files?.[0] ?? null)} />
-              </label>
-            )}
-            {editId && (
-              <button className="cc-mini" type="button" onClick={cancelEdit} aria-label="Cancelar">✕</button>
-            )}
-            <button className="cc-btn" type="submit" disabled={uploading || !gDesc.trim() || toCentavos(gMonto) <= 0 || !gPagador}>
-              {uploading ? '…' : editId ? 'Guardar' : '+'}
-            </button>
+          <form className="cc-gastoform" onSubmit={addGasto}>
+            {editId && <span className="cc-sec" style={{ margin: 0 }}>Editando gasto</span>}
+            <input ref={descRef} className="cc-input" value={gDesc} onChange={(e) => setGDesc(e.target.value)}
+              placeholder="¿Qué se pagó? (ej. carne)" maxLength={120} />
+            <div className="cc-gastoform-row">
+              <div className="cc-montowrap">
+                <span className="cc-montosign">$</span>
+                <input className="cc-input cc-montoinput" value={gMonto}
+                  onChange={(e) => setGMonto(formatMonto(e.target.value))} placeholder="0" inputMode="decimal" />
+              </div>
+              <select className="cc-input" value={gPagador} onChange={(e) => setGPagador(e.target.value)}>
+                <option value="">¿Quién pagó?</option>
+                {participantes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="cc-gastoform-row">
+              {!editId && (
+                <label className={'cc-attachlabel' + (gFile ? ' cc-on' : '')}>
+                  📎 <span className="cc-attachtext">{gFile ? gFile.name : 'Adjuntar comprobante'}</span>
+                  <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden
+                    onChange={(e) => setGFile(e.target.files?.[0] ?? null)} />
+                </label>
+              )}
+              {editId && (
+                <button className="cc-btn cc-ghost" type="button" onClick={cancelEdit}>Cancelar</button>
+              )}
+              <button className="cc-btn" type="submit" disabled={uploading || !gDesc.trim() || toCentavos(gMonto) <= 0 || !gPagador}>
+                {uploading ? 'Guardando…' : editId ? 'Guardar' : 'Agregar gasto'}
+              </button>
+            </div>
           </form>
         )}
       </section>

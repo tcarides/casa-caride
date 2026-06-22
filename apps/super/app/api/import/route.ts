@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -31,6 +32,8 @@ interface ImportBody {
  * Carga masiva del catálogo (pensado para importar desde AnyList).
  */
 export async function POST(request: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   await ensureSchema()
   const sql = getSql()
   const body = (await request.json().catch(() => ({}))) as ImportBody

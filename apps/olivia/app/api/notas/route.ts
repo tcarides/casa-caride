@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getNotas, addNota, deleteNota } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  const denied = await requireSession()
+  if (denied) return denied
   return NextResponse.json(await getNotas())
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const b = await req.json() as { fecha?: string; categoria?: string; texto?: string }
   if (!b.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(b.fecha)) {
     return NextResponse.json({ error: 'fecha debe ser YYYY-MM-DD' }, { status: 400 })
@@ -21,6 +26,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const id = Number(new URL(req.url).searchParams.get('id'))
   if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
   await deleteNota(id)
