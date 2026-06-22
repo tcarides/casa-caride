@@ -12,14 +12,23 @@ export default async function Home({
   const session = await auth()
   const { denied } = await searchParams
 
+  const loggedIn = !!session?.user
   const isAdmin = session?.user?.role === 'admin'
   const email = session?.user?.email ?? ''
   const name = session?.user?.name ?? ''
 
-  const enabled = isAdmin ? null : new Set(await getEnabledApps(email))
-  const apps = isAdmin
-    ? APPS
-    : APPS.filter((a) => a.openToAll || enabled!.has(a.slug))
+  const enabled = loggedIn && !isAdmin ? new Set(await getEnabledApps(email)) : null
+
+  // Qué apps mostrar:
+  //  - deslogueado: públicas + 'open' (se ven, pero al usarlas piden login).
+  //  - admin: todas.
+  //  - member: públicas + 'open' + las habilitadas.
+  const apps = APPS.filter((a) => {
+    const access = a.access ?? 'permission'
+    if (access === 'public' || access === 'open') return true
+    if (!loggedIn) return false
+    return isAdmin || enabled!.has(a.slug)
+  })
   const deniedApp = denied ? APPS.find((a) => a.slug === denied) : null
 
   return (
@@ -34,17 +43,23 @@ export default async function Home({
       </header>
 
       <div className="home__userbar">
-        <span className="home__who">{name || email}{isAdmin ? ' · admin' : ''}</span>
+        <span className="home__who">{loggedIn ? `${name || email}${isAdmin ? ' · admin' : ''}` : 'No estás logueado'}</span>
         <span className="home__useractions">
-          {isAdmin && <a href="/admin" className="home__userlink">Admin</a>}
-          <form
-            action={async () => {
-              'use server'
-              await signOut({ redirectTo: '/login' })
-            }}
-          >
-            <button type="submit" className="home__userlink home__signout">Salir</button>
-          </form>
+          {loggedIn ? (
+            <>
+              {isAdmin && <a href="/admin" className="home__userlink">Admin</a>}
+              <form
+                action={async () => {
+                  'use server'
+                  await signOut({ redirectTo: '/' })
+                }}
+              >
+                <button type="submit" className="home__userlink home__signout">Salir</button>
+              </form>
+            </>
+          ) : (
+            <a href="/login" className="home__userlink">Entrar</a>
+          )}
         </span>
       </div>
 
@@ -54,13 +69,11 @@ export default async function Home({
         </p>
       )}
 
-      {apps.length === 0 ? (
-        <p className="home__denied">
-          Todavía no tenés ninguna app habilitada. Pedile acceso a Tomás 🙂
-        </p>
-      ) : (
-        <section className="grid" aria-label="Mini-apps">
-          {apps.map((app) => (
+      <section className="grid" aria-label="Mini-apps">
+        {apps.map((app) => {
+          const access = app.access ?? 'permission'
+          const needsLogin = !loggedIn && access !== 'public'
+          return (
             <a
               key={app.slug}
               href={app.href}
@@ -69,13 +82,14 @@ export default async function Home({
             >
               <span className="tile__glow" aria-hidden />
               <span className="tile__emoji" aria-hidden>{app.emoji}</span>
-              {app.kind === 'static' && <span className="tile__tag">estática</span>}
+              {needsLogin && <span className="tile__tag">🔒 login</span>}
+              {!needsLogin && app.kind === 'static' && <span className="tile__tag">estática</span>}
               <span className="tile__name">{app.name}</span>
               <span className="tile__desc">{app.description}</span>
             </a>
-          ))}
-        </section>
-      )}
+          )
+        })}
+      </section>
 
       <footer className="home__footer">
         <span>Instalá esta app en tu pantalla de inicio 📲</span>
