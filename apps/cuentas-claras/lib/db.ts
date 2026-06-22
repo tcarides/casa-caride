@@ -21,6 +21,7 @@ export interface Cuenta {
   status: 'abierta' | 'cerrada'
   ownerEmail: string | null
   fecha: string | null // 'YYYY-MM-DD' del evento (opcional)
+  saldada: boolean // cerrada y sin deudas pendientes
   createdAt: string
   closedAt: string | null
 }
@@ -32,6 +33,7 @@ export interface Participante {
   alias: string | null
   userEmail: string | null
   estado: EstadoCarga
+  origen: 'cuenta' | 'grupo'
 }
 export interface Gasto {
   id: number
@@ -78,6 +80,9 @@ export async function ensureSchema(): Promise<void> {
   `
   // Estado de carga: pendiente (default) | listo (ya cargó) | sin_gastos (no gastó).
   await sql`ALTER TABLE participantes ADD COLUMN IF NOT EXISTS estado_carga TEXT NOT NULL DEFAULT 'pendiente'`
+  // Origen: 'cuenta' (agregado a mano acá) | 'grupo' (importado de un grupo).
+  // El alias solo se edita desde la cuenta si el origen es 'cuenta'.
+  await sql`ALTER TABLE participantes ADD COLUMN IF NOT EXISTS origen TEXT NOT NULL DEFAULT 'cuenta'`
   await sql`
     CREATE TABLE IF NOT EXISTS gastos (
       id BIGSERIAL PRIMARY KEY,
@@ -146,7 +151,10 @@ export async function listCuentas(email: string | null): Promise<Cuenta[]> {
   const sql = getSql()
   const e = email?.toLowerCase() ?? null
   const rows = await sql`
-    SELECT id, name, status, owner_email, fecha, created_at, closed_at
+    SELECT id, name, status, owner_email, fecha, created_at, closed_at,
+      (status = 'cerrada' AND NOT EXISTS (
+        SELECT 1 FROM liquidaciones l WHERE l.cuenta_id = c.id AND l.pagado = false
+      )) AS saldada
     FROM cuentas c
     WHERE c.owner_email IS NULL
        OR lower(c.owner_email) = ${e}
@@ -159,6 +167,7 @@ export async function listCuentas(email: string | null): Promise<Cuenta[]> {
   return rows.map((r) => ({
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
     ownerEmail: (r.owner_email as string | null) ?? null, fecha: (r.fecha as string | null) ?? null,
+    saldada: r.saldada === true,
     createdAt: r.created_at as string, closedAt: (r.closed_at as string | null) ?? null,
   }))
 }
@@ -173,12 +182,18 @@ export async function createCuenta(name: string, ownerEmail: string | null): Pro
 export async function getCuenta(id: number): Promise<Cuenta | null> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, name, status, owner_email, fecha, created_at, closed_at FROM cuentas WHERE id = ${id}`
+  const rows = await sql`
+    SELECT id, name, status, owner_email, fecha, created_at, closed_at,
+      (status = 'cerrada' AND NOT EXISTS (
+        SELECT 1 FROM liquidaciones l WHERE l.cuenta_id = c.id AND l.pagado = false
+      )) AS saldada
+    FROM cuentas c WHERE id = ${id}`
   if (!rows.length) return null
   const r = rows[0]
   return {
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
     ownerEmail: (r.owner_email as string | null) ?? null, fecha: (r.fecha as string | null) ?? null,
+    saldada: r.saldada === true,
     createdAt: r.created_at as string, closedAt: (r.closed_at as string | null) ?? null,
   }
 }
@@ -203,21 +218,22 @@ export async function deleteCuenta(id: number): Promise<void> {
 export async function getParticipantes(cuentaId: number): Promise<Participante[]> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, cuenta_id, name, alias, user_email, estado_carga FROM participantes WHERE cuenta_id = ${cuentaId} ORDER BY id ASC`
+  const rows = await sql`SELECT id, cuenta_id, name, alias, user_email, estado_carga, origen FROM participantes WHERE cuenta_id = ${cuentaId} ORDER BY id ASC`
   return rows.map((r) => ({
     id: Number(r.id), cuentaId: Number(r.cuenta_id), name: r.name as string,
     alias: (r.alias as string | null) ?? null, userEmail: (r.user_email as string | null) ?? null,
     estado: ((r.estado_carga as EstadoCarga) ?? 'pendiente'),
+    origen: ((r.origen as 'cuenta' | 'grupo') ?? 'cuenta'),
   }))
 }
 
-export async function addParticipante(cuentaId: number, name: string, alias: string | null, userEmail: string | null = null): Promise<void> {
+export async function addParticipante(cuentaId: number, name: string, alias: string | null, userEmail: string | null = null, origen: 'cuenta' | 'grupo' = 'cuenta'): Promise<void> {
   await ensureSchema()
   const sql = getSql()
   // Si está vinculado a un usuario y no vino alias, reusamos el guardado del usuario.
   let effAlias = alias
   if (userEmail && !effAlias) effAlias = await getUserAlias(userEmail)
-  await sql`INSERT INTO participantes (cuenta_id, name, alias, user_email) VALUES (${cuentaId}, ${name}, ${effAlias}, ${userEmail})`
+  await sql`INSERT INTO participantes (cuenta_id, name, alias, user_email, origen) VALUES (${cuentaId}, ${name}, ${effAlias}, ${userEmail}, ${origen})`
   if (effAlias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${effAlias}) ON CONFLICT (name) DO UPDATE SET alias = ${effAlias}`
   if (userEmail && effAlias) await setUserAlias(userEmail, effAlias)
 }
@@ -545,7 +561,7 @@ export async function importarGrupo(cuentaId: number, grupoId: number): Promise<
   let added = 0
   for (const m of miembros) {
     if (!existentes.includes(m.name.toLowerCase())) {
-      await addParticipante(cuentaId, m.name, m.alias, m.userEmail)
+      await addParticipante(cuentaId, m.name, m.alias, m.userEmail, 'grupo')
       added++
     }
   }
