@@ -122,7 +122,7 @@ export default function AgruparPage() {
       <div className="min-h-screen bg-slate-900 text-red-400 flex flex-col items-center justify-center gap-2 p-6">
         <span className="font-semibold">Error</span>
         <code className="text-xs">{error}</code>
-        <Link href="/" className="text-blue-400 hover:underline mt-4">← Volver</Link>
+        <Link href="/casas" className="text-blue-400 hover:underline mt-4">← Volver</Link>
       </div>
     )
   }
@@ -130,7 +130,6 @@ export default function AgruparPage() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 flex flex-col">
       <header className="bg-slate-900 border-b border-slate-700 px-3 sm:px-6 py-3 flex items-center gap-4">
-        <Link href="/" className="text-sm text-blue-400 hover:underline">← Volver</Link>
         <h1 className="text-base sm:text-lg font-bold text-white">Agrupar duplicadas</h1>
         <span className="text-xs text-slate-400 ml-auto">
           {idx >= candidates.length ? `${total} totales` : `${idx + 1} / ${candidates.length} (${total} pendientes)`}
@@ -145,7 +144,7 @@ export default function AgruparPage() {
             <p className="text-xs text-slate-500 max-w-md">
               Para generar más, corré <code className="bg-slate-800 px-1.5 py-0.5 rounded">npm run dedupe</code> en el scraper local.
             </p>
-            <Link href="/" className="text-blue-400 hover:underline mt-2">← Volver al listado</Link>
+            <Link href="/casas" className="text-blue-400 hover:underline mt-2">← Volver al listado</Link>
           </div>
         ) : (
           <>

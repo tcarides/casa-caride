@@ -56,7 +56,6 @@ export default function GrupoPage() {
   return (
     <main className="cc">
       <header className="cc-header">
-        <a className="cc-back" href="/cuentas-claras/grupos">← Grupos</a>
         <div className="cc-title">
           <div><h1>{d.grupo.name}</h1><p>{d.miembros.length} contacto{d.miembros.length === 1 ? '' : 's'}</p></div>
         </div>

@@ -3,7 +3,6 @@ import { apiFetch } from '@/lib/api'
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import type { Property } from '@/lib/types'
 
 // Leaflet usa window — solo cliente
@@ -30,7 +29,6 @@ export default function MapaPage() {
   return (
     <div className="h-screen flex flex-col bg-slate-900">
       <header className="bg-slate-900 border-b border-slate-700 px-3 sm:px-6 py-3 flex items-center gap-4">
-        <Link href="/" className="text-sm text-blue-400 hover:underline">← Volver</Link>
         <h1 className="text-base sm:text-lg font-bold text-white">Mapa</h1>
         <span className="text-xs text-slate-400 ml-auto">
           {loading ? 'Cargando...' : `${withCoords.length} de ${properties.length} en el mapa`}

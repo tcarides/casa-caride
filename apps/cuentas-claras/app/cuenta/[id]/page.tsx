@@ -223,7 +223,6 @@ export default function CuentaPage() {
   return (
     <main className="cc">
       <header className="cc-header">
-        <a className="cc-back" href="/cuentas-claras">← Cuentas</a>
         <div className="cc-title">
           <div><h1>{cuenta.name}</h1>
             <p>{abierta ? 'Abierta' : 'Cerrada'} · {money(total)} en {gastos.length} gasto{gastos.length === 1 ? '' : 's'}</p>
