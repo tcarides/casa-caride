@@ -10,6 +10,9 @@ interface Liquidacion { id: number; fromId: number; toId: number; monto: number;
 interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada'; fecha: string | null; saldada: boolean }
 interface Detail { cuenta: Cuenta; participantes: Participante[]; gastos: Gasto[]; liquidaciones: Liquidacion[] }
 interface Contacto { name: string; alias: string | null; email: string | null }
+// Clave estable de un contacto: email si está registrado, si no el nombre.
+// Evita que dos personas distintas con el mismo nombre colisionen al tildar.
+const ckey = (c: Contacto) => (c.email?.toLowerCase() || c.name.toLowerCase())
 
 const API = '/cuentas-claras/api'
 const money = (c: number) =>
@@ -113,7 +116,7 @@ export default function CuentaPage() {
   const yaParticipa = new Set(participantes.map((p) => p.name.toLowerCase()))
   const baseContactos = grupoFiltro ? grupoMiembros : misContactos
   const contactosDisponibles = baseContactos.filter((c) => !yaParticipa.has(c.name.toLowerCase()))
-  const nChecked = contactosDisponibles.filter((c) => checked[c.name]).length
+  const nChecked = contactosDisponibles.filter((c) => checked[ckey(c)]).length
   const todosMarcados = contactosDisponibles.length > 0 && nChecked === contactosDisponibles.length
 
   async function addParticipante(e: React.FormEvent) {
@@ -134,7 +137,7 @@ export default function CuentaPage() {
   function toggleTodos() {
     if (todosMarcados) { setChecked({}); return }
     const all: Record<string, boolean> = {}
-    for (const c of contactosDisponibles) all[c.name] = true
+    for (const c of contactosDisponibles) all[ckey(c)] = true
     setChecked(all)
   }
   async function guardarFecha(value: string) {
@@ -147,7 +150,7 @@ export default function CuentaPage() {
     })
   }
   async function addSeleccionados() {
-    const elegidos = contactosDisponibles.filter((c) => checked[c.name])
+    const elegidos = contactosDisponibles.filter((c) => checked[ckey(c)])
     if (!elegidos.length) return
     for (const c of elegidos) {
       await fetch(`${API}/cuentas/${id}/participantes`, {
@@ -392,7 +395,7 @@ export default function CuentaPage() {
             <input className="cc-input" value={pAlias} onChange={(e) => setPAlias(e.target.value)} placeholder="Alias (opcional)" maxLength={120} />
             <button className="cc-btn" type="submit" disabled={!pName.trim()}>+</button>
             <datalist id="cc-contactos">
-              {misContactos.map((c) => <option key={c.name} value={c.name} />)}
+              {misContactos.map((c) => <option key={ckey(c)} value={c.name} />)}
             </datalist>
           </form>
         )}
@@ -420,10 +423,10 @@ export default function CuentaPage() {
                     </div>
                     <ul className="cc-checklist">
                       {contactosDisponibles.map((c) => (
-                        <li key={c.name}>
+                        <li key={ckey(c)}>
                           <label className="cc-check">
-                            <input type="checkbox" checked={!!checked[c.name]}
-                              onChange={(e) => setChecked((prev) => ({ ...prev, [c.name]: e.target.checked }))} />
+                            <input type="checkbox" checked={!!checked[ckey(c)]}
+                              onChange={(e) => setChecked((prev) => ({ ...prev, [ckey(c)]: e.target.checked }))} />
                             <span className="cc-check-main">
                               <span className="cc-check-name">{c.name} {c.email && <span className="cc-soyyo on" title={c.email}>🔗</span>}</span>
                               {c.alias && <span className="cc-item-sub">alias: {c.alias}</span>}

@@ -499,10 +499,11 @@ export async function getMisContactos(email: string): Promise<{ name: string; al
       UNION
       SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
     )
-    SELECT DISTINCT ON (lower(m.name)) m.name, m.alias, m.user_email AS email
+    SELECT DISTINCT ON (COALESCE(lower(m.user_email), lower(m.name)))
+      m.name, m.alias, m.user_email AS email
     FROM grupo_miembros m
     WHERE m.grupo_id IN (SELECT id FROM mis_grupos)
-    ORDER BY lower(m.name), m.id ASC
+    ORDER BY COALESCE(lower(m.user_email), lower(m.name)), (m.alias IS NULL), m.id ASC
   `
   return rows.map((r) => ({
     name: r.name as string, alias: (r.alias as string | null) ?? null,
