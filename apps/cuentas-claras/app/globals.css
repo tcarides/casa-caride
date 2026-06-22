@@ -78,6 +78,8 @@ body {
 }
 .cc-contacto-grupos .cc-item-sub { margin-bottom: 8px; word-break: break-all; }
 .cc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-reg { color: var(--success, #34c77b); margin-top: 10px; margin-bottom: 0; }
+.cc-invite-done { margin-top: 10px; }
 
 /* Cards / listas */
 .cc-card { background: var(--surface-card, #141414); border: 1px solid var(--border-subtle, #2a2a2a);

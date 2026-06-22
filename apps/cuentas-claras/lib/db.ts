@@ -548,6 +548,31 @@ export async function getContactos(email: string): Promise<{ name: string; alias
     .sort((a, b) => a.name.localeCompare(b.name, 'es'))
 }
 
+/** Asocia un email a un contacto (por nombre) en todos mis grupos. Se usa al
+ *  invitar: cuando esa persona entre con ese mismo email queda identificada
+ *  automáticamente con su contacto (sus grupos y cuentas). No pisa un email ya
+ *  puesto distinto. Devuelve la cantidad de filas vinculadas. */
+export async function linkContacto(ownerEmail: string, name: string, contactEmail: string): Promise<number> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = ownerEmail.toLowerCase()
+  const ce = contactEmail.toLowerCase()
+  const n = name.toLowerCase()
+  const rows = await sql`
+    WITH mis_grupos AS (
+      SELECT id FROM grupos WHERE lower(owner_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+    )
+    UPDATE grupo_miembros SET user_email = ${ce}
+    WHERE grupo_id IN (SELECT id FROM mis_grupos)
+      AND lower(name) = ${n}
+      AND (user_email IS NULL OR lower(user_email) = ${ce})
+    RETURNING id
+  `
+  return rows.length
+}
+
 /** Usuarios registrados con los que el solicitante comparte algún grupo
  *  (mismo grupo: como dueño o como miembro vinculado). Para no-admins, que no
  *  ven el directorio completo. Devuelve nombre + email. */
