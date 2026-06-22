@@ -189,6 +189,15 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 .bk-box .bk-t + .bk-t { border-top:1px solid var(--border-subtle); }
 .bk-box.bk-ph .bk-t { color:var(--text-hint); }
 .bk-box .bk-t.bk-resolved { font-weight:700; }
+/* Proyectado según resultados actuales (puede cambiar). */
+.bk-box .bk-t.bk-proj { color:var(--text-pri); font-style:italic; opacity:.78; }
+/* Ya clasificado (matemáticamente confirmado): otro color. */
+.bk-box .bk-t.bk-conf { color:var(--success); font-weight:700; font-style:normal; opacity:1; }
+.bk-legend { display:flex; flex-wrap:wrap; gap:12px; margin:8px 0 2px; font-size:0.66rem; color:var(--text-hint); }
+.bk-legend span { display:inline-flex; align-items:center; gap:5px; }
+.bk-legend i { width:9px; height:9px; border-radius:2px; display:inline-block; }
+.bk-legend i.proj { background:var(--text-pri); opacity:.6; }
+.bk-legend i.conf { background:var(--success); }
 .bk-box.bk-final { background:linear-gradient(135deg,#3a3000,#262000); border-color:var(--accent); }
 .bk-box.bk-final .bk-t { color:var(--accent); font-weight:800; text-align:center; }
 
@@ -549,6 +558,10 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
     <div class="bk-head">
       <p class="sec-title" style="margin-bottom:2px;">Llaves eliminatorias</p>
       <p class="bk-hint">◀ Deslizá para ver todas las rondas ▶</p>
+      <div class="bk-legend">
+        <span><i class="proj"></i> Proyectado (según resultados)</span>
+        <span><i class="conf"></i> Ya clasificado</span>
+      </div>
     </div>
     <div class="bk-wrap" id="bk-wrap">
       <div class="bk-canvas" id="bk-canvas">
@@ -786,7 +799,8 @@ async function loadStandings(){
     var data=await r.json();
     if(data.source==='live'){
       renderGroups(data.groups,data.updatedAt);
-      computeClinched(data.groups); // resuelve posiciones ya definidas en la llave
+      computeProjected(data.groups); // proyección con los resultados actuales
+      computeClinched(data.groups);  // posiciones ya confirmadas (otro color)
       renderBracket();
     }
     else showStatic('standings-updated',data.reason);
@@ -902,6 +916,30 @@ function computeClinched(groups){
     }
   }
 }
+/* Proyección con los resultados ACTUALES: 1°/2° de cada grupo según la tabla de
+   hoy y los 8 mejores terceros. Llena los slots que todavía no están confirmados,
+   para mostrar cómo va quedando la llave. */
+var BK_PROJECTED={};      // "1° A"/"2° A" → equipo (proyectado)
+var BK_THIRDS=[];         // los 8 mejores terceros, en orden, para los slots "Mejor 3°"
+function dgNum(d){ var n=parseInt(String(d).replace('+',''),10); return isNaN(n)?0:n; }
+function computeProjected(groups){
+  BK_PROJECTED={}; BK_THIRDS=[];
+  if(!groups)return;
+  function ref(t){ return {flag:t.flag,name:t.name,isArg:t.isArg}; }
+  var terceros=[];
+  for(var i=0;i<groups.length;i++){
+    var g=groups[i];
+    if(g.teams.length>=1) BK_PROJECTED["1° "+g.id]=ref(g.teams[0]);
+    if(g.teams.length>=2) BK_PROJECTED["2° "+g.id]=ref(g.teams[1]);
+    if(g.teams.length>=3){
+      var t3=g.teams[2];
+      terceros.push({flag:t3.flag,name:t3.name,isArg:t3.isArg,pts:t3.pts,dg:dgNum(t3.dg)});
+    }
+  }
+  // Mejores terceros: por puntos, luego diferencia de gol (criterio FIFA simplificado).
+  terceros.sort(function(a,b){ return (b.pts-a.pts)||(b.dg-a.dg); });
+  BK_THIRDS=terceros.slice(0,8);
+}
 function renderBracket(){
   var canvas=document.getElementById("bk-canvas");
   var svg=document.getElementById("bk-svg");
@@ -948,6 +986,7 @@ function renderBracket(){
   p.setAttribute("stroke-width","1.5");
   svg.innerHTML=""; svg.appendChild(p);
   // etiquetas de columna + cajas
+  var thirdIdx=0; // recorre BK_THIRDS a medida que aparecen slots "Mejor 3°"
   for(var rc=0;rc<counts.length;rc++){
     var x=rc*(BOXW+HGAP);
     var lbl=document.createElement("div");
@@ -967,11 +1006,22 @@ function renderBracket(){
       box.style.top=(centers[rc][b]-BOXH/2)+"px";
       for(var t=0;t<teams.length;t++){
         var raw=teams[t];
-        var res=(rc===0)?BK_RESOLVED[raw]:null; // equipo ya definido para ese puesto
-        var text=res?(res.flag+" "+res.name):raw;
-        var isArg=res?res.isArg:(raw==="1° J");
+        var conf=null, proj=null;
+        if(rc===0){
+          if(raw==="Mejor 3°"){
+            // Los mejores terceros son siempre proyección (su clasificación no
+            // se "confirma" con esta lógica simplificada).
+            proj=BK_THIRDS[thirdIdx++]||null;
+          } else {
+            conf=BK_RESOLVED[raw]||null;            // ya clasificado
+            if(!conf) proj=BK_PROJECTED[raw]||null;  // proyectado según hoy
+          }
+        }
+        var team=conf||proj;
+        var text=team?(team.flag+" "+team.name):raw;
+        var isArg=team?team.isArg:(raw==="1° J");
         var sp=document.createElement("span");
-        sp.className="bk-t"+(isArg?" bk-arg":"")+(res?" bk-resolved":"");
+        sp.className="bk-t"+(isArg?" bk-arg":"")+(conf?" bk-resolved bk-conf":(proj?" bk-proj":""));
         if(isArg){sp.style.color="var(--app-fixture)";sp.style.fontWeight="700";}
         sp.textContent=text;
         box.appendChild(sp);
