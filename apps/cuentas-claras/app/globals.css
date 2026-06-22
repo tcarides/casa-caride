@@ -132,6 +132,9 @@ body {
 .cc-estbadge.listo { color: var(--success, #34c77b); background: var(--success-soft, rgba(52,199,123,.14)); }
 .cc-estbadge.sin { color: var(--text-sec); background: var(--surface-input); }
 .cc-estado { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+/* Participante ya resuelto (cargó / no gastó): se atenúa y baja al final. */
+.cc-item-done { opacity: .5; }
+.cc-estado-done { color: var(--text-hint); }
 .cc-chip { font-size: 0.72rem; font-weight: 700; cursor: pointer; text-decoration: none;
   border: 1px solid var(--border-subtle, #2a2a2a); background: var(--surface-input, #1e1e1e);
   color: var(--text-sec); border-radius: 999px; padding: 4px 10px; font-family: inherit; }
