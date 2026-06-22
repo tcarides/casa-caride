@@ -499,15 +499,78 @@ export async function getMisContactos(email: string): Promise<{ name: string; al
       UNION
       SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
     )
-    SELECT DISTINCT ON (lower(m.name)) m.name, m.alias, m.user_email AS email
+    SELECT DISTINCT ON (COALESCE(lower(m.user_email), lower(m.name)))
+      m.name, m.alias, m.user_email AS email
     FROM grupo_miembros m
     WHERE m.grupo_id IN (SELECT id FROM mis_grupos)
-    ORDER BY lower(m.name), m.id ASC
+    ORDER BY COALESCE(lower(m.user_email), lower(m.name)), (m.alias IS NULL), m.id ASC
   `
   return rows.map((r) => ({
     name: r.name as string, alias: (r.alias as string | null) ?? null,
     email: (r.email as string | null) ?? null,
   }))
+}
+
+/** Todos mis contactos (deduplicados por email||nombre) junto con la lista de
+ *  grupos donde figura cada uno. Para la vista "Contactos". */
+export async function getContactos(email: string): Promise<{ name: string; alias: string | null; email: string | null; grupos: string[] }[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  const rows = await sql`
+    WITH mis_grupos AS (
+      SELECT id FROM grupos WHERE lower(owner_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+    ),
+    raw AS (
+      SELECT
+        COALESCE(lower(m.user_email), lower(m.name)) AS k,
+        m.name, m.alias, m.user_email AS email, g.name AS grupo, m.id
+      FROM grupo_miembros m
+      JOIN grupos g ON g.id = m.grupo_id
+      WHERE m.grupo_id IN (SELECT id FROM mis_grupos)
+    )
+    SELECT k,
+      (array_agg(name ORDER BY (alias IS NULL), id))[1] AS name,
+      (array_agg(alias ORDER BY (alias IS NULL), id))[1] AS alias,
+      (array_agg(email ORDER BY (email IS NULL), id))[1] AS email,
+      array_agg(DISTINCT grupo) AS grupos
+    FROM raw
+    GROUP BY k
+  `
+  return rows
+    .map((r) => ({
+      name: r.name as string, alias: (r.alias as string | null) ?? null,
+      email: (r.email as string | null) ?? null,
+      grupos: ((r.grupos as string[]) ?? []).slice().sort((a, b) => a.localeCompare(b, 'es')),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+/** Asocia un email a un contacto (por nombre) en todos mis grupos. Se usa al
+ *  invitar: cuando esa persona entre con ese mismo email queda identificada
+ *  automáticamente con su contacto (sus grupos y cuentas). No pisa un email ya
+ *  puesto distinto. Devuelve la cantidad de filas vinculadas. */
+export async function linkContacto(ownerEmail: string, name: string, contactEmail: string): Promise<number> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = ownerEmail.toLowerCase()
+  const ce = contactEmail.toLowerCase()
+  const n = name.toLowerCase()
+  const rows = await sql`
+    WITH mis_grupos AS (
+      SELECT id FROM grupos WHERE lower(owner_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+    )
+    UPDATE grupo_miembros SET user_email = ${ce}
+    WHERE grupo_id IN (SELECT id FROM mis_grupos)
+      AND lower(name) = ${n}
+      AND (user_email IS NULL OR lower(user_email) = ${ce})
+    RETURNING id
+  `
+  return rows.length
 }
 
 /** Usuarios registrados con los que el solicitante comparte algún grupo

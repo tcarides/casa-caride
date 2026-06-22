@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
-import { listContactos } from '@/lib/db'
+import { currentEmail } from '@/lib/identity'
+import { getContactos } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+// Todos mis contactos con los grupos donde figura cada uno (vista Contactos).
 export async function GET() {
-  const denied = await requireSession()
-  if (denied) return denied
-  return NextResponse.json(await listContactos())
+  const email = await currentEmail()
+  if (!email) return NextResponse.json([])
+  return NextResponse.json(await getContactos(email))
 }
