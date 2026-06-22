@@ -6,10 +6,18 @@ interface Cuenta {
   name: string
   status: 'abierta' | 'cerrada'
   ownerEmail: string | null
+  fecha: string | null
   createdAt: string
 }
 
 const API = '/cuentas-claras/api'
+// 'YYYY-MM-DD' → "viernes 27 de junio" (sin la coma que mete es-AR).
+function fmtFecha(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d)
+    .toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace(',', '')
+}
 
 export default function Home() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([])
@@ -103,7 +111,10 @@ function CuentaRow({ c, myEmail }: { c: Cuenta; myEmail: string | null }) {
   const compartida = !!c.ownerEmail && !!myEmail && c.ownerEmail.toLowerCase() !== myEmail
   return (
     <a className="cc-row" href={`/cuentas-claras/cuenta/${c.id}`}>
-      <span className="cc-row-name">{c.name}</span>
+      <span className="cc-row-info">
+        <span className="cc-row-name">{c.name}</span>
+        {c.fecha && <span className="cc-row-fecha">📅 {fmtFecha(c.fecha)}</span>}
+      </span>
       <span className="cc-row-tags">
         {compartida && <span className="cc-badge compartida">compartida</span>}
         <span className={'cc-badge' + (c.status === 'cerrada' ? ' cerrada' : '')}>
