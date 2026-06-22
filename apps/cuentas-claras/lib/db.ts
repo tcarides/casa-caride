@@ -125,10 +125,24 @@ export async function ensureSchema(): Promise<void> {
 }
 
 // ── Cuentas ──
-export async function listCuentas(): Promise<Cuenta[]> {
+// Cada uno ve lo suyo: las cuentas que creó (owner_email) o donde figura como
+// participante vinculado a su email. Las legacy sin dueño (owner_email NULL)
+// quedan visibles para todos para no perder datos viejos.
+export async function listCuentas(email: string | null): Promise<Cuenta[]> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, name, status, owner_email, created_at, closed_at FROM cuentas ORDER BY created_at DESC`
+  const e = email?.toLowerCase() ?? null
+  const rows = await sql`
+    SELECT id, name, status, owner_email, created_at, closed_at
+    FROM cuentas c
+    WHERE c.owner_email IS NULL
+       OR lower(c.owner_email) = ${e}
+       OR EXISTS (
+            SELECT 1 FROM participantes p
+            WHERE p.cuenta_id = c.id AND lower(p.user_email) = ${e}
+          )
+    ORDER BY created_at DESC
+  `
   return rows.map((r) => ({
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
     ownerEmail: (r.owner_email as string | null) ?? null,
@@ -201,6 +215,27 @@ export async function setEstadoCarga(id: number, estado: EstadoCarga): Promise<v
   await ensureSchema()
   const sql = getSql()
   await sql`UPDATE participantes SET estado_carga = ${estado} WHERE id = ${id}`
+}
+
+/** "Este soy yo": vincula un participante a mi email para que la cuenta me
+ *  aparezca. Un solo participante por usuario en cada cuenta (libera otros). */
+export async function claimParticipante(id: number, email: string): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  await sql`
+    UPDATE participantes SET user_email = NULL
+    WHERE lower(user_email) = ${e}
+      AND cuenta_id = (SELECT cuenta_id FROM participantes WHERE id = ${id})
+  `
+  await sql`UPDATE participantes SET user_email = ${e} WHERE id = ${id}`
+}
+
+/** "No soy yo": suelta el vínculo (solo el dueño del vínculo puede soltarlo). */
+export async function unclaimParticipante(id: number, email: string): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`UPDATE participantes SET user_email = NULL WHERE id = ${id} AND lower(user_email) = ${email.toLowerCase()}`
 }
 
 /** Cuántos participantes siguen en "pendiente" (no se puede cerrar si > 0). */

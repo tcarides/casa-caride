@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateParticipante, deleteParticipante, setEstadoCarga, type EstadoCarga } from '@/lib/db'
+import { updateParticipante, deleteParticipante, setEstadoCarga, claimParticipante, unclaimParticipante, type EstadoCarga } from '@/lib/db'
+import { currentEmail } from '@/lib/identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +10,16 @@ const ESTADOS: EstadoCarga[] = ['pendiente', 'listo', 'sin_gastos']
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const id = Number((await params).id)
-  const b = (await req.json().catch(() => ({}))) as { name?: string; alias?: string; estado?: string }
+  const b = (await req.json().catch(() => ({}))) as { name?: string; alias?: string; estado?: string; claim?: boolean }
+
+  // "Este soy yo" / "no soy yo": vincula o suelta el participante a mi sesión.
+  if (b.claim !== undefined) {
+    const email = await currentEmail()
+    if (!email) return NextResponse.json({ error: 'sin sesión' }, { status: 401 })
+    if (b.claim) await claimParticipante(id, email)
+    else await unclaimParticipante(id, email)
+    return NextResponse.json({ ok: true })
+  }
 
   // Cambio de estado de carga (toggle desde la lista de participantes).
   if (b.estado !== undefined) {

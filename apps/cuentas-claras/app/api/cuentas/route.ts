@@ -5,7 +5,7 @@ import { currentEmail } from '@/lib/identity'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  return NextResponse.json(await listCuentas())
+  return NextResponse.json(await listCuentas(await currentEmail()))
 }
 
 export async function POST(req: NextRequest) {

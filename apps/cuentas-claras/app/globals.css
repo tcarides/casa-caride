@@ -52,6 +52,10 @@ body {
 .cc-badge { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
   color: var(--cc); background: color-mix(in oklab, var(--cc) 14%, transparent); padding: 3px 9px; border-radius: 999px; }
 .cc-badge.cerrada { color: var(--text-sec); background: var(--surface-input); }
+.cc-badge.compartida { color: var(--warning, #ff9500); background: var(--warning-soft, rgba(255,149,0,.14)); }
+.cc-row-tags { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.cc-hint { text-align: center; color: var(--text-hint, #5a5a56); font-size: 0.78rem;
+  line-height: 1.5; padding: 16px 8px 4px; }
 
 /* Cards / listas */
 .cc-card { background: var(--surface-card, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
@@ -94,6 +98,12 @@ body {
   border: 1px solid var(--border-subtle, #2a2a2a); background: var(--surface-input, #1e1e1e);
   color: var(--text-sec); border-radius: 999px; padding: 4px 10px; font-family: inherit; }
 .cc-chip.on { background: var(--cc); border-color: var(--cc); color: var(--on-accent, #0a0a0a); }
+/* "soy yo": vincula el participante a tu sesión para verlo en tu lista. */
+.cc-soyyo { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+  cursor: pointer; vertical-align: middle; margin-left: 6px; padding: 2px 7px; border-radius: 999px;
+  font-family: inherit; border: 1px solid var(--border-subtle, #2a2a2a);
+  background: var(--surface-input, #1e1e1e); color: var(--text-hint); }
+.cc-soyyo.on { background: var(--cc); border-color: var(--cc); color: var(--on-accent, #0a0a0a); }
 .cc-aviso { font-size: 0.82rem; color: var(--warning, #ff9500);
   background: var(--warning-soft, rgba(255,149,0,.14)); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
 

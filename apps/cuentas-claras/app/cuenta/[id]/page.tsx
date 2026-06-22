@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
 type EstadoCarga = 'pendiente' | 'listo' | 'sin_gastos'
-interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga }
+interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga; userEmail: string | null }
 interface Gasto { id: number; descripcion: string; monto: number; pagadorId: number; comprobanteUrl: string | null }
 interface Liquidacion { id: number; fromId: number; toId: number; monto: number; pagado: boolean }
 interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada' }
@@ -19,6 +19,7 @@ export default function CuentaPage() {
   const { id } = useParams<{ id: string }>()
   const [d, setD] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [me, setMe] = useState<{ email: string; name: string } | null>(null)
 
   // forms
   const [pName, setPName] = useState('')
@@ -47,6 +48,7 @@ export default function CuentaPage() {
   useEffect(() => {
     fetch(`${API}/contactos`).then((r) => r.ok ? r.json() : []).then(setContactos).catch(() => {})
     fetch(`${API}/grupos`).then((r) => r.ok ? r.json() : []).then(setGrupos).catch(() => {})
+    fetch(`${API}/me`).then((r) => r.ok ? r.json() : null).then(setMe).catch(() => {})
   }, [])
 
   // Default del pagador: el primer participante (evita un click por gasto).
@@ -63,6 +65,8 @@ export default function CuentaPage() {
   const porCabeza = participantes.length ? total / participantes.length : 0
   const nameOf = (pid: number) => participantes.find((p) => p.id === pid)?.name ?? '?'
   const aliasOf = (pid: number) => participantes.find((p) => p.id === pid)?.alias ?? null
+  const myEmail = me?.email?.toLowerCase() ?? null
+  const isMe = (p: Participante) => !!myEmail && p.userEmail?.toLowerCase() === myEmail
 
   async function addParticipante(e: React.FormEvent) {
     e.preventDefault()
@@ -99,6 +103,21 @@ export default function CuentaPage() {
     const r = await fetch(`${API}/participantes/${p.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: p.name, alias }),
+    })
+    if (!r.ok) await load()
+  }
+  async function toggleSoyYo(p: Participante) {
+    if (!myEmail) return
+    const claim = p.userEmail?.toLowerCase() !== myEmail
+    // Optimista: me asigno a este y libero cualquier otro que tuviera mi email.
+    setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((x) => {
+      if (x.id === p.id) return { ...x, userEmail: claim ? (me?.email ?? null) : null }
+      if (claim && x.userEmail?.toLowerCase() === myEmail) return { ...x, userEmail: null }
+      return x
+    }) } : prev)
+    const r = await fetch(`${API}/participantes/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claim }),
     })
     if (!r.ok) await load()
   }
@@ -222,7 +241,18 @@ export default function CuentaPage() {
             return (
               <li key={p.id} className="cc-item">
                 <div className="cc-item-main">
-                  <span className="cc-item-name">{p.name} <EstadoBadge estado={p.estado} /></span>
+                  <span className="cc-item-name">
+                    {p.name} <EstadoBadge estado={p.estado} />
+                    {me && (
+                      <button
+                        className={'cc-soyyo' + (isMe(p) ? ' on' : '')}
+                        onClick={() => toggleSoyYo(p)}
+                        title={isMe(p) ? 'Sos vos (tocá para soltar)' : 'Marcar que este sos vos para ver la cuenta en tu lista'}
+                      >
+                        {isMe(p) ? '★ vos' : 'soy yo'}
+                      </button>
+                    )}
+                  </span>
                   <span className="cc-item-sub">{p.alias ? `alias: ${p.alias}` : 'sin alias'}</span>
                   {abierta && (
                     <div className="cc-estado">
