@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -7,6 +8,8 @@ export const dynamic = 'force-dynamic'
 //  - trip:    termina la compra → desmarca todo (needed=false, checked=false)
 //  - checked: solo destilda lo comprado, manteniendo la lista
 export async function POST(request: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   await ensureSchema()
   const sql = getSql()
   const body = (await request.json().catch(() => ({}))) as { scope?: string }

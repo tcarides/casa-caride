@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/state → todo el estado de la app en una sola consulta.
 export async function GET() {
+  const denied = await requireSession()
+  if (denied) return denied
   await ensureSchema()
   const sql = getSql()
   const categories = await sql`

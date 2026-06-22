@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { get } from '@vercel/blob'
 import { getEstudioBlob } from '@/lib/db'
 
@@ -9,6 +10,8 @@ export const runtime = 'nodejs'
 // servidor) y lo devuelve al cliente. Así los archivos médicos no quedan en
 // una URL pública.
 export async function GET(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const id = Number(new URL(req.url).searchParams.get('id'))
   if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
 

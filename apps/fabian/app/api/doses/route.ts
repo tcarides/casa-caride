@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getDoses, setDose } from '@/lib/db'
 import type { Slot, Caretaker } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const { searchParams } = new URL(req.url)
   const today = new Date().toISOString().slice(0, 10)
   const from = searchParams.get('from') ?? today
@@ -18,6 +21,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   const body = await req.json() as { date?: string; slot?: Slot; user?: Caretaker; given?: boolean }
   const { date, slot, user, given } = body
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { updateParticipante, deleteParticipante, setEstadoCarga, claimParticipante, unclaimParticipante, type EstadoCarga } from '@/lib/db'
 import { currentEmail } from '@/lib/identity'
 
@@ -9,6 +10,8 @@ type Params = { params: Promise<{ id: string }> }
 const ESTADOS: EstadoCarga[] = ['pendiente', 'listo', 'sin_gastos']
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const denied = await requireSession()
+  if (denied) return denied
   const id = Number((await params).id)
   const b = (await req.json().catch(() => ({}))) as { name?: string; alias?: string; estado?: string; claim?: boolean }
 
@@ -37,6 +40,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
+  const denied = await requireSession()
+  if (denied) return denied
   await deleteParticipante(Number((await params).id))
   return NextResponse.json({ ok: true })
 }

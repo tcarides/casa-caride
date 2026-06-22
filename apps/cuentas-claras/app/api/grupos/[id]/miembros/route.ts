@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { grupoOwner, addMiembro } from '@/lib/db'
 import { currentEmail } from '@/lib/identity'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSession()
+  if (denied) return denied
   const grupoId = Number((await params).id)
   if ((await grupoOwner(grupoId)) !== (await currentEmail())) {
     return NextResponse.json({ error: 'sin acceso' }, { status: 403 })

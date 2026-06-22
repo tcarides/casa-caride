@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 
 export const dynamic = 'force-dynamic'
@@ -7,6 +8,8 @@ export const dynamic = 'force-dynamic'
 // (client-upload, soporta archivos grandes sin el límite de payload de las
 // funciones). La metadata se guarda después con POST /api/estudios.
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const denied = await requireSession()
+  if (denied) return denied
   const body = (await req.json()) as HandleUploadBody
   try {
     const result = await handleUpload({

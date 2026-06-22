@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -13,6 +14,8 @@ interface ItemBody {
 
 // POST /api/items  { name, categoryId?, needed? }  → agrega un producto al catálogo
 export async function POST(request: NextRequest) {
+  const denied = await requireSession()
+  if (denied) return denied
   await ensureSchema()
   const sql = getSql()
   const body = (await request.json().catch(() => ({}))) as ItemBody

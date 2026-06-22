@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/guard'
 import { addParticipante } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSession()
+  if (denied) return denied
   const cuentaId = Number((await params).id)
   const b = (await req.json().catch(() => ({}))) as { name?: string; alias?: string; userEmail?: string }
   const name = (b.name ?? '').trim().slice(0, 60)
