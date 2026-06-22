@@ -47,6 +47,7 @@ export default auth(async (req) => {
 })
 
 export const config = {
+  // matcher: home, apps públicas y resto de rutas (excluye auth, login, assets).
   matcher: [
     '/((?!api/auth|login|invite|_next/static|_next/image|ds/|sw\\.js|manifest\\.webmanifest|icon-|apple-touch|favicon).*)',
   ],
