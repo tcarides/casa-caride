@@ -511,6 +511,43 @@ export async function getMisContactos(email: string): Promise<{ name: string; al
   }))
 }
 
+/** Todos mis contactos (deduplicados por email||nombre) junto con la lista de
+ *  grupos donde figura cada uno. Para la vista "Contactos". */
+export async function getContactos(email: string): Promise<{ name: string; alias: string | null; email: string | null; grupos: string[] }[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  const rows = await sql`
+    WITH mis_grupos AS (
+      SELECT id FROM grupos WHERE lower(owner_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+    ),
+    raw AS (
+      SELECT
+        COALESCE(lower(m.user_email), lower(m.name)) AS k,
+        m.name, m.alias, m.user_email AS email, g.name AS grupo, m.id
+      FROM grupo_miembros m
+      JOIN grupos g ON g.id = m.grupo_id
+      WHERE m.grupo_id IN (SELECT id FROM mis_grupos)
+    )
+    SELECT k,
+      (array_agg(name ORDER BY (alias IS NULL), id))[1] AS name,
+      (array_agg(alias ORDER BY (alias IS NULL), id))[1] AS alias,
+      (array_agg(email ORDER BY (email IS NULL), id))[1] AS email,
+      array_agg(DISTINCT grupo) AS grupos
+    FROM raw
+    GROUP BY k
+  `
+  return rows
+    .map((r) => ({
+      name: r.name as string, alias: (r.alias as string | null) ?? null,
+      email: (r.email as string | null) ?? null,
+      grupos: ((r.grupos as string[]) ?? []).slice().sort((a, b) => a.localeCompare(b, 'es')),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
 /** Usuarios registrados con los que el solicitante comparte algún grupo
  *  (mismo grupo: como dueño o como miembro vinculado). Para no-admins, que no
  *  ven el directorio completo. Devuelve nombre + email. */
