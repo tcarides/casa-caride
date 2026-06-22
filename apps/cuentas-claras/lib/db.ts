@@ -460,6 +460,16 @@ export async function addMiembro(grupoId: number, name: string, alias: string | 
   if (userEmail && effAlias) await setUserAlias(userEmail, effAlias)
 }
 
+export async function updateMiembro(id: number, name: string, alias: string | null, userEmail: string | null = null): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  let effAlias = alias
+  if (userEmail && !effAlias) effAlias = await getUserAlias(userEmail)
+  await sql`UPDATE grupo_miembros SET name = ${name}, alias = ${effAlias}, user_email = ${userEmail} WHERE id = ${id}`
+  if (effAlias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${effAlias}) ON CONFLICT (name) DO UPDATE SET alias = ${effAlias}`
+  if (userEmail && effAlias) await setUserAlias(userEmail, effAlias)
+}
+
 /** Mis contactos para sumar a una cuenta: miembros (distintos por nombre) de
  *  los grupos donde soy dueño o miembro vinculado. Incluye registrados y de
  *  texto libre; los registrados traen su email (para vincularse al importar). */
@@ -510,7 +520,15 @@ export async function getCoGroupUsers(email: string): Promise<{ name: string; em
 export async function deleteMiembro(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()
+  const rows = await sql`SELECT name FROM grupo_miembros WHERE id = ${id}`
+  const name = rows.length ? (rows[0].name as string) : null
   await sql`DELETE FROM grupo_miembros WHERE id = ${id}`
+  // Si ese nombre ya no figura en ningún grupo, lo sacamos de la libreta de
+  // alias para que deje de sugerirse (ej. un nombre tipeado mal y borrado).
+  if (name) {
+    const others = await sql`SELECT 1 FROM grupo_miembros WHERE lower(name) = ${name.toLowerCase()} LIMIT 1`
+    if (!others.length) await sql`DELETE FROM contactos WHERE lower(name) = ${name.toLowerCase()}`
+  }
 }
 
 export async function miembroGrupo(id: number): Promise<number | undefined> {
