@@ -22,17 +22,36 @@ export function useProperties() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<UserId | null>(null)
+  const [fromSession, setFromSession] = useState(false)
   const [userInitialized, setUserInitialized] = useState(false)
   const [viewMode, setViewModeState] = useState<ViewMode>('comfortable')
   const [lightbox, setLightbox] = useState<Lightbox | null>(null)
 
-  // Carga inicial de usuario y modo de vista desde localStorage.
+  // Identidad: la derivamos de la sesión de Google (vía el shell). Si el usuario
+  // no tiene mapeo ('tomi'/'flori'), caemos al selector manual como respaldo.
+  // El modo de vista sigue en localStorage (preferencia por dispositivo).
   useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(USER_STORAGE_KEY) : null
-    if (saved === 'tomi' || saved === 'flori') setCurrentUser(saved)
     const v = typeof window !== 'undefined' ? localStorage.getItem(VIEW_STORAGE_KEY) : null
     if (v === 'compact' || v === 'comfortable') setViewModeState(v)
-    setUserInitialized(true)
+
+    const fallbackToLocal = () => {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(USER_STORAGE_KEY) : null
+      if (saved === 'tomi' || saved === 'flori') setCurrentUser(saved)
+    }
+
+    apiFetch('/api/me')
+      .then(r => (r.ok ? r.json() : null))
+      .then((me: { userId?: string | null } | null) => {
+        const uid = me?.userId
+        if (uid === 'tomi' || uid === 'flori') {
+          setCurrentUser(uid)
+          setFromSession(true)
+        } else {
+          fallbackToLocal()
+        }
+      })
+      .catch(fallbackToLocal)
+      .finally(() => setUserInitialized(true))
   }, [])
 
   const setViewMode = useCallback((v: ViewMode) => {
@@ -131,7 +150,7 @@ export function useProperties() {
   return {
     allProperties, setAllProperties,
     loading, loadError, loadProperties,
-    currentUser, userInitialized, selectUser, switchUser,
+    currentUser, fromSession, userInitialized, selectUser, switchUser,
     viewMode, setViewMode,
     lightbox, setLightbox, openPhotos,
     handleStatusChange, handleNotesChange, handleDiscontinuedChange,

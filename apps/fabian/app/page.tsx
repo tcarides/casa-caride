@@ -47,16 +47,33 @@ const SLOTS: { slot: Slot; label: string; time: string; icon: string }[] = [
 
 export default function FabianPage() {
   const [user, setUser]         = useState<Caretaker | null>(null)
+  const [fromSession, setFromSession] = useState(false)
   const [userReady, setReady]   = useState(false)
   const [doses, setDoses]       = useState<Dose[]>([])
   const [saving, setSaving]     = useState<string | null>(null)
   const [notifState, setNotif]  = useState<'unsupported' | 'off' | 'on' | 'busy'>('unsupported')
   const [testSent, setTestSent] = useState(false)
 
+  // Identidad desde la sesión de Google (vía el shell). Si el usuario no tiene
+  // mapeo ('tomi'/'flori'), caemos al selector manual como respaldo.
   useEffect(() => {
-    const v = localStorage.getItem(USER_KEY)
-    if (v === 'tomi' || v === 'flori') setUser(v)
-    setReady(true)
+    const fallbackToLocal = () => {
+      const v = localStorage.getItem(USER_KEY)
+      if (v === 'tomi' || v === 'flori') setUser(v)
+    }
+    fetch('/fabian/api/me')
+      .then(r => (r.ok ? r.json() : null))
+      .then((me: { userId?: string | null } | null) => {
+        const uid = me?.userId
+        if (uid === 'tomi' || uid === 'flori') {
+          setUser(uid)
+          setFromSession(true)
+        } else {
+          fallbackToLocal()
+        }
+      })
+      .catch(fallbackToLocal)
+      .finally(() => setReady(true))
   }, [])
 
   useEffect(() => {
@@ -203,13 +220,20 @@ export default function FabianPage() {
               {notifState === 'on' ? '🔔' : '🔕'}
             </button>
           )}
-          <button
-            className="fab-user-btn"
-            onClick={() => { localStorage.removeItem(USER_KEY); setUser(null) }}
-            title="Cambiar usuario"
-          >
-            {NAMES[user]}
-          </button>
+          {fromSession ? (
+            // Identidad de la sesión de Google: badge estático (no se cambia acá).
+            <span className="fab-user-btn" title="Sesión de Google">
+              {NAMES[user]}
+            </span>
+          ) : (
+            <button
+              className="fab-user-btn"
+              onClick={() => { localStorage.removeItem(USER_KEY); setUser(null) }}
+              title="Cambiar usuario"
+            >
+              {NAMES[user]}
+            </button>
+          )}
         </div>
       </header>
 
