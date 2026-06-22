@@ -48,7 +48,9 @@ body {
   background: var(--surface-card, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
   border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; text-decoration: none; color: inherit;
 }
+.cc-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cc-row-name { font-weight: 700; }
+.cc-row-fecha { font-size: 0.72rem; color: var(--text-hint); text-transform: capitalize; }
 .cc-badge { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
   color: var(--cc); background: color-mix(in oklab, var(--cc) 14%, transparent); padding: 3px 9px; border-radius: 999px; }
 .cc-badge.cerrada { color: var(--text-sec); background: var(--surface-input); }
