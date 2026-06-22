@@ -6,7 +6,9 @@ import { NextRequest, NextResponse } from 'next/server'
 // la cookie llega reenviada por el shell → pasa. Directo (sin cookie):
 //  - /api/* → 401 (no exponemos datos a llamadas sin sesión).
 //  - resto  → redirect al shell (que pide login o reenvía la cookie).
-const CANONICAL = 'https://casa-caride.vercel.app/cuentas-claras'
+// El cron (api/cron) se excluye del matcher: se autentica con CRON_SECRET, no
+// con cookie de sesión.
+const CANONICAL = 'https://casa-caride.vercel.app/fabian'
 
 export function middleware(req: NextRequest) {
   const hasSession =
@@ -20,5 +22,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api/cron|_next/static|_next/image|favicon.ico).*)'],
 }

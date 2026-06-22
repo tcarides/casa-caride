@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // la cookie llega reenviada por el shell → pasa. Directo (sin cookie):
 //  - /api/* → 401 (no exponemos datos a llamadas sin sesión).
 //  - resto  → redirect al shell (que pide login o reenvía la cookie).
-const CANONICAL = 'https://casa-caride.vercel.app/cuentas-claras'
+const CANONICAL = 'https://casa-caride.vercel.app/casas'
 
 export function middleware(req: NextRequest) {
   const hasSession =
