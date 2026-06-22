@@ -7,6 +7,7 @@ interface Cuenta {
   status: 'abierta' | 'cerrada'
   ownerEmail: string | null
   fecha: string | null
+  saldada: boolean
   createdAt: string
 }
 
@@ -117,9 +118,13 @@ function CuentaRow({ c, myEmail }: { c: Cuenta; myEmail: string | null }) {
       </span>
       <span className="cc-row-tags">
         {compartida && <span className="cc-badge compartida">compartida</span>}
-        <span className={'cc-badge' + (c.status === 'cerrada' ? ' cerrada' : '')}>
-          {c.status === 'cerrada' ? 'cerrada' : 'abierta'}
-        </span>
+        {c.status === 'cerrada' && c.saldada ? (
+          <span className="cc-badge saldada">saldada</span>
+        ) : (
+          <span className={'cc-badge' + (c.status === 'cerrada' ? ' cerrada' : '')}>
+            {c.status === 'cerrada' ? 'cerrada' : 'abierta'}
+          </span>
+        )}
       </span>
     </a>
   )

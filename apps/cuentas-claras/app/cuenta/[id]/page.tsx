@@ -4,10 +4,10 @@ import { useParams } from 'next/navigation'
 import { upload } from '@vercel/blob/client'
 
 type EstadoCarga = 'pendiente' | 'listo' | 'sin_gastos'
-interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga; userEmail: string | null }
+interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga; userEmail: string | null; origen: 'cuenta' | 'grupo' }
 interface Gasto { id: number; descripcion: string; monto: number; pagadorId: number; comprobanteUrl: string | null }
 interface Liquidacion { id: number; fromId: number; toId: number; monto: number; pagado: boolean }
-interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada'; fecha: string | null }
+interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada'; fecha: string | null; saldada: boolean }
 interface Detail { cuenta: Cuenta; participantes: Participante[]; gastos: Gasto[]; liquidaciones: Liquidacion[] }
 interface Contacto { name: string; alias: string | null; email: string | null }
 
@@ -152,7 +152,7 @@ export default function CuentaPage() {
     for (const c of elegidos) {
       await fetch(`${API}/cuentas/${id}/participantes`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: c.name, alias: c.alias ?? '', userEmail: c.email ?? undefined }),
+        body: JSON.stringify({ name: c.name, alias: c.alias ?? '', userEmail: c.email ?? undefined, origen: 'grupo' }),
       })
     }
     setChecked({}); setShowContactos(false); await load()
@@ -163,9 +163,10 @@ export default function CuentaPage() {
     if (!r.ok) await load()
   }
   async function editAlias(p: Participante) {
-    // Si está vinculado a un usuario, el alias se gestiona desde el grupo (item 6).
-    if (p.userEmail) {
-      alert(`El alias de ${p.name} está vinculado a su usuario y se edita desde Grupos, no acá.`)
+    // El alias solo se edita acá si la persona se agregó en esta cuenta.
+    // Si vino de un grupo, se gestiona desde Grupos.
+    if (p.origen === 'grupo') {
+      alert(`${p.name} se agregó desde un grupo: su alias se edita en Grupos, no acá.`)
       return
     }
     const alias = prompt(`Alias / CBU de ${p.name} (para transferirle):`, p.alias ?? '')
@@ -250,6 +251,12 @@ export default function CuentaPage() {
     if (!r.ok) await load()
   }
   async function setEstado(pid: number, estado: EstadoCarga) {
+    // No se puede marcar "Cargó" si la persona no tiene ningún gasto en la lista.
+    if (estado === 'listo' && !gastos.some((g) => g.pagadorId === pid)) {
+      const p = participantes.find((x) => x.id === pid)
+      alert(`${p?.name ?? 'Esta persona'} todavía no tiene ningún gasto cargado.\nCargá su gasto primero, o marcá "No gastó".`)
+      return
+    }
     setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((p) => p.id === pid ? { ...p, estado } : p) } : prev)
     const r = await fetch(`${API}/participantes/${pid}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -282,6 +289,16 @@ export default function CuentaPage() {
     const r = await fetch(`${API}/cuentas/${id}`, { method: 'DELETE' })
     if (r.ok) window.location.href = '/cuentas-claras'
   }
+  function compartirDeudas() {
+    if (!liquidaciones.length) return
+    const titulo = `*Cuentas Claras — ${cuenta.name}*${cuenta.fecha ? ` (${fmtFecha(cuenta.fecha)})` : ''}`
+    const lineas = liquidacionesOrden.map((l) => {
+      const alias = aliasOf(l.toId)
+      return `• ${nameOf(l.fromId)} → ${nameOf(l.toId)}: ${money(l.monto)}${alias ? ` (alias: ${alias})` : ''}${l.pagado ? ' ✅' : ''}`
+    })
+    const msg = `${titulo}\nQuién le debe a quién:\n${lineas.join('\n')}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+  }
   async function togglePagado(l: Liquidacion) {
     setD((prev) => prev ? { ...prev, liquidaciones: prev.liquidaciones.map((x) => x.id === l.id ? { ...x, pagado: !x.pagado } : x) } : prev)
     const r = await fetch(`${API}/liquidaciones/${l.id}`, {
@@ -296,7 +313,7 @@ export default function CuentaPage() {
       <header className="cc-header">
         <div className="cc-title">
           <div><h1>{cuenta.name}</h1>
-            <p>{abierta ? 'Abierta' : 'Cerrada'} · {money(total)} en {gastos.length} gasto{gastos.length === 1 ? '' : 's'}</p>
+            <p>{abierta ? 'Abierta' : cuenta.saldada ? '✓ Saldada' : 'Cerrada'} · {money(total)} en {gastos.length} gasto{gastos.length === 1 ? '' : 's'}</p>
             <div className="cc-fecha">
               {editFecha ? (
                 <input className="cc-input cc-fecha-input" type="date" autoFocus
@@ -357,11 +374,12 @@ export default function CuentaPage() {
                     </div>
                   )}
                 </div>
-                <button className="cc-mini" onClick={() => editAlias(p)}
-                  aria-label="Editar alias"
-                  title={p.userEmail ? 'Alias gestionado desde el grupo' : 'Editar alias'}>
-                  {p.userEmail ? '🔒' : '✎'}
-                </button>
+                {p.origen === 'cuenta' && (
+                  <button className="cc-mini" onClick={() => editAlias(p)}
+                    aria-label="Editar alias" title="Editar alias">
+                    ✎
+                  </button>
+                )}
                 {abierta && <button className="cc-mini" onClick={() => delParticipante(p.id)} aria-label="Quitar">✕</button>}
               </li>
             )
@@ -526,6 +544,11 @@ export default function CuentaPage() {
                 )
               })}
             </ul>
+          )}
+          {liquidaciones.length > 0 && (
+            <button className="cc-btn cc-btn-block cc-share" onClick={compartirDeudas}>
+              📲 Compartir todas las deudas
+            </button>
           )}
           <button className="cc-btn cc-ghost cc-btn-block" onClick={reabrir}>Reabrir cuenta</button>
         </section>

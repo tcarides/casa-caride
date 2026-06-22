@@ -55,6 +55,8 @@ body {
   color: var(--cc); background: color-mix(in oklab, var(--cc) 14%, transparent); padding: 3px 9px; border-radius: 999px; }
 .cc-badge.cerrada { color: var(--text-sec); background: var(--surface-input); }
 .cc-badge.compartida { color: var(--warning, #ff9500); background: var(--warning-soft, rgba(255,149,0,.14)); }
+.cc-badge.saldada { color: var(--success, #34c77b); background: var(--success-soft, rgba(52,199,123,.14)); }
+.cc-share { background: var(--success, #34c77b); color: #06210f; }
 .cc-row-tags { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .cc-hint { text-align: center; color: var(--text-hint, #5a5a56); font-size: 0.78rem;
   line-height: 1.5; padding: 16px 8px 4px; }
