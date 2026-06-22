@@ -121,6 +121,9 @@ export async function ensureSchema(): Promise<void> {
       alias TEXT
     )
   `
+  // Vínculo opcional a un usuario registrado de Casa Caride: al importar el
+  // grupo, el participante queda asociado a su email (ve la cuenta sin "soy yo").
+  await sql`ALTER TABLE grupo_miembros ADD COLUMN IF NOT EXISTS user_email TEXT`
   schemaReady = true
 }
 
@@ -342,7 +345,7 @@ export async function listContactos(): Promise<{ name: string; alias: string }[]
 
 // ── Grupos de contactos (privados por usuario) ──
 export interface Grupo { id: number; name: string; miembros: number }
-export interface Miembro { id: number; name: string; alias: string | null }
+export interface Miembro { id: number; name: string; alias: string | null; userEmail: string | null }
 
 export async function listGrupos(ownerEmail: string | null): Promise<Grupo[]> {
   await ensureSchema()
@@ -389,15 +392,41 @@ export async function deleteGrupo(grupoId: number): Promise<void> {
 export async function getMiembros(grupoId: number): Promise<Miembro[]> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, name, alias FROM grupo_miembros WHERE grupo_id = ${grupoId} ORDER BY name ASC`
-  return rows.map((r) => ({ id: Number(r.id), name: r.name as string, alias: (r.alias as string | null) ?? null }))
+  const rows = await sql`SELECT id, name, alias, user_email FROM grupo_miembros WHERE grupo_id = ${grupoId} ORDER BY name ASC`
+  return rows.map((r) => ({
+    id: Number(r.id), name: r.name as string, alias: (r.alias as string | null) ?? null,
+    userEmail: (r.user_email as string | null) ?? null,
+  }))
 }
 
-export async function addMiembro(grupoId: number, name: string, alias: string | null): Promise<void> {
+export async function addMiembro(grupoId: number, name: string, alias: string | null, userEmail: string | null = null): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  await sql`INSERT INTO grupo_miembros (grupo_id, name, alias) VALUES (${grupoId}, ${name}, ${alias})`
+  await sql`INSERT INTO grupo_miembros (grupo_id, name, alias, user_email) VALUES (${grupoId}, ${name}, ${alias}, ${userEmail})`
   if (alias) await sql`INSERT INTO contactos (name, alias) VALUES (${name}, ${alias}) ON CONFLICT (name) DO UPDATE SET alias = ${alias}`
+}
+
+/** Usuarios registrados con los que el solicitante comparte algún grupo
+ *  (mismo grupo: como dueño o como miembro vinculado). Para no-admins, que no
+ *  ven el directorio completo. Devuelve nombre + email. */
+export async function getCoGroupUsers(email: string): Promise<{ name: string; email: string }[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  const rows = await sql`
+    WITH mis_grupos AS (
+      SELECT id FROM grupos WHERE lower(owner_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+    )
+    SELECT DISTINCT ON (lower(m.user_email)) m.name, m.user_email AS email
+    FROM grupo_miembros m
+    WHERE m.grupo_id IN (SELECT id FROM mis_grupos)
+      AND m.user_email IS NOT NULL
+      AND lower(m.user_email) <> ${e}
+    ORDER BY lower(m.user_email), m.name ASC
+  `
+  return rows.map((r) => ({ name: r.name as string, email: r.email as string }))
 }
 
 export async function deleteMiembro(id: number): Promise<void> {
@@ -420,7 +449,7 @@ export async function importarGrupo(cuentaId: number, grupoId: number): Promise<
   let added = 0
   for (const m of miembros) {
     if (!existentes.includes(m.name.toLowerCase())) {
-      await addParticipante(cuentaId, m.name, m.alias)
+      await addParticipante(cuentaId, m.name, m.alias, m.userEmail)
       added++
     }
   }
