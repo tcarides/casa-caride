@@ -798,10 +798,9 @@ async function loadStandings(){
     if(!r.ok){showStatic('standings-updated','http-'+r.status);return;}
     var data=await r.json();
     if(data.source==='live'){
+      LAST_GROUPS=data.groups;
       renderGroups(data.groups,data.updatedAt);
-      computeProjected(data.groups); // proyección con los resultados actuales
-      computeClinched(data.groups);  // posiciones ya confirmadas (otro color)
-      renderBracket();
+      recomputeBracket(); // proyección + confirmados (usa también los resultados si ya están)
     }
     else showStatic('standings-updated',data.reason);
   }catch(e){showStatic('standings-updated','red');}
@@ -857,7 +856,11 @@ async function loadMatches(){
     var r=await fetch("/api/fixture/matches");
     if(!r.ok){showStatic('results-updated','http-'+r.status);return;}
     var data=await r.json();
-    if(data.source==="live")injectResults(data.results,data.updatedAt);
+    if(data.source==="live"){
+      LAST_RESULTS=data.results;
+      injectResults(data.results,data.updatedAt);
+      recomputeBracket(); // los resultados habilitan el desempate head-to-head (FIFA 2026)
+    }
     else showStatic('results-updated',data.reason);
   }catch(e){showStatic('results-updated','red');}
 }
@@ -879,25 +882,75 @@ var BK_R32=[
   ["1° J","2° H"],["2° D","2° G"],
   ["1° B","Mejor 3°"],["1° K","Mejor 3°"]
 ];
-/* Posiciones YA DEFINIDAS matemáticamente (no importa lo que falte jugar).
-   Mapea "1° A" / "2° A" → equipo, cuando es imposible que cambie por puntos. */
+/* ── Reglas de desempate del Mundial 2026 (Art. 13) ──
+   Cuando hay igualdad de PUNTOS, el orden de criterios CAMBIÓ respecto de 2022:
+   primero va el head-to-head (resultados entre los equipos empatados), recién
+   después la diferencia de gol general. Orden completo:
+     1) puntos head-to-head  2) dif. de gol head-to-head  3) goles head-to-head
+     4) dif. de gol general  5) goles general  6) fair-play  7) ranking FIFA
+   No hay más sorteo. (5/6/7 no se pueden calcular con los datos disponibles,
+   así que para esos casos extremos queda el orden previo.) */
+var dgNum=function(d){ var n=parseInt(String(d).replace('+',''),10); return isNaN(n)?0:n; };
+
+/* Mini-tabla head-to-head entre un conjunto de equipos, a partir de los
+   resultados (partidos jugados sólo entre ellos). Clave: nombre normalizado. */
+function h2hTable(names, results){
+  var inSet={}, st={};
+  for(var i=0;i<names.length;i++){ var k=normTeam(names[i]); inSet[k]=true; st[k]={pts:0,gd:0,gf:0}; }
+  if(results) for(var j=0;j<results.length;j++){
+    var r=results[j], a=normTeam(r.home), b=normTeam(r.away);
+    if(!inSet[a]||!inSet[b])continue;
+    var ha=r.homeScore, aw=r.awayScore;
+    st[a].gf+=ha; st[a].gd+=(ha-aw);
+    st[b].gf+=aw; st[b].gd+=(aw-ha);
+    if(ha>aw)st[a].pts+=3; else if(aw>ha)st[b].pts+=3; else { st[a].pts++; st[b].pts++; }
+  }
+  return st;
+}
+/* Ordena los equipos de un grupo según las reglas FIFA 2026: primero puntos;
+   ante igualdad, head-to-head (pts → dif. gol → goles) y luego dif. gol general. */
+function sortGroupFifa(teams, results){
+  var arr=teams.slice();
+  arr.sort(function(x,y){ return y.pts-x.pts; }); // bloques por puntos
+  var out=[], i=0;
+  while(i<arr.length){
+    var j=i+1;
+    while(j<arr.length && arr[j].pts===arr[i].pts) j++;
+    var block=arr.slice(i,j);
+    if(block.length>1){
+      var h=h2hTable(block.map(function(t){return t.name;}), results);
+      block.sort(function(x,y){
+        var hx=h[normTeam(x.name)], hy=h[normTeam(y.name)];
+        if(hy.pts!==hx.pts) return hy.pts-hx.pts;   // 1) puntos head-to-head
+        if(hy.gd!==hx.gd)   return hy.gd-hx.gd;      // 2) dif. gol head-to-head
+        if(hy.gf!==hx.gf)   return hy.gf-hx.gf;      // 3) goles head-to-head
+        return dgNum(y.dg)-dgNum(x.dg);             // 4) dif. gol general
+      });
+    }
+    for(var k=0;k<block.length;k++)out.push(block[k]);
+    i=j;
+  }
+  return out;
+}
+
+/* Posiciones YA CONFIRMADAS (verde): grupo terminado (orden final) o, en curso,
+   1°/2° imposible de alcanzar por puntos (no afirmamos algo que un desempate
+   podría cambiar). */
 var BK_RESOLVED={};
-function computeClinched(groups){
+function computeClinched(groups, results){
   BK_RESOLVED={};
   if(!groups)return;
   function ref(t){ return {flag:t.flag,name:t.name,isArg:t.isArg}; }
   for(var i=0;i<groups.length;i++){
     var g=groups[i];
-    // Grupo terminado (todos jugaron 3): el orden oficial de la API ya es
-    // definitivo (incluye diferencia de gol y demás criterios).
-    var terminado=g.teams.every(function(t){return t.pj>=3;});
-    if(terminado && g.teams.length>=2){
-      BK_RESOLVED["1° "+g.id]=ref(g.teams[0]);
-      BK_RESOLVED["2° "+g.id]=ref(g.teams[1]);
+    var terminado=g.teams.length>=2 && g.teams.every(function(t){return t.pj>=3;});
+    if(terminado){
+      var ord=sortGroupFifa(g.teams, results); // orden definitivo según FIFA 2026
+      BK_RESOLVED["1° "+g.id]=ref(ord[0]);
+      BK_RESOLVED["2° "+g.id]=ref(ord[1]);
       continue;
     }
-    // Grupo en curso: solo resolvemos si está cerrado POR PUNTOS (imposible
-    // de igualar), para no afirmar algo que un desempate podría cambiar.
+    // En curso: 1° confirmado si sus puntos ya superan el máximo posible del resto.
     var ts=g.teams.map(function(t){
       return {flag:t.flag,name:t.name,isArg:t.isArg,pts:t.pts,max:t.pts+3*(3-t.pj)};
     });
@@ -916,27 +969,27 @@ function computeClinched(groups){
     }
   }
 }
-/* Proyección con los resultados ACTUALES: 1°/2° de cada grupo según la tabla de
-   hoy y los 8 mejores terceros. Llena los slots que todavía no están confirmados,
-   para mostrar cómo va quedando la llave. */
+/* Proyección con los resultados ACTUALES (orden FIFA 2026): 1°/2° de cada grupo
+   y los 8 mejores terceros. Llena los slots que todavía no están confirmados. */
 var BK_PROJECTED={};      // "1° A"/"2° A" → equipo (proyectado)
 var BK_THIRDS=[];         // los 8 mejores terceros, en orden, para los slots "Mejor 3°"
-function dgNum(d){ var n=parseInt(String(d).replace('+',''),10); return isNaN(n)?0:n; }
-function computeProjected(groups){
+function computeProjected(groups, results){
   BK_PROJECTED={}; BK_THIRDS=[];
   if(!groups)return;
   function ref(t){ return {flag:t.flag,name:t.name,isArg:t.isArg}; }
   var terceros=[];
   for(var i=0;i<groups.length;i++){
     var g=groups[i];
-    if(g.teams.length>=1) BK_PROJECTED["1° "+g.id]=ref(g.teams[0]);
-    if(g.teams.length>=2) BK_PROJECTED["2° "+g.id]=ref(g.teams[1]);
-    if(g.teams.length>=3){
-      var t3=g.teams[2];
+    var ord=sortGroupFifa(g.teams, results);
+    if(ord.length>=1) BK_PROJECTED["1° "+g.id]=ref(ord[0]);
+    if(ord.length>=2) BK_PROJECTED["2° "+g.id]=ref(ord[1]);
+    if(ord.length>=3){
+      var t3=ord[2];
       terceros.push({flag:t3.flag,name:t3.name,isArg:t3.isArg,pts:t3.pts,dg:dgNum(t3.dg)});
     }
   }
-  // Mejores terceros: por puntos, luego diferencia de gol (criterio FIFA simplificado).
+  // Mejores terceros (Art. 13): puntos → dif. de gol general → (goles, fair-play
+  // y ranking FIFA no disponibles en los datos).
   terceros.sort(function(a,b){ return (b.pts-a.pts)||(b.dg-a.dg); });
   BK_THIRDS=terceros.slice(0,8);
 }
@@ -1029,6 +1082,15 @@ function renderBracket(){
       canvas.appendChild(box);
     }
   }
+}
+/* Últimos datos cargados (standings y resultados llegan por separado). El bracket
+   se recalcula cuando llega cualquiera: los resultados habilitan el head-to-head. */
+var LAST_GROUPS=null, LAST_RESULTS=null;
+function recomputeBracket(){
+  if(!LAST_GROUPS){ renderBracket(); return; }
+  computeProjected(LAST_GROUPS, LAST_RESULTS);
+  computeClinched(LAST_GROUPS, LAST_RESULTS);
+  renderBracket();
 }
 renderBracket();
 </script>
