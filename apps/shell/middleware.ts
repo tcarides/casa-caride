@@ -12,7 +12,7 @@ function appSlug(path: string): string | null {
   return APP_SLUGS.includes(seg) ? seg : null
 }
 
-// Acceso por niveles:
+// Acceso por niveles (la home y las apps públicas no requieren login):
 //  - public     → libre (deslogueado).
 //  - open       → requiere login para usar; logueado, cualquiera.
 //  - permission → requiere login + permiso del admin.
