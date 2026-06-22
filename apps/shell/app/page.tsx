@@ -37,7 +37,7 @@ export default async function Home({
         <div className="home__logo" aria-hidden>🏡</div>
         <div className="home__heading">
           <h1 className="home__title">Casa Caride</h1>
-          <p className="home__subtitle">Las apps de la familia, en un solo lugar</p>
+          <p className="home__subtitle">Apps para la vida de todos los días</p>
         </div>
         <InstallInfo />
       </header>
