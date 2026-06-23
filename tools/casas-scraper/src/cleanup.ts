@@ -18,9 +18,9 @@ import { config } from 'dotenv'
 
 const execAsync = promisify(exec)
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const DB_PATH = join(__dirname, '..', '..', 'webapp', 'data', 'properties.json')
+const DB_PATH = join(__dirname, '..', '..', '..', 'apps', 'casas', 'data', 'properties.json')
 
-config({ path: join(__dirname, '..', '..', 'webapp', '.env.local') })
+config({ path: join(__dirname, '..', '..', '..', 'apps', 'casas', '.env.local') })
 
 const CONCURRENCY = 10
 const DELAY_MS = 300

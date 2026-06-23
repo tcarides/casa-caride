@@ -17,9 +17,9 @@ import { computeHashFromUrl, hammingDistance } from './photoHash.js'
 import { config } from 'dotenv'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const DB_PATH = join(__dirname, '..', '..', 'webapp', 'data', 'properties.json')
+const DB_PATH = join(__dirname, '..', '..', '..', 'apps', 'casas', 'data', 'properties.json')
 
-config({ path: join(__dirname, '..', '..', 'webapp', '.env.local') })
+config({ path: join(__dirname, '..', '..', '..', 'apps', 'casas', '.env.local') })
 
 const HASH_CONCURRENCY = 8
 const HASH_DELAY_MS = 100

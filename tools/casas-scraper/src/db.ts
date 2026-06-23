@@ -10,8 +10,8 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-// JSON vive en webapp/data/ para que sea bundleable por Next/Vercel
-export const DB_PATH = join(__dirname, '..', '..', 'webapp', 'data', 'properties.json')
+// JSON vive en apps/casas/data/ para que sea bundleable por Next/Vercel
+export const DB_PATH = join(__dirname, '..', '..', '..', 'apps', 'casas', 'data', 'properties.json')
 
 mkdirSync(dirname(DB_PATH), { recursive: true })
 

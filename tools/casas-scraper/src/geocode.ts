@@ -14,7 +14,7 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const DB_PATH = join(__dirname, '..', '..', 'webapp', 'data', 'properties.json')
+const DB_PATH = join(__dirname, '..', '..', '..', 'apps', 'casas', 'data', 'properties.json')
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const USER_AGENT = 'compra-casa-personal/1.0 (tomascaride@gmail.com)'
