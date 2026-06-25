@@ -13,7 +13,8 @@
     "scrape:ml:full": "tsx src/index.ts --source mercadolibre --full",
     "cleanup": "tsx src/cleanup.ts",
     "dedupe": "tsx src/dedupe.ts",
-    "geocode": "tsx src/geocode.ts"
+    "geocode": "tsx src/geocode.ts",
+    "push-caidas": "tsx src/push-caidas.mts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
