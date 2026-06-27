@@ -198,6 +198,11 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 .bk-legend i { width:9px; height:9px; border-radius:2px; display:inline-block; }
 .bk-legend i.proj { background:var(--text-pri); opacity:.6; }
 .bk-legend i.conf { background:var(--success); }
+/* Equipos resueltos en las tarjetas de 16avos del cronograma (mismo criterio
+   que el bracket: verde = ya clasificado, itálica = proyectado). */
+.m-card .teams .sl-conf { color:var(--success); font-weight:700; }
+.m-card .teams .sl-proj { font-style:italic; opacity:.78; }
+.m-card .teams .sl-arg { color:var(--app-fixture); font-weight:700; }
 .bk-box.bk-final { background:linear-gradient(135deg,#3a3000,#262000); border-color:var(--accent); }
 .bk-box.bk-final .bk-t { color:var(--accent); font-weight:800; text-align:center; }
 
@@ -410,30 +415,30 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 <div class="m-card"><div class="hs">23:00</div><div class="inf"><div class="teams">🇩🇿 Argelia vs 🇦🇹 Austria</div><div class="ven">Arrowhead Stadium · Kansas City 🇺🇸</div></div><div class="gr a">J</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Dom 28 de junio <span class="phase-tag">Ronda de 32</span></div>
-<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">2° Grupo A vs 2° Grupo B</div><div class="ven">SoFi Stadium · Los Ángeles 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">19:00</div><div class="inf"><div class="teams">2° Grupo E vs 2° Grupo I</div><div class="ven">AT&T Stadium · Dallas 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">23:00</div><div class="inf"><div class="teams">1° Grupo I vs Mejor 3°</div><div class="ven">MetLife Stadium · Nueva York/NJ 🇺🇸</div></div><div class="gr e">32vos</div></div>
+<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">2° Grupo A vs 2° Grupo B</div><div class="ven">SoFi Stadium · Los Ángeles 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">19:00</div><div class="inf"><div class="teams">2° Grupo E vs 2° Grupo I</div><div class="ven">AT&T Stadium · Dallas 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">23:00</div><div class="inf"><div class="teams">1° Grupo I vs Mejor 3°</div><div class="ven">MetLife Stadium · Nueva York/NJ 🇺🇸</div></div><div class="gr e">16avos</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Lun 29 de junio <span class="phase-tag">Ronda de 32</span></div>
-<div class="m-card"><div class="hs">03:00<small>madrugada</small></div><div class="inf"><div class="teams">1° Grupo F vs 2° Grupo C</div><div class="ven">Estadio BBVA · Monterrey 🇲🇽</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">14:00</div><div class="inf"><div class="teams">1° Grupo C vs 2° Grupo F</div><div class="ven">NRG Stadium · Houston 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">17:30</div><div class="inf"><div class="teams">1° Grupo E vs Mejor 3°</div><div class="ven">Gillette Stadium · Boston 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">22:00</div><div class="inf"><div class="teams">1° Grupo A vs Mejor 3°</div><div class="ven">Estadio Azteca · Ciudad de México 🇲🇽</div></div><div class="gr e">32vos</div></div>
+<div class="m-card"><div class="hs">03:00<small>madrugada</small></div><div class="inf"><div class="teams">1° Grupo F vs 2° Grupo C</div><div class="ven">Estadio BBVA · Monterrey 🇲🇽</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">14:00</div><div class="inf"><div class="teams">1° Grupo C vs 2° Grupo F</div><div class="ven">NRG Stadium · Houston 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">17:30</div><div class="inf"><div class="teams">1° Grupo E vs Mejor 3°</div><div class="ven">Gillette Stadium · Boston 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">22:00</div><div class="inf"><div class="teams">1° Grupo A vs Mejor 3°</div><div class="ven">Estadio Azteca · Ciudad de México 🇲🇽</div></div><div class="gr e">16avos</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Mar 30 de junio <span class="phase-tag">Ronda de 32</span></div>
-<div class="m-card"><div class="hs">13:00</div><div class="inf"><div class="teams">1° Grupo L vs Mejor 3°</div><div class="ven">Mercedes-Benz Stadium · Atlanta 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">17:00</div><div class="inf"><div class="teams">1° Grupo G vs Mejor 3°</div><div class="ven">Lumen Field · Seattle 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">21:00</div><div class="inf"><div class="teams">1° Grupo D vs Mejor 3°</div><div class="ven">Levi's Stadium · San Francisco 🇺🇸</div></div><div class="gr e">32vos</div></div>
+<div class="m-card"><div class="hs">13:00</div><div class="inf"><div class="teams">1° Grupo L vs Mejor 3°</div><div class="ven">Mercedes-Benz Stadium · Atlanta 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">17:00</div><div class="inf"><div class="teams">1° Grupo G vs Mejor 3°</div><div class="ven">Lumen Field · Seattle 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">21:00</div><div class="inf"><div class="teams">1° Grupo D vs Mejor 3°</div><div class="ven">Levi's Stadium · San Francisco 🇺🇸</div></div><div class="gr e">16avos</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Mié 1 de julio <span class="phase-tag">Ronda de 32</span></div>
-<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">1° Grupo H vs 2° Grupo J</div><div class="ven">SoFi Stadium · Los Ángeles 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">20:00</div><div class="inf"><div class="teams">2° Grupo K vs 2° Grupo L</div><div class="ven">BMO Field · Toronto 🇨🇦</div></div><div class="gr e">32vos</div></div>
+<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">1° Grupo H vs 2° Grupo J</div><div class="ven">SoFi Stadium · Los Ángeles 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">20:00</div><div class="inf"><div class="teams">2° Grupo K vs 2° Grupo L</div><div class="ven">BMO Field · Toronto 🇨🇦</div></div><div class="gr e">16avos</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Jue 2 de julio <span class="phase-tag">Ronda de 32</span></div>
-<div class="m-card"><div class="hs">00:00<small>madrugada</small></div><div class="inf"><div class="teams">1° Grupo B vs Mejor 3°</div><div class="ven">BC Place · Vancouver 🇨🇦</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">15:00</div><div class="inf"><div class="teams">2° Grupo D vs 2° Grupo G</div><div class="ven">AT&T Stadium · Dallas 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">19:00</div><div class="inf"><div class="teams">1° Grupo J vs 2° Grupo H</div><div class="ven">Hard Rock Stadium · Miami 🇺🇸</div></div><div class="gr e">32vos</div></div>
-<div class="m-card"><div class="hs">22:30</div><div class="inf"><div class="teams">1° Grupo K vs Mejor 3°</div><div class="ven">Arrowhead Stadium · Kansas City 🇺🇸</div></div><div class="gr e">32vos</div></div>
+<div class="m-card"><div class="hs">00:00<small>madrugada</small></div><div class="inf"><div class="teams">1° Grupo B vs Mejor 3°</div><div class="ven">BC Place · Vancouver 🇨🇦</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">15:00</div><div class="inf"><div class="teams">2° Grupo D vs 2° Grupo G</div><div class="ven">AT&T Stadium · Dallas 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">19:00</div><div class="inf"><div class="teams">1° Grupo J vs 2° Grupo H</div><div class="ven">Hard Rock Stadium · Miami 🇺🇸</div></div><div class="gr e">16avos</div></div>
+<div class="m-card"><div class="hs">22:30</div><div class="inf"><div class="teams">1° Grupo K vs Mejor 3°</div><div class="ven">Arrowhead Stadium · Kansas City 🇺🇸</div></div><div class="gr e">16avos</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Sáb 4 de julio <span class="phase-tag">Octavos de Final</span></div>
 <div class="m-card"><div class="hs">14:00</div><div class="inf"><div class="teams">Ganador R32 vs Ganador R32</div><div class="ven">NRG Stadium · Houston 🇺🇸</div></div><div class="gr e">Octavos</div></div>
@@ -1083,6 +1088,44 @@ function renderBracket(){
     }
   }
 }
+/* Completa las tarjetas de 16avos del cronograma con los equipos ya resueltos,
+   con el mismo criterio que el bracket: verde = ya clasificado, itálica =
+   proyectado. Los slots "Mejor 3°" quedan sin resolver (no hay tabla oficial
+   de asignación de mejores terceros). Guarda el texto original en data-slot
+   para poder recalcular cuando cambian los resultados. */
+function r32Resolve(label){
+  var m=label.match(/([12])° Grupo ([A-L])/);
+  if(!m) return null;
+  var key=m[1]+"° "+m[2];
+  if(BK_RESOLVED[key]) return {t:BK_RESOLVED[key],conf:true};
+  if(BK_PROJECTED[key]) return {t:BK_PROJECTED[key],conf:false};
+  return null;
+}
+function r32Span(label){
+  var r=r32Resolve(label);
+  var sp=document.createElement("span");
+  if(r){
+    sp.className="sl-"+(r.conf?"conf":"proj")+(r.t.isArg?" sl-arg":"");
+    sp.textContent=r.t.flag+" "+r.t.name;
+  } else { sp.textContent=label; }
+  return sp;
+}
+function fillR32Schedule(){
+  var cards=document.querySelectorAll("#tab-cal .m-card");
+  for(var i=0;i<cards.length;i++){
+    var badge=cards[i].querySelector(".gr");
+    if(!badge||badge.textContent.trim()!=="16avos")continue;
+    var tEl=cards[i].querySelector(".teams");
+    if(!tEl)continue;
+    if(tEl.getAttribute("data-slot")===null) tEl.setAttribute("data-slot",tEl.textContent);
+    var parts=tEl.getAttribute("data-slot").split(" vs ");
+    if(parts.length!==2)continue;
+    tEl.textContent="";
+    tEl.appendChild(r32Span(parts[0]));
+    tEl.appendChild(document.createTextNode(" vs "));
+    tEl.appendChild(r32Span(parts[1]));
+  }
+}
 /* Últimos datos cargados (standings y resultados llegan por separado). El bracket
    se recalcula cuando llega cualquiera: los resultados habilitan el head-to-head. */
 var LAST_GROUPS=null, LAST_RESULTS=null;
@@ -1091,6 +1134,7 @@ function recomputeBracket(){
   computeProjected(LAST_GROUPS, LAST_RESULTS);
   computeClinched(LAST_GROUPS, LAST_RESULTS);
   renderBracket();
+  fillR32Schedule();
 }
 renderBracket();
 </script>
