@@ -7,7 +7,8 @@ interface FdMatch {
   status: string
   homeTeam: { name: string | null }
   awayTeam: { name: string | null }
-  score: { fullTime: { home: number | null; away: number | null } }
+  // winner refleja el resultado real, penales incluidos (HOME_TEAM/AWAY_TEAM/DRAW).
+  score: { winner: string | null; fullTime: { home: number | null; away: number | null } }
 }
 
 interface FdMatchesResponse {
@@ -45,6 +46,10 @@ export async function GET() {
         away: esName(m.awayTeam.name as string),
         homeScore: m.score.fullTime.home as number,
         awayScore: m.score.fullTime.away as number,
+        // 'home' | 'away' | null — quién avanza (penales incluidos). Lo usa el
+        // bracket para propagar el ganador de cada llave a la ronda siguiente.
+        winner: m.score.winner === 'HOME_TEAM' ? 'home'
+              : m.score.winner === 'AWAY_TEAM' ? 'away' : null,
       }))
 
     return NextResponse.json(

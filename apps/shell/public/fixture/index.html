@@ -193,6 +193,9 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 .bk-box .bk-t.bk-proj { color:var(--text-pri); font-style:italic; opacity:.78; }
 /* Ya clasificado (matemáticamente confirmado): otro color. */
 .bk-box .bk-t.bk-conf { color:var(--success); font-weight:700; font-style:normal; opacity:1; }
+/* Llave ya jugada: ganador en negrita, perdedor tachado y atenuado. */
+.bk-box .bk-t.bk-win { font-weight:800; }
+.bk-box .bk-t.bk-lost { opacity:.4; text-decoration:line-through; }
 .bk-legend { display:flex; flex-wrap:wrap; gap:12px; margin:8px 0 2px; font-size:0.66rem; color:var(--text-hint); }
 .bk-legend span { display:inline-flex; align-items:center; gap:5px; }
 .bk-legend i { width:9px; height:9px; border-radius:2px; display:inline-block; }
@@ -1076,6 +1079,42 @@ function renderBracket(){
   p.setAttribute("stroke","#4a4a4a");
   p.setAttribute("stroke-width","1.5");
   svg.innerHTML=""; svg.appendChild(p);
+  // ── Árbol del bracket: resuelve los 16avos y propaga el ganador de cada
+  //    llave a la ronda siguiente a medida que hay resultados de eliminación. ──
+  var BK_KO=buildKoResults();
+  function slotTeam(raw, partner){
+    if(raw==="Mejor 3°"){
+      var pm=partner.match(/1° ([A-L])/);
+      var a3=(pm&&BK_3RD_BY_WINNER["1"+pm[1]])||null;
+      return {team:a3, conf:!!a3&&BK_THIRDS_LOCKED};
+    }
+    var c=BK_RESOLVED[raw]||null;
+    return c?{team:c,conf:true}:{team:BK_PROJECTED[raw]||null,conf:false};
+  }
+  function koWinner(s1,s2){
+    if(!s1.team||!s2.team) return null;
+    var w=BK_KO[[normTeam(s1.team.name),normTeam(s2.team.name)].sort().join("|")];
+    if(!w) return null;
+    if(w===normTeam(s1.team.name)) return s1.team;
+    if(w===normTeam(s2.team.name)) return s2.team;
+    return null;
+  }
+  var TREE=[], r0=[];
+  for(var bi=0;bi<counts[0];bi++){
+    var pr=BK_R32[bi];
+    var sa=slotTeam(pr[0],pr[1]), sb=slotTeam(pr[1],pr[0]);
+    r0.push({slots:[sa,sb], win:koWinner(sa,sb)});
+  }
+  TREE.push(r0);
+  for(var rr=1;rr<counts.length;rr++){
+    var pv=TREE[rr-1], cu=[];
+    for(var bn=0;bn<counts[rr];bn++){
+      // los equipos que avanzan ya están confirmados (ganaron su llave)
+      var sa2={team:pv[2*bn].win,conf:true}, sb2={team:pv[2*bn+1].win,conf:true};
+      cu.push({slots:[sa2,sb2], win:koWinner(sa2,sb2)});
+    }
+    TREE.push(cu);
+  }
   // etiquetas de columna + cajas
   for(var rc=0;rc<counts.length;rc++){
     var x=rc*(BOXW+HGAP);
@@ -1085,37 +1124,25 @@ function renderBracket(){
     lbl.style.left=(x+BOXW/2)+"px"; lbl.style.top="0px";
     canvas.appendChild(lbl);
     for(var b=0;b<counts[rc];b++){
+      var node=TREE[rc][b];
       var box=document.createElement("div");
-      var teams;
-      if(rc===0){ teams=BK_R32[b]; }
-      else if(rc===counts.length-1){ box.className="bk-final"; teams=["Finalista","Finalista"]; }
-      else { box.className="bk-ph"; teams=["Ganador","Ganador"]; }
+      var ph; // placeholder por lado cuando el equipo todavía no está definido
+      if(rc===0){ ph=BK_R32[b]; }
+      else if(rc===counts.length-1){ box.className="bk-final"; ph=["Finalista","Finalista"]; }
+      else { box.className="bk-ph"; ph=["Ganador","Ganador"]; }
       box.className=("bk-box "+(box.className||"")).trim();
       box.style.width=BOXW+"px"; box.style.height=BOXH+"px";
       box.style.left=x+"px";
       box.style.top=(centers[rc][b]-BOXH/2)+"px";
-      for(var t=0;t<teams.length;t++){
-        var raw=teams[t];
-        var conf=null, proj=null;
-        if(rc===0){
-          if(raw==="Mejor 3°"){
-            // Tercero asignado al ganador con el que comparte esta llave, según
-            // la tabla oficial FIFA (no por orden de ranking). Verde si los
-            // grupos terminaron (definitivo); itálica mientras es proyección.
-            var partner=teams[1-t]||"";
-            var pm=partner.match(/1° ([A-L])/);
-            var a3=(pm&&BK_3RD_BY_WINNER["1"+pm[1]])||null;
-            if(a3){ if(BK_THIRDS_LOCKED) conf=a3; else proj=a3; }
-          } else {
-            conf=BK_RESOLVED[raw]||null;            // ya clasificado
-            if(!conf) proj=BK_PROJECTED[raw]||null;  // proyectado según hoy
-          }
-        }
-        var team=conf||proj;
-        var text=team?(team.flag+" "+team.name):raw;
-        var isArg=team?team.isArg:(raw==="1° J");
+      for(var t=0;t<node.slots.length;t++){
+        var team=node.slots[t].team;
+        var conf=team&&node.slots[t].conf, proj=team&&!node.slots[t].conf;
+        var text=team?(team.flag+" "+team.name):ph[t];
+        var isArg=team?team.isArg:(rc===0&&ph[t]==="1° J");
+        var won=team&&node.win&&normTeam(team.name)===normTeam(node.win.name);
+        var lost=team&&node.win&&!won;          // perdió su llave (ya jugada)
         var sp=document.createElement("span");
-        sp.className="bk-t"+(isArg?" bk-arg":"")+(conf?" bk-resolved bk-conf":(proj?" bk-proj":""));
+        sp.className="bk-t"+(isArg?" bk-arg":"")+(conf?" bk-resolved bk-conf":(proj?" bk-proj":""))+(won?" bk-win":"")+(lost?" bk-lost":"");
         if(isArg){sp.style.color="var(--app-fixture)";sp.style.fontWeight="700";}
         sp.textContent=text;
         box.appendChild(sp);
@@ -1171,6 +1198,23 @@ function fillR32Schedule(){
 /* Últimos datos cargados (standings y resultados llegan por separado). El bracket
    se recalcula cuando llega cualquiera: los resultados habilitan el head-to-head. */
 var LAST_GROUPS=null, LAST_RESULTS=null;
+/* Mapa "equipoA|equipoB" (normalizado, ordenado) → ganador, desde los partidos
+   jugados. Usa el campo winner de la API (penales incluidos) y, si falta, cae
+   al marcador. El bracket lo usa para propagar ganadores de cada llave. */
+function buildKoResults(){
+  var m={};
+  if(!LAST_RESULTS) return m;
+  for(var i=0;i<LAST_RESULTS.length;i++){
+    var r=LAST_RESULTS[i], a=normTeam(r.home), b=normTeam(r.away), w=null;
+    if(r.winner==="home") w=a;
+    else if(r.winner==="away") w=b;
+    else if(typeof r.homeScore==="number" && typeof r.awayScore==="number"){
+      if(r.homeScore>r.awayScore) w=a; else if(r.awayScore>r.homeScore) w=b;
+    }
+    if(w) m[[a,b].sort().join("|")]=w;
+  }
+  return m;
+}
 function recomputeBracket(){
   if(!LAST_GROUPS){ renderBracket(); return; }
   computeProjected(LAST_GROUPS, LAST_RESULTS);
