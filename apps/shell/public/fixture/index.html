@@ -206,6 +206,7 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
 .m-card .teams .sl-conf { color:var(--success); font-weight:700; }
 .m-card .teams .sl-proj { font-style:italic; opacity:.78; }
 .m-card .teams .sl-arg { color:var(--app-fixture); font-weight:700; }
+.m-card .teams .sl-lost { opacity:.5; text-decoration:line-through; }
 .bk-box.bk-final { background:linear-gradient(135deg,#3a3000,#262000); border-color:var(--accent); }
 .bk-box.bk-final .bk-t { color:var(--accent); font-weight:800; text-align:center; }
 
@@ -290,6 +291,69 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
       <div class="tv">📺 TV Pública / Telefe <span class="paid">· DSports (DirecTV)</span></div>
     </div>
 
+    <p class="sec-title">El camino a la final 🏆</p>
+    <span class="group-pill">Si Argentina va ganando, estos son los partidos que le quedan</span>
+
+    <div class="card arg-card" data-argbox="0:12">
+      <div class="date">RONDA DE 32 · VIE 3 DE JULIO</div>
+      <div class="row">
+        <div class="team blue">🇦🇷 Argentina</div><div class="vs">vs</div>
+        <div class="team argopp">Rival por definir</div>
+      </div>
+      <div class="bot">
+        <div class="badge">19:00 hs</div>
+        <div class="venue">Hard Rock Stadium<br>Miami, EE.UU.</div>
+      </div>
+    </div>
+
+    <div class="card arg-card" data-argbox="1:6">
+      <div class="date">OCTAVOS DE FINAL · MAR 7 DE JULIO</div>
+      <div class="row">
+        <div class="team blue">🇦🇷 Argentina</div><div class="vs">vs</div>
+        <div class="team argopp">Rival por definir</div>
+      </div>
+      <div class="bot">
+        <div class="badge">13:00 hs</div>
+        <div class="venue">Mercedes-Benz Stadium<br>Atlanta, EE.UU.</div>
+      </div>
+    </div>
+
+    <div class="card arg-card" data-argbox="2:3">
+      <div class="date">CUARTOS DE FINAL · SÁB 11 DE JULIO</div>
+      <div class="row">
+        <div class="team blue">🇦🇷 Argentina</div><div class="vs">vs</div>
+        <div class="team argopp">Rival por definir</div>
+      </div>
+      <div class="bot">
+        <div class="badge">22:00 hs</div>
+        <div class="venue">Arrowhead Stadium<br>Kansas City, EE.UU.</div>
+      </div>
+    </div>
+
+    <div class="card arg-card">
+      <div class="date">SEMIFINAL · MIÉ 15 DE JULIO</div>
+      <div class="row">
+        <div class="team blue">🇦🇷 Argentina</div><div class="vs">vs</div>
+        <div class="team argopp">Rival por definir</div>
+      </div>
+      <div class="bot">
+        <div class="badge">16:00 hs</div>
+        <div class="venue">Mercedes-Benz Stadium<br>Atlanta, EE.UU.</div>
+      </div>
+    </div>
+
+    <div class="card arg-card">
+      <div class="date">🏆 GRAN FINAL · DOM 19 DE JULIO</div>
+      <div class="row">
+        <div class="team blue">🇦🇷 Argentina</div><div class="vs">vs</div>
+        <div class="team argopp">Rival por definir</div>
+      </div>
+      <div class="bot">
+        <div class="badge">16:00 hs</div>
+        <div class="venue">MetLife Stadium<br>Nueva York/NJ, EE.UU.</div>
+      </div>
+    </div>
+
     <div class="card info-card">
       <h3>El torneo en números</h3>
       <div class="info-row"><span>Equipos</span><b>48 selecciones</b></div>
@@ -312,20 +376,20 @@ nav label .icon { font-size:1.4rem; display:block; transition:transform .15s; }
     <div class="tv-note"><span>📺</span><span><b>TV en Argentina:</b> todos los partidos por <b>DSports (DirecTV)</b>. Por TV abierta (<b>TV Pública / Telefe</b>): Argentina, la apertura y la fase eliminatoria. La grilla de TV abierta puede ajustarse cerca del torneo.</span></div>
     <div class="cal-body">
 <div class="day-block"><div class="day-hdr">Jue 11 de junio</div>
-<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">🇲🇽 México vs 🇿🇦 Sudáfrica</div><div class="ven">Estadio Azteca · Ciudad de México 🇲🇽</div></div><div class="gr g">A</div></div>
-<div class="m-card"><div class="hs">23:00</div><div class="inf"><div class="teams">🇰🇷 Corea del Sur vs 🇨🇿 Rep. Checa</div><div class="ven">Estadio Akron · Guadalajara 🇲🇽</div></div><div class="gr g">A</div></div>
+<div class="m-card" data-oct="1"><div class="hs">16:00</div><div class="inf"><div class="teams">🇲🇽 México vs 🇿🇦 Sudáfrica</div><div class="ven">Estadio Azteca · Ciudad de México 🇲🇽</div></div><div class="gr g">A</div></div>
+<div class="m-card" data-oct="0"><div class="hs">23:00</div><div class="inf"><div class="teams">🇰🇷 Corea del Sur vs 🇨🇿 Rep. Checa</div><div class="ven">Estadio Akron · Guadalajara 🇲🇽</div></div><div class="gr g">A</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Vie 12 de junio</div>
-<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">🇨🇦 Canadá vs 🇧🇦 Bosnia y Herz.</div><div class="ven">BMO Field · Toronto 🇨🇦</div></div><div class="gr g">B</div></div>
-<div class="m-card"><div class="hs">22:00</div><div class="inf"><div class="teams">🇺🇸 EE.UU. vs 🇵🇾 Paraguay</div><div class="ven">SoFi Stadium · Los Ángeles 🇺🇸</div></div><div class="gr g">D</div></div>
+<div class="m-card" data-oct="3"><div class="hs">16:00</div><div class="inf"><div class="teams">🇨🇦 Canadá vs 🇧🇦 Bosnia y Herz.</div><div class="ven">BMO Field · Toronto 🇨🇦</div></div><div class="gr g">B</div></div>
+<div class="m-card" data-oct="2"><div class="hs">22:00</div><div class="inf"><div class="teams">🇺🇸 EE.UU. vs 🇵🇾 Paraguay</div><div class="ven">SoFi Stadium · Los Ángeles 🇺🇸</div></div><div class="gr g">D</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Sáb 13 de junio</div>
-<div class="m-card"><div class="hs">16:00</div><div class="inf"><div class="teams">🇶🇦 Qatar vs 🇨🇭 Suiza</div><div class="ven">Levi's Stadium · San Francisco 🇺🇸</div></div><div class="gr g">B</div></div>
-<div class="m-card"><div class="hs">19:00</div><div class="inf"><div class="teams">🇧🇷 Brasil vs 🇲🇦 Marruecos</div><div class="ven">MetLife Stadium · Nueva York/NJ 🇺🇸</div></div><div class="gr g">C</div></div>
-<div class="m-card"><div class="hs">22:00</div><div class="inf"><div class="teams">🇭🇹 Haití vs 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia</div><div class="ven">Gillette Stadium · Boston 🇺🇸</div></div><div class="gr g">C</div></div>
+<div class="m-card" data-oct="5"><div class="hs">16:00</div><div class="inf"><div class="teams">🇶🇦 Qatar vs 🇨🇭 Suiza</div><div class="ven">Levi's Stadium · San Francisco 🇺🇸</div></div><div class="gr g">B</div></div>
+<div class="m-card" data-oct="4"><div class="hs">19:00</div><div class="inf"><div class="teams">🇧🇷 Brasil vs 🇲🇦 Marruecos</div><div class="ven">MetLife Stadium · Nueva York/NJ 🇺🇸</div></div><div class="gr g">C</div></div>
+<div class="m-card" data-oct="6"><div class="hs">22:00</div><div class="inf"><div class="teams">🇭🇹 Haití vs 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia</div><div class="ven">Gillette Stadium · Boston 🇺🇸</div></div><div class="gr g">C</div></div>
 </div>
 <div class="day-block"><div class="day-hdr">Dom 14 de junio</div>
-<div class="m-card"><div class="hs">01:00<small>madrugada</small></div><div class="inf"><div class="teams">🇦🇺 Australia vs 🇹🇷 Turquía</div><div class="ven">BC Place · Vancouver 🇨🇦</div></div><div class="gr g">D</div></div>
+<div class="m-card" data-oct="7"><div class="hs">01:00<small>madrugada</small></div><div class="inf"><div class="teams">🇦🇺 Australia vs 🇹🇷 Turquía</div><div class="ven">BC Place · Vancouver 🇨🇦</div></div><div class="gr g">D</div></div>
 <div class="m-card"><div class="hs">14:00</div><div class="inf"><div class="teams">🇩🇪 Alemania vs 🇨🇼 Curazao</div><div class="ven">NRG Stadium · Houston 🇺🇸</div></div><div class="gr g">E</div></div>
 <div class="m-card"><div class="hs">17:00</div><div class="inf"><div class="teams">🇳🇱 Países Bajos vs 🇯🇵 Japón</div><div class="ven">AT&T Stadium · Dallas 🇺🇸</div></div><div class="gr g">F</div></div>
 <div class="m-card"><div class="hs">20:00</div><div class="inf"><div class="teams">🇨🇮 Costa de Marfil vs 🇪🇨 Ecuador</div><div class="ven">Lincoln Financial Field · Philadelphia 🇺🇸</div></div><div class="gr g">E</div></div>
@@ -1021,6 +1085,7 @@ function computeProjected(groups, results){
    cualquiera, incluso a un equipo de su propio grupo). */
 var BK_3RD_BY_WINNER={};   // "1A" → equipo tercero asignado a ese ganador
 var BK_THIRDS_LOCKED=false; // true cuando los 12 grupos terminaron (asignación definitiva)
+var BK_TREE=null;          // árbol del bracket [ronda][llave] = {slots,win} (lo llena renderBracket)
 function buildThirdAssignment(){
   BK_3RD_BY_WINNER={};
   if(BK_THIRDS.length!==8) return;              // hacen falta los 8 terceros
@@ -1115,6 +1180,7 @@ function renderBracket(){
     }
     TREE.push(cu);
   }
+  BK_TREE=TREE;   // expuesto para completar las tarjetas de octavos en adelante
   // etiquetas de columna + cajas
   for(var rc=0;rc<counts.length;rc++){
     var x=rc*(BOXW+HGAP);
@@ -1215,12 +1281,58 @@ function buildKoResults(){
   }
   return m;
 }
+/* Completa las tarjetas de octavos (pestaña Partidos) con los equipos que ya
+   avanzaron, leídos del árbol del bracket. Cada tarjeta trae data-oct con el
+   índice de su llave. El equipo que avanzó va en verde; si perdió el octavo,
+   tachado. Los lados sin definir quedan como "Ganador R32". */
+function octSpan(team, ph, win){
+  var sp=document.createElement("span");
+  if(team){
+    var lost=win && normTeam(team.name)!==normTeam(win.name);
+    sp.className="sl-conf"+(team.isArg?" sl-arg":"")+(lost?" sl-lost":"");
+    sp.textContent=team.flag+" "+team.name;
+  } else { sp.textContent=ph; }
+  return sp;
+}
+function fillOctavos(){
+  if(!BK_TREE||!BK_TREE[1]) return;
+  var cards=document.querySelectorAll("#tab-cal .m-card[data-oct]");
+  for(var i=0;i<cards.length;i++){
+    var node=BK_TREE[1][+cards[i].getAttribute("data-oct")]; if(!node) continue;
+    var tEl=cards[i].querySelector(".teams"); if(!tEl) continue;
+    if(tEl.getAttribute("data-slot")===null) tEl.setAttribute("data-slot",tEl.textContent);
+    var ph=tEl.getAttribute("data-slot").split(" vs ");
+    tEl.textContent="";
+    tEl.appendChild(octSpan(node.slots[0].team, ph[0]||"Ganador R32", node.win));
+    tEl.appendChild(document.createTextNode(" vs "));
+    tEl.appendChild(octSpan(node.slots[1].team, ph[1]||"Ganador R32", node.win));
+  }
+}
+/* Completa el rival de Argentina en su camino (pestaña Argentina). Cada tarjeta
+   con data-argbox="ronda:llave" apunta a la llave del bracket donde jugaría
+   Argentina; el rival es el otro lado (slot 1) cuando ya está definido. */
+function fillArgPath(){
+  if(!BK_TREE) return;
+  var cards=document.querySelectorAll("#tab-arg .card[data-argbox]");
+  for(var i=0;i<cards.length;i++){
+    var rb=cards[i].getAttribute("data-argbox").split(":");
+    var node=BK_TREE[+rb[0]]&&BK_TREE[+rb[0]][+rb[1]];
+    var opp=node&&node.slots[1]&&node.slots[1].team;
+    var el=cards[i].querySelector(".argopp");
+    if(el){
+      el.textContent=opp?(opp.flag+" "+opp.name):"Rival por definir";
+      el.classList.toggle("blue", !!(opp&&opp.isArg));
+    }
+  }
+}
 function recomputeBracket(){
   if(!LAST_GROUPS){ renderBracket(); return; }
   computeProjected(LAST_GROUPS, LAST_RESULTS);
   computeClinched(LAST_GROUPS, LAST_RESULTS);
   renderBracket();
   fillR32Schedule();
+  fillOctavos();
+  fillArgPath();
 }
 renderBracket();
 </script>
