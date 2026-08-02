@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/guard'
 import { addMovimiento } from '@/lib/db'
+import { parseMoneda, textOrNull } from '@/lib/parse'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +22,13 @@ export async function POST(req: NextRequest) {
     nombre,
     categoria: String(body?.categoria ?? 'Otros'),
     pagador: String(body?.pagador ?? 'Compartido'),
+    moneda: parseMoneda(body?.moneda),
     monto: Math.round(Number(body?.monto ?? 0)),
     vencimiento: body?.vencimiento ? String(body.vencimiento) : null,
     pagado: body?.pagado !== false, // los variables se cargan ya pagados por default
     fechaPago: body?.fechaPago ? String(body.fechaPago) : null,
+    medioPago: textOrNull(body?.medioPago),
+    notas: textOrNull(body?.notas),
   })
   return NextResponse.json({ id })
 }

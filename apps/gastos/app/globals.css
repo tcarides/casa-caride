@@ -48,6 +48,22 @@ body {
 .g-chip { display: flex; flex-direction: column; gap: 1px; background: var(--surface-input, #1e1e1e); border: 1px solid var(--border-subtle); border-radius: 11px; padding: 8px 12px; flex: 1; min-width: 90px; }
 .g-chip-name { font-size: 0.72rem; color: var(--text-sec); }
 .g-chip-val { font-size: 0.95rem; font-weight: 800; }
+.g-chip-usd { font-size: 0.72rem; color: var(--success, #34C77B); font-weight: 700; }
+
+/* Badge "auto" (se cobra solo) */
+.g-auto {
+  display: inline-block; margin-left: 7px; font-size: 0.6rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .04em; vertical-align: middle;
+  color: var(--text-sec); background: var(--bg-3, #2a2a2a);
+  border-radius: 5px; padding: 2px 5px;
+}
+
+/* Segunda línea de meta: medio de pago + notas */
+.g-mov-extra, .g-fijo-extra { color: var(--text-hint, #5a5a56); margin-top: 3px; }
+
+/* Checkbox con label (automático en el sheet de fijos) */
+.g-checkrow { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; cursor: pointer; font-size: 0.9rem; color: var(--text-pri); }
+.g-checkrow input { width: 18px; height: 18px; accent-color: var(--g); }
 
 /* Barra por categoría */
 .g-cats { margin-bottom: 18px; }

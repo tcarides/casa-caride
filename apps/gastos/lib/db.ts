@@ -1,8 +1,8 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
 // Gastos de Casa: gastos fijos (plantillas recurrentes) + movimientos (lo que
-// realmente pasa cada mes). Montos en centavos (enteros). Moneda: ARS.
-// Fechas de vencimiento/pago como TEXT 'YYYY-MM-DD' (sin tz), como en cuentas.
+// realmente pasa cada mes). Montos en centavos (enteros). Moneda ARS o USD
+// (el alquiler es en dólares). Fechas de vencimiento/pago como TEXT 'YYYY-MM-DD'.
 
 type Sql = NeonQueryFunction<false, false>
 let _sql: Sql | undefined
@@ -16,6 +16,7 @@ export function getSql(): Sql {
 }
 
 export type Frecuencia = 'mensual' | 'bimestral' | 'anual'
+export type Moneda = 'ARS' | 'USD'
 export type Pagador = string // nombre de persona o 'Compartido'
 export type TipoMov = 'fijo' | 'variable'
 
@@ -30,10 +31,14 @@ export interface GastoFijo {
   nombre: string
   categoria: string
   pagador: Pagador
-  montoEstimado: number // centavos
+  moneda: Moneda
+  montoEstimado: number // centavos (de la moneda)
   diaVencimiento: number | null // 1..31
   frecuencia: Frecuencia
   mesAncla: number | null // 1..12 · para bimestral (paridad) y anual (mes)
+  medioPago: string | null
+  notas: string | null
+  automatico: boolean // se cobra solo (tarjeta/débito) → no requiere acción
   activo: boolean
 }
 
@@ -44,10 +49,14 @@ export interface Movimiento {
   nombre: string
   categoria: string
   pagador: Pagador
+  moneda: Moneda
   monto: number // centavos
   vencimiento: string | null // 'YYYY-MM-DD'
   pagado: boolean
   fechaPago: string | null // 'YYYY-MM-DD'
+  medioPago: string | null
+  notas: string | null
+  automatico: boolean
   tipo: TipoMov
   omitido: boolean // fijo salteado este mes (no se regenera)
   createdAt: string
@@ -96,6 +105,17 @@ export async function ensureSchema(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+  // Migraciones idempotentes: campos sumados después (moneda, medio de pago,
+  // notas, automático). ADD COLUMN IF NOT EXISTS no pisa datos existentes.
+  await sql`ALTER TABLE gastos_fijos ADD COLUMN IF NOT EXISTS moneda TEXT NOT NULL DEFAULT 'ARS'`
+  await sql`ALTER TABLE gastos_fijos ADD COLUMN IF NOT EXISTS medio_pago TEXT`
+  await sql`ALTER TABLE gastos_fijos ADD COLUMN IF NOT EXISTS notas TEXT`
+  await sql`ALTER TABLE gastos_fijos ADD COLUMN IF NOT EXISTS automatico BOOLEAN NOT NULL DEFAULT FALSE`
+  await sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS moneda TEXT NOT NULL DEFAULT 'ARS'`
+  await sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS medio_pago TEXT`
+  await sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS notas TEXT`
+  await sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS automatico BOOLEAN NOT NULL DEFAULT FALSE`
+
   // Un solo movimiento por (periodo, fijo) → la generación mensual es idempotente.
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS mov_periodo_fijo ON movimientos (periodo, fijo_id) WHERE fijo_id IS NOT NULL`
 
@@ -122,10 +142,14 @@ function mapFijo(r: Record<string, unknown>): GastoFijo {
     nombre: r.nombre as string,
     categoria: r.categoria as string,
     pagador: r.pagador as string,
+    moneda: (r.moneda as Moneda) ?? 'ARS',
     montoEstimado: Number(r.monto_estimado_centavos),
     diaVencimiento: r.dia_vencimiento == null ? null : Number(r.dia_vencimiento),
     frecuencia: r.frecuencia as Frecuencia,
     mesAncla: r.mes_ancla == null ? null : Number(r.mes_ancla),
+    medioPago: (r.medio_pago as string | null) ?? null,
+    notas: (r.notas as string | null) ?? null,
+    automatico: r.automatico === true,
     activo: r.activo === true,
   }
 }
@@ -134,8 +158,8 @@ export async function listFijos(): Promise<GastoFijo[]> {
   await ensureSchema()
   const sql = getSql()
   const rows = await sql`
-    SELECT id, nombre, categoria, pagador, monto_estimado_centavos, dia_vencimiento,
-           frecuencia, mes_ancla, activo
+    SELECT id, nombre, categoria, pagador, moneda, monto_estimado_centavos, dia_vencimiento,
+           frecuencia, mes_ancla, medio_pago, notas, automatico, activo
     FROM gastos_fijos ORDER BY activo DESC, nombre ASC`
   return rows.map(mapFijo)
 }
@@ -144,18 +168,24 @@ export interface FijoInput {
   nombre: string
   categoria: string
   pagador: string
+  moneda: Moneda
   montoEstimado: number
   diaVencimiento: number | null
   frecuencia: Frecuencia
   mesAncla: number | null
+  medioPago: string | null
+  notas: string | null
+  automatico: boolean
 }
 
 export async function createFijo(f: FijoInput): Promise<number> {
   await ensureSchema()
   const sql = getSql()
   const [row] = await sql`
-    INSERT INTO gastos_fijos (nombre, categoria, pagador, monto_estimado_centavos, dia_vencimiento, frecuencia, mes_ancla)
-    VALUES (${f.nombre}, ${f.categoria}, ${f.pagador}, ${f.montoEstimado}, ${f.diaVencimiento}, ${f.frecuencia}, ${f.mesAncla})
+    INSERT INTO gastos_fijos
+      (nombre, categoria, pagador, moneda, monto_estimado_centavos, dia_vencimiento, frecuencia, mes_ancla, medio_pago, notas, automatico)
+    VALUES
+      (${f.nombre}, ${f.categoria}, ${f.pagador}, ${f.moneda}, ${f.montoEstimado}, ${f.diaVencimiento}, ${f.frecuencia}, ${f.mesAncla}, ${f.medioPago}, ${f.notas}, ${f.automatico})
     RETURNING id`
   return Number(row.id)
 }
@@ -165,9 +195,10 @@ export async function updateFijo(id: number, f: FijoInput): Promise<void> {
   const sql = getSql()
   await sql`
     UPDATE gastos_fijos SET
-      nombre = ${f.nombre}, categoria = ${f.categoria}, pagador = ${f.pagador},
+      nombre = ${f.nombre}, categoria = ${f.categoria}, pagador = ${f.pagador}, moneda = ${f.moneda},
       monto_estimado_centavos = ${f.montoEstimado}, dia_vencimiento = ${f.diaVencimiento},
-      frecuencia = ${f.frecuencia}, mes_ancla = ${f.mesAncla}
+      frecuencia = ${f.frecuencia}, mes_ancla = ${f.mesAncla},
+      medio_pago = ${f.medioPago}, notas = ${f.notas}, automatico = ${f.automatico}
     WHERE id = ${id}`
 }
 
@@ -185,6 +216,16 @@ export async function deleteFijo(id: number): Promise<void> {
   await sql`DELETE FROM movimientos WHERE fijo_id = ${id} AND pagado = FALSE`
   await sql`UPDATE movimientos SET fijo_id = NULL WHERE fijo_id = ${id}`
   await sql`DELETE FROM gastos_fijos WHERE id = ${id}`
+}
+
+/** Inserta una plantilla solo si no existe otra con el mismo nombre (para el seed). */
+export async function createFijoIfMissing(f: FijoInput): Promise<boolean> {
+  await ensureSchema()
+  const sql = getSql()
+  const existing = await sql`SELECT 1 FROM gastos_fijos WHERE lower(nombre) = ${f.nombre.toLowerCase()} LIMIT 1`
+  if (existing.length) return false
+  await createFijo(f)
+  return true
 }
 
 // ── Generación mensual + movimientos ──
@@ -223,8 +264,10 @@ export async function ensureMonth(periodo: string): Promise<Movimiento[]> {
   for (const f of fijos) {
     // ON CONFLICT (índice único periodo+fijo) → no duplica ni pisa lo cargado.
     await sql`
-      INSERT INTO movimientos (periodo, fijo_id, nombre, categoria, pagador, monto_centavos, vencimiento, tipo)
-      VALUES (${periodo}, ${f.id}, ${f.nombre}, ${f.categoria}, ${f.pagador}, ${f.montoEstimado}, ${vencimientoDe(periodo, f.diaVencimiento)}, 'fijo')
+      INSERT INTO movimientos
+        (periodo, fijo_id, nombre, categoria, pagador, moneda, monto_centavos, vencimiento, medio_pago, notas, automatico, tipo)
+      VALUES
+        (${periodo}, ${f.id}, ${f.nombre}, ${f.categoria}, ${f.pagador}, ${f.moneda}, ${f.montoEstimado}, ${vencimientoDe(periodo, f.diaVencimiento)}, ${f.medioPago}, ${f.notas}, ${f.automatico}, 'fijo')
       ON CONFLICT (periodo, fijo_id) WHERE fijo_id IS NOT NULL DO NOTHING`
   }
   return listMovimientos(periodo)
@@ -238,10 +281,14 @@ function mapMov(r: Record<string, unknown>): Movimiento {
     nombre: r.nombre as string,
     categoria: r.categoria as string,
     pagador: r.pagador as string,
+    moneda: (r.moneda as Moneda) ?? 'ARS',
     monto: Number(r.monto_centavos),
     vencimiento: (r.vencimiento as string | null) ?? null,
     pagado: r.pagado === true,
     fechaPago: (r.fecha_pago as string | null) ?? null,
+    medioPago: (r.medio_pago as string | null) ?? null,
+    notas: (r.notas as string | null) ?? null,
+    automatico: r.automatico === true,
     tipo: r.tipo as TipoMov,
     omitido: r.omitido === true,
     createdAt: r.created_at as string,
@@ -252,8 +299,8 @@ export async function listMovimientos(periodo: string): Promise<Movimiento[]> {
   await ensureSchema()
   const sql = getSql()
   const rows = await sql`
-    SELECT id, periodo, fijo_id, nombre, categoria, pagador, monto_centavos,
-           vencimiento, pagado, fecha_pago, tipo, omitido, created_at
+    SELECT id, periodo, fijo_id, nombre, categoria, pagador, moneda, monto_centavos,
+           vencimiento, pagado, fecha_pago, medio_pago, notas, automatico, tipo, omitido, created_at
     FROM movimientos WHERE periodo = ${periodo}
     ORDER BY pagado ASC, vencimiento ASC NULLS LAST, created_at ASC`
   return rows.map(mapMov)
@@ -263,10 +310,13 @@ export interface MovimientoInput {
   nombre: string
   categoria: string
   pagador: string
+  moneda: Moneda
   monto: number
   vencimiento: string | null
   pagado: boolean
   fechaPago: string | null
+  medioPago: string | null
+  notas: string | null
 }
 
 /** Alta de un movimiento suelto (gasto variable del mes). */
@@ -274,8 +324,10 @@ export async function addMovimiento(periodo: string, m: MovimientoInput): Promis
   await ensureSchema()
   const sql = getSql()
   const [row] = await sql`
-    INSERT INTO movimientos (periodo, fijo_id, nombre, categoria, pagador, monto_centavos, vencimiento, pagado, fecha_pago, tipo)
-    VALUES (${periodo}, NULL, ${m.nombre}, ${m.categoria}, ${m.pagador}, ${m.monto}, ${m.vencimiento}, ${m.pagado}, ${m.fechaPago}, 'variable')
+    INSERT INTO movimientos
+      (periodo, fijo_id, nombre, categoria, pagador, moneda, monto_centavos, vencimiento, pagado, fecha_pago, medio_pago, notas, tipo)
+    VALUES
+      (${periodo}, NULL, ${m.nombre}, ${m.categoria}, ${m.pagador}, ${m.moneda}, ${m.monto}, ${m.vencimiento}, ${m.pagado}, ${m.fechaPago}, ${m.medioPago}, ${m.notas}, 'variable')
     RETURNING id`
   return Number(row.id)
 }
@@ -284,25 +336,31 @@ export interface MovimientoPatch {
   nombre?: string
   categoria?: string
   pagador?: string
+  moneda?: Moneda
   monto?: number
   vencimiento?: string | null
   pagado?: boolean
   fechaPago?: string | null
+  medioPago?: string | null
+  notas?: string | null
 }
 
 export async function updateMovimiento(id: number, p: MovimientoPatch): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  // Actualización parcial: solo pisa los campos presentes (COALESCE por campo).
+  // Actualización parcial: solo pisa los campos presentes.
   await sql`
     UPDATE movimientos SET
       nombre = COALESCE(${p.nombre ?? null}, nombre),
       categoria = COALESCE(${p.categoria ?? null}, categoria),
       pagador = COALESCE(${p.pagador ?? null}, pagador),
+      moneda = COALESCE(${p.moneda ?? null}, moneda),
       monto_centavos = COALESCE(${p.monto ?? null}, monto_centavos),
       vencimiento = CASE WHEN ${p.vencimiento !== undefined} THEN ${p.vencimiento ?? null} ELSE vencimiento END,
       pagado = COALESCE(${p.pagado ?? null}, pagado),
-      fecha_pago = CASE WHEN ${p.fechaPago !== undefined} THEN ${p.fechaPago ?? null} ELSE fecha_pago END
+      fecha_pago = CASE WHEN ${p.fechaPago !== undefined} THEN ${p.fechaPago ?? null} ELSE fecha_pago END,
+      medio_pago = CASE WHEN ${p.medioPago !== undefined} THEN ${p.medioPago ?? null} ELSE medio_pago END,
+      notas = CASE WHEN ${p.notas !== undefined} THEN ${p.notas ?? null} ELSE notas END
     WHERE id = ${id}`
 }
 
