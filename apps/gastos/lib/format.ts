@@ -1,12 +1,12 @@
 // Helpers de formato compartidos por la UI (cliente).
 
-/** Centavos → "$ 12.345" (ARS, sin decimales salvo que haya centavos). */
-export function fmtMoney(centavos: number): string {
-  const pesos = centavos / 100
+/** Centavos → "$ 12.345" (ARS) o "US$ 500" (USD). Sin decimales salvo que haya centavos. */
+export function fmtMoney(centavos: number, moneda: 'ARS' | 'USD' = 'ARS'): string {
+  const monto = centavos / 100
   const hasCents = Math.round(centavos) % 100 !== 0
-  return pesos.toLocaleString('es-AR', {
+  return monto.toLocaleString('es-AR', {
     style: 'currency',
-    currency: 'ARS',
+    currency: moneda,
     minimumFractionDigits: hasCents ? 2 : 0,
     maximumFractionDigits: hasCents ? 2 : 0,
   })

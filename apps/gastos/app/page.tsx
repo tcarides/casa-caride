@@ -3,16 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
-import { CATEGORIAS, COMPARTIDO } from '@/lib/constants'
+import { CATEGORIAS, COMPARTIDO, MEDIOS_PAGO } from '@/lib/constants'
 import {
   fmtMoney, parseMoney, fmtPeriodo, shiftPeriodo, periodoHoy, fechaHoy, fmtDiaCorto,
 } from '@/lib/format'
 
+type Moneda = 'ARS' | 'USD'
 interface Persona { id: number; nombre: string; orden: number }
 interface Movimiento {
   id: number; periodo: string; fijoId: number | null; nombre: string; categoria: string
-  pagador: string; monto: number; vencimiento: string | null; pagado: boolean
-  fechaPago: string | null; tipo: 'fijo' | 'variable'; omitido: boolean; createdAt: string
+  pagador: string; moneda: Moneda; monto: number; vencimiento: string | null; pagado: boolean
+  fechaPago: string | null; medioPago: string | null; notas: string | null; automatico: boolean
+  tipo: 'fijo' | 'variable'; omitido: boolean; createdAt: string
 }
 interface State { periodo: string; personas: Persona[]; movimientos: Movimiento[] }
 
@@ -20,10 +22,13 @@ type Draft = {
   id?: number
   nombre: string
   monto: string
+  moneda: Moneda
   categoria: string
   pagador: string
   pagado: boolean
   fecha: string
+  medioPago: string
+  notas: string
 }
 
 const HOY = periodoHoy()
@@ -57,21 +62,31 @@ export default function GastosPage() {
   const hoy = fechaHoy()
   const esVencido = (m: Movimiento) => !m.pagado && !!m.vencimiento && m.vencimiento < hoy
 
-  // Totales
-  const total = movs.reduce((s, m) => s + m.monto, 0)
-  const pendientes = movs.filter(m => !m.pagado)
-  const totalPend = pendientes.reduce((s, m) => s + m.monto, 0)
+  // Totales por moneda (no se pueden sumar pesos con dólares).
+  const totalArs = movs.filter(m => m.moneda === 'ARS').reduce((s, m) => s + m.monto, 0)
+  const totalUsd = movs.filter(m => m.moneda === 'USD').reduce((s, m) => s + m.monto, 0)
+
+  // Pendientes: los que pagás vos (manual) vs los que se cobran solos.
+  const pendManual = movs.filter(m => !m.pagado && !m.automatico)
+  const pendAuto = movs.filter(m => !m.pagado && m.automatico)
   const pagados = movs.filter(m => m.pagado)
+  const faltaArs = pendManual.filter(m => m.moneda === 'ARS').reduce((s, m) => s + m.monto, 0)
+  const faltaUsd = pendManual.filter(m => m.moneda === 'USD').reduce((s, m) => s + m.monto, 0)
 
   const porPersona = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const m of movs) map.set(m.pagador, (map.get(m.pagador) ?? 0) + m.monto)
-    return pagadores.map(n => ({ nombre: n, total: map.get(n) ?? 0 })).filter(x => x.total > 0)
+    const map = new Map<string, { ars: number; usd: number }>()
+    for (const m of movs) {
+      const cur = map.get(m.pagador) ?? { ars: 0, usd: 0 }
+      if (m.moneda === 'USD') cur.usd += m.monto; else cur.ars += m.monto
+      map.set(m.pagador, cur)
+    }
+    return pagadores.map(n => ({ nombre: n, ...(map.get(n) ?? { ars: 0, usd: 0 }) }))
+      .filter(x => x.ars > 0 || x.usd > 0)
   }, [movs, pagadores])
 
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>()
-    for (const m of movs) map.set(m.categoria, (map.get(m.categoria) ?? 0) + m.monto)
+    for (const m of movs) if (m.moneda === 'ARS') map.set(m.categoria, (map.get(m.categoria) ?? 0) + m.monto)
     return [...map.entries()].map(([nombre, val]) => ({ nombre, val })).sort((a, b) => b.val - a.val)
   }, [movs])
   const maxCat = porCategoria[0]?.val ?? 1
@@ -80,7 +95,6 @@ export default function GastosPage() {
   async function togglePagado(m: Movimiento) {
     if (busy) return
     const nuevo = !m.pagado
-    // Optimista
     setState(s => s && ({ ...s, movimientos: s.movimientos.map(x =>
       x.id === m.id ? { ...x, pagado: nuevo, fechaPago: nuevo ? hoy : null } : x) }))
     await apiFetch(`/api/movimientos/${m.id}`, {
@@ -97,21 +111,22 @@ export default function GastosPage() {
       nombre: draft.nombre.trim(),
       categoria: draft.categoria,
       pagador: draft.pagador,
+      moneda: draft.moneda,
       monto: parseMoney(draft.monto),
       pagado: draft.pagado,
       fechaPago: draft.pagado ? (draft.fecha || hoy) : null,
       vencimiento: draft.pagado ? null : (draft.fecha || null),
+      medioPago: draft.medioPago.trim() || null,
+      notas: draft.notas.trim() || null,
     }
     try {
       if (draft.id) {
         await apiFetch(`/api/movimientos/${draft.id}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         })
       } else {
         await apiFetch('/api/movimientos', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ periodo, ...payload }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ periodo, ...payload }),
         })
       }
       setDraft(null)
@@ -138,24 +153,24 @@ export default function GastosPage() {
 
   async function restaurar(m: Movimiento) {
     await apiFetch(`/api/movimientos/${m.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ restore: true }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ restore: true }),
     })
     await load(periodo)
   }
 
   function nuevoVariable() {
     setDraft({
-      nombre: '', monto: '', categoria: 'Supermercado',
-      pagador: pagadores[0] ?? COMPARTIDO, pagado: true, fecha: hoy,
+      nombre: '', monto: '', moneda: 'ARS', categoria: 'Supermercado',
+      pagador: pagadores[0] ?? COMPARTIDO, pagado: true, fecha: hoy, medioPago: '', notas: '',
     })
   }
 
   function editar(m: Movimiento) {
     setDraft({
-      id: m.id, nombre: m.nombre, monto: m.monto ? String(m.monto / 100) : '',
+      id: m.id, nombre: m.nombre, monto: m.monto ? String(m.monto / 100) : '', moneda: m.moneda,
       categoria: m.categoria, pagador: m.pagador, pagado: m.pagado,
       fecha: (m.pagado ? m.fechaPago : m.vencimiento) ?? hoy,
+      medioPago: m.medioPago ?? '', notas: m.notas ?? '',
     })
   }
 
@@ -172,7 +187,6 @@ export default function GastosPage() {
         </div>
       </header>
 
-      {/* Navegación de mes */}
       <div className="g-monthnav">
         <button onClick={() => setPeriodo(shiftPeriodo(periodo, -1))} aria-label="Mes anterior">‹</button>
         <span className="g-monthlabel">{fmtPeriodo(periodo)}</span>
@@ -186,28 +200,29 @@ export default function GastosPage() {
         <div className="g-loading">Cargando…</div>
       ) : (
         <>
-          {/* Resumen */}
           <div className="g-summary">
             <div className="g-summary-tot">Total del mes</div>
-            <div className="g-summary-monto">{fmtMoney(total)}</div>
+            <div className="g-summary-monto">{fmtMoney(totalArs)}</div>
+            {totalUsd > 0 && <div className="g-summary-sub">+ {fmtMoney(totalUsd, 'USD')} en dólares</div>}
             <div className="g-summary-sub">
-              {pendientes.length > 0
-                ? <>Falta pagar <b>{fmtMoney(totalPend)}</b> · {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}</>
-                : movs.length > 0 ? '✓ Todo pagado este mes' : 'Sin gastos cargados'}
+              {pendManual.length > 0
+                ? <>Falta pagar <b>{fmtMoney(faltaArs)}{faltaUsd > 0 ? ` + ${fmtMoney(faltaUsd, 'USD')}` : ''}</b> · {pendManual.length} pendiente{pendManual.length !== 1 ? 's' : ''}</>
+                : movs.length > 0 ? '✓ No te falta pagar nada este mes' : 'Sin gastos cargados'}
+              {pendAuto.length > 0 && <> · {pendAuto.length} automático{pendAuto.length !== 1 ? 's' : ''}</>}
             </div>
             {porPersona.length > 0 && (
               <div className="g-chips">
                 {porPersona.map(p => (
                   <div key={p.nombre} className="g-chip">
                     <span className="g-chip-name">{p.nombre}</span>
-                    <span className="g-chip-val">{fmtMoney(p.total)}</span>
+                    <span className="g-chip-val">{fmtMoney(p.ars)}</span>
+                    {p.usd > 0 && <span className="g-chip-usd">+ {fmtMoney(p.usd, 'USD')}</span>}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Por categoría */}
           {porCategoria.length > 1 && (
             <div className="g-cats">
               {porCategoria.map(c => (
@@ -222,15 +237,26 @@ export default function GastosPage() {
             </div>
           )}
 
-          {/* Pendientes */}
-          <div className="g-sec">Pendientes <span className="g-count">{pendientes.length}</span></div>
-          {pendientes.length === 0 ? (
-            <div className="g-empty">Nada pendiente 🎉</div>
+          {/* Tenés que pagar (manual) */}
+          <div className="g-sec">Tenés que pagar <span className="g-count">{pendManual.length}</span></div>
+          {pendManual.length === 0 ? (
+            <div className="g-empty">Nada por pagar a mano 🎉</div>
           ) : (
-            pendientes.map(m => (
+            pendManual.map(m => (
               <MovRow key={m.id} m={m} vencido={esVencido(m)}
                 onToggle={togglePagado} onEdit={editar} onDelete={borrar} />
             ))
+          )}
+
+          {/* Se cobran solos (automáticos) */}
+          {pendAuto.length > 0 && (
+            <>
+              <div className="g-sec">Se cobran solos <span className="g-count">{pendAuto.length}</span></div>
+              {pendAuto.map(m => (
+                <MovRow key={m.id} m={m} vencido={false}
+                  onToggle={togglePagado} onEdit={editar} onDelete={borrar} />
+              ))}
+            </>
           )}
 
           {/* Pagados */}
@@ -244,10 +270,9 @@ export default function GastosPage() {
             </>
           )}
 
-          {/* Omitidos este mes */}
           {omitidos.length > 0 && (
             <div className="g-empty" style={{ marginTop: 18 }}>
-              {omitidos.length} gasto{omitidos.length !== 1 ? 's' : ''} fijo{omitidos.length !== 1 ? 's' : ''} omitido{omitidos.length !== 1 ? 's' : ''} este mes ·{' '}
+              {omitidos.length} fijo{omitidos.length !== 1 ? 's' : ''} omitido{omitidos.length !== 1 ? 's' : ''} este mes ·{' '}
               {omitidos.map((m, i) => (
                 <span key={m.id}>
                   {i > 0 && ', '}
@@ -280,7 +305,10 @@ function MovRow({ m, vencido, onToggle, onEdit, onDelete }: {
       <button className={`g-check${m.pagado ? ' on' : ''}`} onClick={() => onToggle(m)}
         aria-label={m.pagado ? 'Marcar como no pagado' : 'Marcar como pagado'}>✓</button>
       <div className="g-mov-info" onClick={() => onEdit(m)} style={{ cursor: 'pointer' }}>
-        <div className="g-mov-name">{m.nombre}</div>
+        <div className="g-mov-name">
+          {m.nombre}
+          {m.automatico && <span className="g-auto">auto</span>}
+        </div>
         <div className="g-mov-meta">
           {m.tipo === 'fijo' && <span className="g-tag-fijo">Fijo</span>}
           <span>{m.categoria}</span>
@@ -290,9 +318,16 @@ function MovRow({ m, vencido, onToggle, onEdit, onDelete }: {
             <span className={vencido ? 'venctxt' : ''}>· {vencido ? 'venció' : 'vence'} {fmtDiaCorto(m.vencimiento)}</span>
           )}
         </div>
+        {(m.medioPago || m.notas) && (
+          <div className="g-mov-meta g-mov-extra">
+            {m.medioPago && <>💳 {m.medioPago}</>}
+            {m.medioPago && m.notas && ' · '}
+            {m.notas && <>{m.notas}</>}
+          </div>
+        )}
       </div>
       <div className="g-mov-right">
-        <span className="g-mov-monto">{fmtMoney(m.monto)}</span>
+        <span className="g-mov-monto">{fmtMoney(m.monto, m.moneda)}</span>
         <div className="g-mov-actions">
           <button className="g-iconbtn" onClick={() => onEdit(m)} aria-label="Editar">✏️</button>
           <button className="g-iconbtn" onClick={() => onDelete(m)} aria-label={m.tipo === 'fijo' ? 'Omitir' : 'Borrar'}>🗑️</button>
@@ -325,12 +360,20 @@ function MovSheet({ draft, setDraft, pagadores, busy, onSave, onCancel }: {
             <input className="g-input" inputMode="decimal" value={draft.monto}
               placeholder="0" onChange={e => set({ monto: e.target.value })} />
           </div>
-          <div className="g-field">
-            <label>Categoría</label>
-            <select className="g-select" value={draft.categoria} onChange={e => set({ categoria: e.target.value })}>
-              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="g-field" style={{ maxWidth: 120 }}>
+            <label>Moneda</label>
+            <div className="g-seg">
+              <button className={draft.moneda === 'ARS' ? 'on' : ''} onClick={() => set({ moneda: 'ARS' })}>$</button>
+              <button className={draft.moneda === 'USD' ? 'on' : ''} onClick={() => set({ moneda: 'USD' })}>US$</button>
+            </div>
           </div>
+        </div>
+
+        <div className="g-field">
+          <label>Categoría</label>
+          <select className="g-select" value={draft.categoria} onChange={e => set({ categoria: e.target.value })}>
+            {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         <div className="g-field">
@@ -340,6 +383,15 @@ function MovSheet({ draft, setDraft, pagadores, busy, onSave, onCancel }: {
               <button key={n} className={draft.pagador === n ? 'on' : ''} onClick={() => set({ pagador: n })}>{n}</button>
             ))}
           </div>
+        </div>
+
+        <div className="g-field">
+          <label>Medio de pago</label>
+          <input className="g-input" list="medios-pago" value={draft.medioPago}
+            placeholder="Ej: Efectivo, Tarjeta…" onChange={e => set({ medioPago: e.target.value })} />
+          <datalist id="medios-pago">
+            {MEDIOS_PAGO.map(mp => <option key={mp} value={mp} />)}
+          </datalist>
         </div>
 
         <div className="g-field">

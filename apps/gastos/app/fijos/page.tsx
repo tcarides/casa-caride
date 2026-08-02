@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
-import { CATEGORIAS, COMPARTIDO, FRECUENCIA_LABEL } from '@/lib/constants'
+import { CATEGORIAS, COMPARTIDO, FRECUENCIA_LABEL, MEDIOS_PAGO } from '@/lib/constants'
 import { fmtMoney, parseMoney, mesCorto } from '@/lib/format'
 
 type Frecuencia = 'mensual' | 'bimestral' | 'anual'
+type Moneda = 'ARS' | 'USD'
 interface GastoFijo {
-  id: number; nombre: string; categoria: string; pagador: string
+  id: number; nombre: string; categoria: string; pagador: string; moneda: Moneda
   montoEstimado: number; diaVencimiento: number | null
-  frecuencia: Frecuencia; mesAncla: number | null; activo: boolean
+  frecuencia: Frecuencia; mesAncla: number | null
+  medioPago: string | null; notas: string | null; automatico: boolean; activo: boolean
 }
 interface Persona { id: number; nombre: string; orden: number }
 
@@ -18,11 +20,15 @@ type Draft = {
   id?: number
   nombre: string
   monto: string
+  moneda: Moneda
   categoria: string
   pagador: string
   dia: string
   frecuencia: Frecuencia
   mesAncla: number
+  medioPago: string
+  notas: string
+  automatico: boolean
 }
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -33,6 +39,7 @@ export default function FijosPage() {
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [busy, setBusy] = useState(false)
+  const [seeding, setSeeding] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -53,23 +60,28 @@ export default function FijosPage() {
 
   useEffect(() => { void load() }, [load])
 
-  const totalMensual = useMemo(
-    () => fijos.filter(f => f.activo && f.frecuencia === 'mensual').reduce((s, f) => s + f.montoEstimado, 0),
+  const totalMensualArs = useMemo(
+    () => fijos.filter(f => f.activo && f.frecuencia === 'mensual' && f.moneda === 'ARS').reduce((s, f) => s + f.montoEstimado, 0),
+    [fijos],
+  )
+  const totalMensualUsd = useMemo(
+    () => fijos.filter(f => f.activo && f.frecuencia === 'mensual' && f.moneda === 'USD').reduce((s, f) => s + f.montoEstimado, 0),
     [fijos],
   )
 
   function nuevo() {
     setDraft({
-      nombre: '', monto: '', categoria: 'Servicios', pagador: pagadores[0] ?? COMPARTIDO,
-      dia: '', frecuencia: 'mensual', mesAncla: new Date().getMonth() + 1,
+      nombre: '', monto: '', moneda: 'ARS', categoria: 'Servicios', pagador: pagadores[0] ?? COMPARTIDO,
+      dia: '', frecuencia: 'mensual', mesAncla: new Date().getMonth() + 1, medioPago: '', notas: '', automatico: false,
     })
   }
 
   function editar(f: GastoFijo) {
     setDraft({
       id: f.id, nombre: f.nombre, monto: f.montoEstimado ? String(f.montoEstimado / 100) : '',
-      categoria: f.categoria, pagador: f.pagador, dia: f.diaVencimiento ? String(f.diaVencimiento) : '',
+      moneda: f.moneda, categoria: f.categoria, pagador: f.pagador, dia: f.diaVencimiento ? String(f.diaVencimiento) : '',
       frecuencia: f.frecuencia, mesAncla: f.mesAncla ?? new Date().getMonth() + 1,
+      medioPago: f.medioPago ?? '', notas: f.notas ?? '', automatico: f.automatico,
     })
   }
 
@@ -80,10 +92,14 @@ export default function FijosPage() {
       nombre: draft.nombre.trim(),
       categoria: draft.categoria,
       pagador: draft.pagador,
+      moneda: draft.moneda,
       montoEstimado: parseMoney(draft.monto),
       diaVencimiento: draft.dia ? Number(draft.dia) : null,
       frecuencia: draft.frecuencia,
       mesAncla: draft.frecuencia === 'mensual' ? null : draft.mesAncla,
+      medioPago: draft.medioPago.trim() || null,
+      notas: draft.notas.trim() || null,
+      automatico: draft.automatico,
     }
     try {
       if (draft.id) {
@@ -121,12 +137,28 @@ export default function FijosPage() {
     }
   }
 
+  async function cargarSeed() {
+    if (seeding) return
+    setSeeding(true)
+    try {
+      const res = await apiFetch('/api/seed', { method: 'POST' })
+      if (res.ok) {
+        const { agregados } = await res.json() as { agregados: number }
+        await load()
+        alert(agregados > 0
+          ? `Se cargaron ${agregados} gastos fijos. Completá los montos a medida que los pagues.`
+          : 'Ya tenías todos cargados (no se duplicó ninguno).')
+      }
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   function frecTexto(f: GastoFijo): string {
     const base = FRECUENCIA_LABEL[f.frecuencia]
     const dia = f.diaVencimiento ? ` · vence el ${f.diaVencimiento}` : ''
     if (f.frecuencia === 'mensual') return base + dia
     if (f.frecuencia === 'anual') return `${base} (${mesCorto(f.mesAncla ?? 1)})${dia}`
-    // bimestral: mostrar los meses en que cae
     const meses: string[] = []
     for (let m = (f.mesAncla ?? 1); m <= 12; m += 2) meses.push(mesCorto(m))
     return `${base} (${meses.join(', ')})${dia}`
@@ -152,15 +184,19 @@ export default function FijosPage() {
           {fijos.length > 0 && (
             <div className="g-summary" style={{ marginBottom: 16 }}>
               <div className="g-summary-tot">Fijos mensuales (estimado)</div>
-              <div className="g-summary-monto">{fmtMoney(totalMensual)}</div>
+              <div className="g-summary-monto">{fmtMoney(totalMensualArs)}</div>
+              {totalMensualUsd > 0 && <div className="g-summary-sub">+ {fmtMoney(totalMensualUsd, 'USD')} en dólares</div>}
               <div className="g-summary-sub">Sin contar bimestrales ni anuales</div>
             </div>
           )}
 
           {fijos.length === 0 ? (
-            <div className="g-empty">
+            <div className="g-empty" style={{ padding: '28px 8px' }}>
               Todavía no cargaste gastos fijos.<br />
-              Agregá la luz, el gas, expensas, internet…
+              <button className="g-btn" style={{ marginTop: 14 }} onClick={cargarSeed} disabled={seeding}>
+                {seeding ? 'Cargando…' : '⚡ Cargar mis gastos fijos de casa'}
+              </button>
+              <div style={{ marginTop: 12, fontSize: '0.8rem' }}>o agregalos uno por uno con el botón de abajo</div>
             </div>
           ) : (
             fijos.map(f => (
@@ -170,10 +206,20 @@ export default function FijosPage() {
                   <span className="g-switch-tr" />
                 </label>
                 <div className="g-fijo-info" onClick={() => editar(f)} style={{ cursor: 'pointer' }}>
-                  <div className="g-fijo-name">{f.nombre}</div>
+                  <div className="g-fijo-name">
+                    {f.nombre}
+                    {f.automatico && <span className="g-auto">auto</span>}
+                  </div>
                   <div className="g-fijo-meta">{f.categoria} · {f.pagador} · {frecTexto(f)}</div>
+                  {(f.medioPago || f.notas) && (
+                    <div className="g-fijo-meta g-fijo-extra">
+                      {f.medioPago && <>💳 {f.medioPago}</>}
+                      {f.medioPago && f.notas && ' · '}
+                      {f.notas && <>{f.notas}</>}
+                    </div>
+                  )}
                 </div>
-                <span className="g-fijo-monto">{fmtMoney(f.montoEstimado)}</span>
+                <span className="g-fijo-monto">{fmtMoney(f.montoEstimado, f.moneda)}</span>
                 <button className="g-iconbtn" onClick={() => borrar(f)} aria-label="Borrar">🗑️</button>
               </div>
             ))
@@ -217,12 +263,20 @@ function FijoSheet({ draft, setDraft, pagadores, busy, onSave, onCancel, meses }
             <input className="g-input" inputMode="decimal" value={draft.monto}
               placeholder="0" onChange={e => set({ monto: e.target.value })} />
           </div>
-          <div className="g-field">
-            <label>Categoría</label>
-            <select className="g-select" value={draft.categoria} onChange={e => set({ categoria: e.target.value })}>
-              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="g-field" style={{ maxWidth: 120 }}>
+            <label>Moneda</label>
+            <div className="g-seg">
+              <button className={draft.moneda === 'ARS' ? 'on' : ''} onClick={() => set({ moneda: 'ARS' })}>$</button>
+              <button className={draft.moneda === 'USD' ? 'on' : ''} onClick={() => set({ moneda: 'USD' })}>US$</button>
+            </div>
           </div>
+        </div>
+
+        <div className="g-field">
+          <label>Categoría</label>
+          <select className="g-select" value={draft.categoria} onChange={e => set({ categoria: e.target.value })}>
+            {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         <div className="g-field">
@@ -233,6 +287,26 @@ function FijoSheet({ draft, setDraft, pagadores, busy, onSave, onCancel, meses }
             ))}
           </div>
         </div>
+
+        <div className="g-field">
+          <label>Medio de pago</label>
+          <input className="g-input" list="medios-pago" value={draft.medioPago}
+            placeholder="Ej: Mercado Pago, Transferencia…" onChange={e => set({ medioPago: e.target.value })} />
+          <datalist id="medios-pago">
+            {MEDIOS_PAGO.map(m => <option key={m} value={m} />)}
+          </datalist>
+        </div>
+
+        <div className="g-field">
+          <label>Notas (N° de cliente, alias, etc.)</label>
+          <input className="g-input" value={draft.notas}
+            placeholder="Ej: N° cliente 123456, alias Ferias26…" onChange={e => set({ notas: e.target.value })} />
+        </div>
+
+        <label className="g-checkrow">
+          <input type="checkbox" checked={draft.automatico} onChange={e => set({ automatico: e.target.checked })} />
+          <span>Se cobra solo (tarjeta / débito automático)</span>
+        </label>
 
         <div className="g-field">
           <label>Frecuencia</label>

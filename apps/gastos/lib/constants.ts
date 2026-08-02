@@ -1,13 +1,28 @@
 // Categorías sugeridas (texto libre; esta lista alimenta los selects).
 export const CATEGORIAS = [
-  'Servicios',
   'Vivienda',
+  'Servicios',
   'Impuestos',
-  'Supermercado',
-  'Transporte',
-  'Salud',
   'Suscripciones',
+  'Supermercado',
+  'Hogar',
+  'Sueldos',
+  'Seguridad',
+  'Salud',
+  'Transporte',
   'Otros',
+] as const
+
+// Medios de pago sugeridos (texto libre con datalist).
+export const MEDIOS_PAGO = [
+  'Efectivo',
+  'Transferencia',
+  'Mercado Pago (servicios)',
+  'Tarjeta crédito MP',
+  'Débito automático',
+  'AFIP',
+  'Municipalidad (web)',
+  'Tarjeta Visa de Flor',
 ] as const
 
 export const COMPARTIDO = 'Compartido'
