@@ -80,4 +80,13 @@ export const APPS: MiniApp[] = [
     kind: 'zone',
     access: 'open',
   },
+  {
+    slug: 'gastos',
+    name: 'Gastos de Casa',
+    description: 'Gastos del mes, quién paga y qué falta',
+    href: '/gastos',
+    emoji: '💸',
+    hue: 'var(--app-gastos)',
+    kind: 'zone',
+  },
 ]

@@ -33,6 +33,7 @@ const CASAS_URL  = zoneUrl('CASAS', 3002)!
 const FABIAN_URL = zoneUrl('FABIAN', 3003, true) // opcional: no rompe si falta
 const OLIVIA_URL = zoneUrl('OLIVIA', 3004, true) // opcional: no rompe si falta
 const CUENTAS_URL = zoneUrl('CUENTAS_CLARAS', 3005, true) // opcional: no rompe si falta
+const GASTOS_URL = zoneUrl('GASTOS', 3006, true) // opcional: no rompe si falta
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -66,6 +67,14 @@ const nextConfig: NextConfig = {
       rules.push(
         { source: '/cuentas-claras', destination: `${CUENTAS_URL}/cuentas-claras` },
         { source: '/cuentas-claras/:path*', destination: `${CUENTAS_URL}/cuentas-claras/:path*` },
+      )
+    }
+
+    // Zona Gastos de Casa: solo si su URL está configurada.
+    if (GASTOS_URL) {
+      rules.push(
+        { source: '/gastos', destination: `${GASTOS_URL}/gastos` },
+        { source: '/gastos/:path*', destination: `${GASTOS_URL}/gastos/:path*` },
       )
     }
 
