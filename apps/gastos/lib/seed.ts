@@ -35,6 +35,9 @@ export const SEED_FIJOS: FijoInput[] = [
   f({ nombre: 'Garita seguridad', categoria: 'Seguridad', pagador: 'Tomás', moneda: 'ARS',
       montoEstimado: 0, diaVencimiento: null, medioPago: 'Transferencia',
       notas: 'Alias Ferias26 — Diana Chang Paredes', automatico: false }),
+  f({ nombre: 'Verisure (alarma)', categoria: 'Seguridad', pagador: 'Flor', moneda: 'ARS',
+      montoEstimado: 0, diaVencimiento: null, medioPago: 'Tarjeta crédito de Flor',
+      notas: 'Alarma. Lo paga Flor con su tarjeta de crédito.', automatico: true }),
   f({ nombre: 'Movistar (internet)', categoria: 'Servicios', pagador: 'Tomás', moneda: 'ARS',
       montoEstimado: 0, diaVencimiento: null, medioPago: 'Mercado Pago (servicios)',
       notas: null, automatico: false }),
@@ -50,6 +53,9 @@ export const SEED_FIJOS: FijoInput[] = [
   f({ nombre: 'Jardinero', categoria: 'Hogar', pagador: 'Tomás', moneda: 'ARS',
       montoEstimado: 0, diaVencimiento: null, medioPago: 'Transferencia',
       notas: 'Cada vez que viene — omitir los meses que no viene.', automatico: false }),
+  f({ nombre: 'Zoe (paseadora de Fabi)', categoria: 'Hogar', pagador: 'Tomás', moneda: 'ARS',
+      montoEstimado: 0, diaVencimiento: null, medioPago: 'Transferencia',
+      notas: 'Paseadora de Fabi. Varias transferencias durante el mes — sumar el total.', automatico: false }),
 
   // ── Suscripciones ──
   f({ nombre: 'HBO Max', categoria: 'Suscripciones', pagador: 'Tomás', moneda: 'ARS',

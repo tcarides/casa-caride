@@ -23,6 +23,7 @@ export const MEDIOS_PAGO = [
   'AFIP',
   'Municipalidad (web)',
   'Tarjeta Visa de Flor',
+  'Tarjeta crédito de Flor',
 ] as const
 
 export const COMPARTIDO = 'Compartido'
