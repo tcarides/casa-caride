@@ -53,6 +53,7 @@
   --app-fabian:  #FF9F45;   /* Fabián (medicación del perro) */
   --app-cuentas: #2DD4BF;   /* Cuentas Claras (gastos compartidos) */
   --app-gastos:  #A78BFA;   /* Gastos de Casa (gastos recurrentes) */
+  --app-finanzas: #A3E635;  /* Ingresos y Egresos (app externa, sólo admin) */
 
   /* ---- Property-status palette (casas) ---- */
   --status-seen:      #5B9DFF;

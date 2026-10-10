@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { APPS } from './apps.config'
+import { ADMIN_LINKS, APPS } from './apps.config'
 import { InstallInfo } from './InstallInfo'
 import { auth, signOut } from '@/auth'
 import { getEnabledApps } from '@/lib/db'
@@ -89,6 +89,23 @@ export default async function Home({
             </a>
           )
         })}
+        {isAdmin &&
+          ADMIN_LINKS.map((link) => (
+            <a
+              key={link.slug}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tile"
+              style={{ '--tile-hue': link.hue } as CSSProperties}
+            >
+              <span className="tile__glow" aria-hidden />
+              <span className="tile__emoji" aria-hidden>{link.emoji}</span>
+              <span className="tile__tag">↗ aparte</span>
+              <span className="tile__name">{link.name}</span>
+              <span className="tile__desc">{link.description}</span>
+            </a>
+          ))}
       </section>
 
       <footer className="home__footer">

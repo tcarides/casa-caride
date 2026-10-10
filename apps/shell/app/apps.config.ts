@@ -90,3 +90,22 @@ export const APPS: MiniApp[] = [
     kind: 'zone',
   },
 ]
+
+/**
+ * Apps EXTERNAS (otro dominio, otro login): en el launcher son sólo un link,
+ * visible únicamente para el admin. No pasan por rewrites, ni por el gate de
+ * permisos, ni por /admin: el acceso lo controla la propia app (allowlist).
+ * Por eso viven fuera de APPS (APPS alimenta el seed de permisos y /admin).
+ */
+export type ExternalLink = Pick<MiniApp, 'slug' | 'name' | 'description' | 'href' | 'emoji' | 'hue'>
+
+export const ADMIN_LINKS: ExternalLink[] = [
+  {
+    slug: 'ingresos-egresos',
+    name: 'Ingresos y Egresos',
+    description: 'Mis finanzas: evolución y forecast',
+    href: 'https://ingresos-egresos.vercel.app',
+    emoji: '📈',
+    hue: 'var(--app-finanzas)',
+  },
+]
