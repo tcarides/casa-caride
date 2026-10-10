@@ -104,7 +104,7 @@ export const ADMIN_LINKS: ExternalLink[] = [
     slug: 'ingresos-egresos',
     name: 'Ingresos y Egresos',
     description: 'Mis finanzas: evolución y forecast',
-    href: 'https://ingresos-egresos.vercel.app',
+    href: 'https://ingresos-egresos-green.vercel.app',
     emoji: '📈',
     hue: 'var(--app-finanzas)',
   },
