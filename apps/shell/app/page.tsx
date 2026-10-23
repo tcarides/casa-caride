@@ -34,7 +34,7 @@ export default async function Home({
   return (
     <main className="home">
       <header className="home__header">
-        <div className="home__logo" aria-hidden>🏡</div>
+        <img className="home__logo" src="/icon-192.png" alt="" aria-hidden width={54} height={54} />
         <div className="home__heading">
           <h1 className="home__title">Casa Caride</h1>
           <p className="home__subtitle">Apps para la vida de todos los días</p>
