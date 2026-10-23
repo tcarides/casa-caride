@@ -77,15 +77,23 @@ export default async function Home({
             <a
               key={app.slug}
               href={app.href}
-              className="tile"
+              className={app.icon ? 'tile tile--art' : 'tile'}
               style={{ '--tile-hue': app.hue } as CSSProperties}
             >
-              <span className="tile__glow" aria-hidden />
-              <span className="tile__emoji" aria-hidden>{app.emoji}</span>
+              {app.icon ? (
+                <img className="tile__art" src={app.icon} alt="" aria-hidden />
+              ) : (
+                <>
+                  <span className="tile__glow" aria-hidden />
+                  <span className="tile__emoji" aria-hidden>{app.emoji}</span>
+                </>
+              )}
               {needsLogin && <span className="tile__tag">🔒 login</span>}
               {!needsLogin && app.kind === 'static' && <span className="tile__tag">estática</span>}
-              <span className="tile__name">{app.name}</span>
-              <span className="tile__desc">{app.description}</span>
+              <span className="tile__meta">
+                <span className="tile__name">{app.name}</span>
+                <span className="tile__desc">{app.description}</span>
+              </span>
             </a>
           )
         })}

@@ -9,6 +9,12 @@ export type MiniApp = {
   description: string
   href: string
   emoji: string
+  /**
+   * Ilustración custom (ruta en public/, ej. '/apps/fabian.png'). Si está,
+   * el tile se dibuja full-bleed con la imagen y el nombre en negro sobre el
+   * fondo. Si no, cae al badge con emoji. Migración app por app.
+   */
+  icon?: string
   /** Color de identidad de la app (token del design system). */
   hue: string
   /** 'zone' = app Next vía rewrite · 'static' = HTML estático en public/ */
@@ -67,6 +73,7 @@ export const APPS: MiniApp[] = [
     description: 'La medicación del perro, cada 12 h',
     href: '/fabian',
     emoji: '🐶',
+    icon: '/apps/fabian.png',
     hue: 'var(--app-fabian)',
     kind: 'zone',
   },
