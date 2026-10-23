@@ -162,9 +162,14 @@ body {
   padding: 2px 7px;
 }
 
-.tile__name {
+.tile__meta {
   position: relative;
   z-index: 1;
+  display: block;
+}
+
+.tile__name {
+  display: block;
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: var(--fw-medium);
@@ -172,12 +177,48 @@ body {
 }
 
 .tile__desc {
-  position: relative;
-  z-index: 1;
+  display: block;
   margin-top: 3px;
   font-size: 12.5px;
   line-height: 1.35;
   color: var(--text-sec);
+}
+
+/* ── Tile full-bleed con ilustración custom ──
+   La imagen (fondo amarillo propio) cubre la tarjeta; el nombre va en negro
+   sobre una banda del mismo amarillo abajo, así es legible y no depende de
+   dónde esté el sujeto de cada ilustración. */
+.tile--art {
+  padding: 0;
+  background: var(--art-bg, #f7c901);
+}
+
+.tile__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 14%;
+}
+
+.tile--art .tile__meta {
+  padding: 12px 15px 14px;
+  background: linear-gradient(to top, var(--art-bg, #f7c901) 68%, transparent);
+}
+
+.tile--art .tile__name {
+  color: #17130a;
+}
+
+.tile--art .tile__desc {
+  color: #4a3c10;
+}
+
+.tile--art .tile__tag {
+  color: #3a300f;
+  border-color: rgba(0, 0, 0, 0.28);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .home__footer {
