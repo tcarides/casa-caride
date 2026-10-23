@@ -191,20 +191,23 @@ body {
 .tile--art {
   padding: 0;
   background: var(--art-bg, #f7c901);
+  justify-content: space-between;
 }
 
 .tile__art {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 14%;
+  padding: 12px 12px 0;
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
 }
 
 .tile--art .tile__meta {
-  padding: 12px 15px 14px;
-  background: linear-gradient(to top, var(--art-bg, #f7c901) 68%, transparent);
+  padding: 4px 15px 14px;
 }
 
 .tile--art .tile__name {
