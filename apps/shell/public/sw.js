@@ -6,7 +6,7 @@
  *  - Estáticos del shell (íconos, manifest): stale-while-revalidate.
  * Scope "/" -> cubre todas las mini-apps del mismo origen.
  */
-const CACHE = 'casa-caride-v9'
+const CACHE = 'casa-caride-v10'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
