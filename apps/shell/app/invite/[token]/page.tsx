@@ -18,7 +18,7 @@ export default async function InvitePage({
     return (
       <main className="login">
         <div className="login__card">
-          <div className="login__logo" aria-hidden>🏡</div>
+          <img className="login__logo" src="/icon-192.png" alt="" aria-hidden width={64} height={64} />
           <h1 className="login__title">Invitación no válida</h1>
           <p className="login__subtitle">El link venció o ya fue usado. Pedile a Tomás uno nuevo.</p>
         </div>
@@ -33,7 +33,7 @@ export default async function InvitePage({
   return (
     <main className="login">
       <div className="login__card">
-        <div className="login__logo" aria-hidden>🏡</div>
+        <img className="login__logo" src="/icon-192.png" alt="" aria-hidden width={64} height={64} />
         <h1 className="login__title">Te invitaron a Casa Caride</h1>
         <p className="login__subtitle">
           {appNames ? <>Vas a tener acceso a: <strong>{appNames}</strong></> : 'Entrá con tu cuenta de Google'}

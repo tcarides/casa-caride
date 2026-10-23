@@ -38,6 +38,7 @@ body {
   place-items: center;
   font-size: 30px;
   box-shadow: var(--glow-accent);
+  object-fit: cover;
 }
 
 .home__heading {
@@ -328,7 +329,7 @@ body {
   text-align: center;
   box-shadow: var(--shadow-md);
 }
-.login__logo { font-size: 48px; line-height: 1; }
+.login__logo { width: 64px; height: 64px; border-radius: var(--r-lg); object-fit: cover; box-shadow: var(--glow-accent); }
 .login__title { font-size: 1.5rem; font-weight: 800; margin: 12px 0 4px; }
 .login__subtitle { font-size: 0.9rem; color: var(--text-sec); margin-bottom: 24px; }
 .login__error {

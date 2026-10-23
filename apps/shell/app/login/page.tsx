@@ -12,7 +12,7 @@ export default async function LoginPage({
   return (
     <main className="login">
       <div className="login__card">
-        <div className="login__logo" aria-hidden>🏡</div>
+        <img className="login__logo" src="/icon-192.png" alt="" aria-hidden width={64} height={64} />
         <h1 className="login__title">Casa Caride</h1>
         <p className="login__subtitle">Las apps de la familia, en un solo lugar</p>
 
