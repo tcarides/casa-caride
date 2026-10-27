@@ -78,7 +78,7 @@ export default async function Home({
               key={app.slug}
               href={app.href}
               className={app.icon ? 'tile tile--art' : 'tile'}
-              style={{ '--tile-hue': app.hue } as CSSProperties}
+              style={{ '--tile-hue': app.hue, '--art-bg': app.iconBg } as CSSProperties}
             >
               {app.icon ? (
                 <img className="tile__art" src={app.icon} alt="" aria-hidden />
