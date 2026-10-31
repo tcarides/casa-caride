@@ -15,6 +15,9 @@ export type MiniApp = {
    * fondo. Si no, cae al badge con emoji. Migración app por app.
    */
   icon?: string
+  /** Color de fondo del tile cuando hay `icon` (debe coincidir con el fondo
+   *  de la ilustración). Default amarillo Casa Caride. */
+  iconBg?: string
   /** Color de identidad de la app (token del design system). */
   hue: string
   /** 'zone' = app Next vía rewrite · 'static' = HTML estático en public/ */
@@ -54,6 +57,8 @@ export const APPS: MiniApp[] = [
     description: 'Historia clínica del embarazo',
     href: '/olivia',
     emoji: '👶',
+    icon: '/apps/olivia.png',
+    iconBg: '#FF8FB1',
     hue: 'var(--app-olivia)',
     kind: 'zone',
   },
@@ -74,6 +79,7 @@ export const APPS: MiniApp[] = [
     href: '/fabian',
     emoji: '🐶',
     icon: '/apps/fabian.png',
+    iconBg: '#f7c901',
     hue: 'var(--app-fabian)',
     kind: 'zone',
   },

@@ -218,7 +218,7 @@ body {
 }
 
 .tile--art .tile__desc {
-  color: #4a3c10;
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .tile--art .tile__tag {
