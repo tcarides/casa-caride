@@ -70,6 +70,8 @@ export const APPS: MiniApp[] = [
     description: 'Argentina, calendario y grupos 2026',
     href: '/fixture',
     emoji: '⚽',
+    icon: '/apps/fixture.png',
+    iconBg: '#6E8BFF',
     hue: 'var(--app-fixture)',
     kind: 'static',
     access: 'public',
