@@ -1,0 +1,147 @@
+/* ── Regalos de Navidad (tokens del DS vienen de /ds/styles.css) ── */
+:root { --nav: #E0484D; --nav-soft: color-mix(in oklab, #E0484D 16%, transparent); --nav-green: #2Fae66; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { background: var(--bg-0, #0a0a0a); }
+body {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: var(--text-pri, #f2f2f0);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nv { max-width: 600px; margin: 0 auto; padding: 16px 16px 96px; }
+
+/* ── Header ── */
+.nv-header {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in oklab, #0a0a0a 92%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle, #2a2a2a);
+  margin: -16px -16px 16px; padding: 14px 16px 12px;
+}
+.nv-title { display: flex; align-items: center; gap: 12px; }
+.nv-logo { font-size: 30px; line-height: 1; }
+.nv-title h1 { font-size: 1.3rem; font-weight: 800; }
+.nv-title p { font-size: 0.78rem; color: var(--text-sec); margin-top: 2px; }
+.nv-back {
+  background: none; border: none; color: var(--text-sec); font-size: 0.85rem;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0; margin-bottom: 10px;
+}
+.nv-back:active { transform: scale(.97); }
+
+/* ── Botones ── */
+.nv-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-size: 0.9rem; font-weight: 600; border-radius: 12px; padding: 11px 15px;
+  border: 1.5px solid var(--border-subtle, #2a2a2a); background: var(--bg-1, #141414);
+  color: var(--text-pri); cursor: pointer; text-decoration: none;
+}
+.nv-btn:active { transform: scale(.98); }
+.nv-btn--primary { background: var(--nav); border-color: var(--nav); color: #fff; }
+.nv-btn--block { width: 100%; }
+.nv-btn--sm { font-size: 0.82rem; padding: 8px 11px; border-radius: 10px; }
+.nv-btn--ghost { background: none; }
+.nv-btn--danger { color: #ff6b6b; border-color: color-mix(in oklab, #ff6b6b 35%, var(--border-subtle)); }
+
+/* ── Cards de grupo ── */
+.nv-grupos { display: flex; flex-direction: column; gap: 12px; }
+.nv-grupo-card {
+  display: block; text-align: left; width: 100%; cursor: pointer;
+  background: var(--bg-1, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: 18px; padding: 16px 18px; color: inherit;
+}
+.nv-grupo-card:active { transform: scale(.99); }
+.nv-grupo-card h3 { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 9px; }
+.nv-grupo-card .nv-meta { font-size: 0.8rem; color: var(--text-sec); margin-top: 5px; }
+.nv-grupo-card .nv-chev { float: right; color: var(--text-hint, #5a5a56); }
+
+/* ── Participante ── */
+.nv-part { margin-bottom: 22px; }
+.nv-part-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.nv-part-avatar {
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 11px; display: grid; place-items: center;
+  font-size: 18px; background: var(--nav-soft); border: 1px solid color-mix(in oklab, var(--nav) 30%, transparent);
+}
+.nv-part-head h2 { font-size: 1.1rem; font-weight: 700; flex: 1; min-width: 0; }
+.nv-part-count { font-size: 0.75rem; color: var(--text-sec); }
+.nv-part-actions { display: flex; gap: 6px; }
+.nv-icon-btn {
+  background: none; border: none; color: var(--text-hint, #5a5a56); cursor: pointer;
+  font-size: 0.95rem; padding: 5px; border-radius: 8px; line-height: 1;
+}
+.nv-icon-btn:active { transform: scale(.9); }
+
+/* ── Deseos ── */
+.nv-deseos { display: flex; flex-direction: column; gap: 10px; }
+.nv-deseo {
+  display: flex; gap: 12px; background: var(--bg-1, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 14px; padding: 10px; overflow: hidden;
+}
+.nv-deseo-img {
+  width: 72px; height: 72px; flex: 0 0 auto; border-radius: 10px; object-fit: cover;
+  background: var(--bg-2, #1e1e1e);
+}
+.nv-deseo-img--ph { display: grid; place-items: center; font-size: 26px; color: var(--text-hint); }
+.nv-deseo-body { flex: 1; min-width: 0; }
+.nv-deseo-top { display: flex; align-items: flex-start; gap: 8px; }
+.nv-deseo-title { font-size: 0.95rem; font-weight: 600; line-height: 1.25; flex: 1; min-width: 0; word-break: break-word; }
+.nv-deseo-price { font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
+.nv-deseo-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
+.nv-deseo-nota { font-size: 0.8rem; color: var(--text-sec); margin-top: 5px; }
+.nv-deseo-link { font-size: 0.76rem; color: var(--nav); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.nv-deseo-actions { display: flex; gap: 2px; margin-left: auto; }
+
+/* Chips de prioridad */
+.nv-prio { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; }
+.nv-prio--alta { background: color-mix(in oklab, var(--nav) 22%, transparent); color: #ff9a9a; }
+.nv-prio--media { background: color-mix(in oklab, #e0a84d 20%, transparent); color: #e7c389; }
+.nv-prio--baja { background: var(--bg-2, #1e1e1e); color: var(--text-sec); }
+
+.nv-empty { text-align: center; color: var(--text-sec); font-size: 0.88rem; padding: 40px 20px; }
+.nv-add-row { margin-top: 10px; }
+
+/* ── Sheet / formulario ── */
+.nv-sheet-bg {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.nv-sheet {
+  width: 100%; max-width: 600px; background: var(--bg-1, #141414);
+  border-top-left-radius: 22px; border-top-right-radius: 22px;
+  border-top: 1px solid var(--border-subtle, #2a2a2a); padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-height: 92dvh; overflow-y: auto;
+}
+.nv-sheet h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 14px; }
+.nv-field { margin-bottom: 12px; }
+.nv-field label { display: block; font-size: 0.78rem; color: var(--text-sec); margin-bottom: 5px; }
+.nv-input, .nv-select, .nv-textarea {
+  width: 100%; font-size: 0.95rem; color: var(--text-pri); background: var(--bg-2, #1e1e1e);
+  border: 1.5px solid var(--border-subtle, #2a2a2a); border-radius: 11px; padding: 11px 12px; font-family: inherit;
+}
+.nv-input:focus, .nv-select:focus, .nv-textarea:focus { outline: none; border-color: var(--nav); }
+.nv-textarea { resize: vertical; min-height: 56px; }
+.nv-row { display: flex; gap: 10px; }
+.nv-row > * { flex: 1; }
+.nv-link-row { display: flex; gap: 8px; align-items: stretch; }
+.nv-link-row .nv-input { flex: 1; }
+.nv-preview {
+  display: flex; gap: 10px; align-items: center; background: var(--bg-2, #1e1e1e);
+  border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 12px; padding: 8px; margin-bottom: 12px;
+}
+.nv-preview img { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; flex: 0 0 auto; }
+.nv-preview-txt { font-size: 0.82rem; color: var(--text-sec); min-width: 0; }
+.nv-preview-txt b { color: var(--text-pri); font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
+.nv-sheet-actions .nv-btn { flex: 1; }
+.nv-hint { font-size: 0.74rem; color: var(--text-hint, #5a5a56); margin-top: 4px; }
+.nv-prio-pick { display: flex; gap: 8px; }
+.nv-prio-pick button {
+  flex: 1; font-size: 0.82rem; font-weight: 600; padding: 9px; border-radius: 10px; cursor: pointer;
+  background: var(--bg-2, #1e1e1e); border: 1.5px solid var(--border-subtle, #2a2a2a); color: var(--text-sec);
+}
+.nv-prio-pick button[data-on="true"] { border-color: var(--nav); color: var(--text-pri); background: var(--nav-soft); }
+
+.nv-spin { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nvspin .7s linear infinite; }
+@keyframes nvspin { to { transform: rotate(360deg); } }
+.nv-loading { text-align: center; color: var(--text-sec); padding: 48px; }
