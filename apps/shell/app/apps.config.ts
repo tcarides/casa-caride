@@ -102,6 +102,16 @@ export const APPS: MiniApp[] = [
     hue: 'var(--app-gastos)',
     kind: 'zone',
   },
+  {
+    slug: 'navidad',
+    name: 'Regalos de Navidad',
+    description: 'Las listas de regalos de la familia',
+    href: '/navidad',
+    emoji: '🎄',
+    hue: '#E0484D',
+    kind: 'zone',
+    access: 'open',
+  },
 ]
 
 /**

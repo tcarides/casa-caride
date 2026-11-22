@@ -22,5 +22,13 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
+    // Destino de "Compartir" (Web Share Target): al compartir un link desde
+    // cualquier app, abre la wishlist para agregarlo como deseo. Soportado en
+    // PWA instalada en Android/Chrome; iOS no lo implementa (ahí se pega a mano).
+    share_target: {
+      action: '/navidad/agregar',
+      method: 'GET',
+      params: { title: 'title', text: 'text', url: 'url' },
+    },
   }
 }
