@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
-import { fmtMoney, parseMoney, linkHost } from '@/lib/format'
+import { fmtMoney, linkHost } from '@/lib/format'
+import { DeseoEditor, type DeseoEditorState, type DeseoPayload } from './DeseoEditor'
 
 type Moneda = 'ARS' | 'USD'
 type Prioridad = 'alta' | 'media' | 'baja'
@@ -24,11 +25,36 @@ function grupoUrl(id: number): string {
   return `${window.location.origin}${BASE}?g=${id}`
 }
 
+// ── Totales / texto para exportar ──
+function resumen(deseos: Deseo[]): string {
+  const n = deseos.length
+  const sums: Partial<Record<Moneda, number>> = {}
+  for (const d of deseos) if (d.precio != null) sums[d.moneda] = (sums[d.moneda] ?? 0) + d.precio
+  const base = `${n} ${n === 1 ? 'deseo' : 'deseos'}`
+  const totals = (Object.entries(sums) as [Moneda, number][]).map(([m, c]) => fmtMoney(c, m))
+  return totals.length ? `${base} · ${totals.join(' · ')}` : base
+}
+function lineaDeseo(d: Deseo): string {
+  const precio = d.precio != null ? ` — ${fmtMoney(d.precio, d.moneda)}` : ''
+  const nota = d.nota ? ` (${d.nota})` : ''
+  const link = d.link ? ` — ${d.link}` : ''
+  return `• ${d.titulo}${precio}${nota}${link}`
+}
+function textoParticipante(grupoNombre: string, p: Participante): string {
+  const body = p.deseos.length ? p.deseos.map(lineaDeseo).join('\n') : '(sin deseos todavía)'
+  return `🎄 ${grupoNombre} — ${p.nombre}\n${body}`
+}
+function textoGrupo(g: GrupoDetalle): string {
+  const bloques = g.participantes.map((p) =>
+    `${p.emoji ? p.emoji + ' ' : ''}${p.nombre}\n${p.deseos.length ? p.deseos.map(lineaDeseo).join('\n') : '(sin deseos)'}`)
+  return `🎄 ${g.nombre}\n\n${bloques.join('\n\n')}`
+}
+
 export default function NavidadPage() {
   const [grupos, setGrupos] = useState<Grupo[] | null>(null)
   const [grupo, setGrupo] = useState<GrupoDetalle | null>(null)
   const [busy, setBusy] = useState(false)
-  const [nuevoGrupo, setNuevoGrupo] = useState<string | null>(null) // null = cerrado
+  const [nuevoGrupo, setNuevoGrupo] = useState<string | null>(null)
   const [editor, setEditor] = useState<DeseoEditorState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -50,7 +76,6 @@ export default function NavidadPage() {
     if (grupo) await openGrupo(grupo.id)
   }, [grupo, openGrupo])
 
-  // Abre un grupo y refleja el link en la URL (para compartir / back del navegador).
   const abrirGrupo = useCallback((id: number) => {
     history.pushState({}, '', `${BASE}?g=${id}`)
     openGrupo(id)
@@ -61,8 +86,6 @@ export default function NavidadPage() {
     setGrupo(null)
   }, [])
 
-  // Al montar: leer ?g=<id> del link (deep-link desde WhatsApp) y abrir ese grupo.
-  // Además escuchar back/forward del navegador.
   useEffect(() => {
     loadGrupos()
     const idDesdeUrl = () => {
@@ -81,9 +104,10 @@ export default function NavidadPage() {
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(null), 2600)
+    setTimeout(() => setToast((t) => (t === msg ? null : t)), 2600)
   }, [])
 
+  // ── Compartir / exportar ──
   async function compartirGrupo() {
     if (!grupo) return
     const url = grupoUrl(grupo.id)
@@ -92,12 +116,14 @@ export default function NavidadPage() {
       try { await navigator.share(data) } catch { /* cancelado */ }
       return
     }
-    try {
-      await navigator.clipboard.writeText(url)
-      showToast('Link copiado ✓')
-    } catch {
-      showToast(url)
+    try { await navigator.clipboard.writeText(url); showToast('Link copiado ✓') } catch { showToast(url) }
+  }
+  async function copiarTexto(texto: string, okMsg: string) {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try { await navigator.share({ text: texto }) } catch { /* cancelado */ }
+      return
     }
+    try { await navigator.clipboard.writeText(texto); showToast(okMsg) } catch { showToast('No pude copiar') }
   }
 
   // ── Grupos ──
@@ -106,10 +132,8 @@ export default function NavidadPage() {
     if (!n) return
     setBusy(true)
     try {
-      const res = await apiFetch('/api/grupos', {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nombre: n }),
-      })
-      if (res.ok) { setNuevoGrupo(null); await loadGrupos(); await openGrupo((await res.json()).id) }
+      const res = await apiFetch('/api/grupos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nombre: n }) })
+      if (res.ok) { setNuevoGrupo(null); await loadGrupos(); abrirGrupo((await res.json()).id) }
     } finally { setBusy(false) }
   }
   async function renombrarGrupo() {
@@ -123,7 +147,7 @@ export default function NavidadPage() {
     if (!grupo) return
     if (!confirm(`¿Borrar el grupo "${grupo.nombre}" y todas sus listas?`)) return
     await apiFetch(`/api/grupos/${grupo.id}`, { method: 'DELETE' })
-    setGrupo(null); await loadGrupos()
+    volverAGrupos(); await loadGrupos()
   }
 
   // ── Participantes ──
@@ -149,8 +173,7 @@ export default function NavidadPage() {
   // ── Deseos ──
   async function guardarDeseo(data: DeseoPayload, id?: number) {
     const url = id ? `/api/deseos/${id}` : '/api/deseos'
-    const method = id ? 'PATCH' : 'POST'
-    const res = await apiFetch(url, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
+    const res = await apiFetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
     if (res.ok) { setEditor(null); await reloadGrupo() }
     return res.ok
   }
@@ -158,6 +181,22 @@ export default function NavidadPage() {
     if (!confirm('¿Borrar este deseo?')) return
     await apiFetch(`/api/deseos/${d.id}`, { method: 'DELETE' })
     await reloadGrupo()
+  }
+  // Refresca precio e imagen volviendo a leer el link.
+  async function refrescarDeseo(d: Deseo) {
+    if (!d.link) return
+    showToast('Actualizando…')
+    try {
+      const res = await apiFetch(`/api/preview?url=${encodeURIComponent(d.link)}`)
+      const p = (await res.json().catch(() => null))?.preview
+      if (!p) { showToast('No pude leer el link'); return }
+      const patch: DeseoPatchBody = {}
+      if (p.price != null) { patch.precio = p.price; if (p.moneda) patch.moneda = p.moneda }
+      if (p.image) patch.imagenUrl = p.image
+      if (Object.keys(patch).length === 0) { showToast('Sin cambios'); return }
+      await apiFetch(`/api/deseos/${d.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) })
+      await reloadGrupo(); showToast('Actualizado ✓')
+    } catch { showToast('No pude actualizar') }
   }
 
   // ── Render ──
@@ -168,20 +207,18 @@ export default function NavidadPage() {
           grupo={grupo} busy={busy}
           onBack={volverAGrupos}
           onShare={compartirGrupo}
+          onCopyGroup={() => copiarTexto(textoGrupo(grupo), 'Lista copiada ✓')}
+          onCopyPart={(p) => copiarTexto(textoParticipante(grupo.nombre, p), `Lista de ${p.nombre} copiada ✓`)}
           onRename={renombrarGrupo} onDelete={borrarGrupo}
           onAddPart={agregarParticipante}
           onRenamePart={renombrarParticipante} onDeletePart={borrarParticipante}
           onAddDeseo={(pid) => setEditor({ participanteId: pid })}
           onEditDeseo={(d) => setEditor({ participanteId: d.participanteId, deseo: d })}
           onDeleteDeseo={borrarDeseo}
+          onRefreshDeseo={refrescarDeseo}
         />
         {editor && (
-          <DeseoEditor
-            key={editor.deseo?.id ?? 'new'}
-            state={editor}
-            onClose={() => setEditor(null)}
-            onSave={guardarDeseo}
-          />
+          <DeseoEditor key={editor.deseo?.id ?? 'new'} state={editor} onClose={() => setEditor(null)} onSave={guardarDeseo} />
         )}
         {toast && <div className="nv-toast">{toast}</div>}
       </main>
@@ -193,10 +230,7 @@ export default function NavidadPage() {
       <header className="nv-header">
         <div className="nv-title">
           <span className="nv-logo" aria-hidden>🎄</span>
-          <div>
-            <h1>Regalos de Navidad</h1>
-            <p>Las listas de la familia</p>
-          </div>
+          <div><h1>Regalos de Navidad</h1><p>Las listas de la familia</p></div>
         </div>
       </header>
 
@@ -221,17 +255,13 @@ export default function NavidadPage() {
           </div>
 
           {nuevoGrupo !== null ? (
-            <NuevoGrupoForm
-              value={nuevoGrupo} onChange={setNuevoGrupo} busy={busy}
-              onCancel={() => setNuevoGrupo(null)} onSubmit={() => crearGrupo(nuevoGrupo)}
-            />
+            <NuevoGrupoForm value={nuevoGrupo} onChange={setNuevoGrupo} busy={busy} onCancel={() => setNuevoGrupo(null)} onSubmit={() => crearGrupo(nuevoGrupo)} />
           ) : (
-            <button className="nv-btn nv-btn--primary nv-btn--block nv-add-row" onClick={() => setNuevoGrupo('')}>
-              + Nuevo grupo
-            </button>
+            <button className="nv-btn nv-btn--primary nv-btn--block nv-add-row" onClick={() => setNuevoGrupo('')}>+ Nuevo grupo</button>
           )}
         </>
       )}
+      {toast && <div className="nv-toast">{toast}</div>}
     </main>
   )
 }
@@ -242,10 +272,7 @@ function NuevoGrupoForm({ value, onChange, onSubmit, onCancel, busy }: {
 }) {
   return (
     <form className="nv-add-row nv-link-row" onSubmit={(e) => { e.preventDefault(); onSubmit() }}>
-      <input
-        className="nv-input" autoFocus placeholder="Ej. Navidad Caride 2026"
-        value={value} onChange={(e) => onChange(e.target.value)}
-      />
+      <input className="nv-input" autoFocus placeholder="Ej. Navidad Caride 2026" value={value} onChange={(e) => onChange(e.target.value)} />
       <button type="button" className="nv-btn nv-btn--ghost nv-btn--sm" onClick={onCancel}>✕</button>
       <button type="submit" className="nv-btn nv-btn--primary nv-btn--sm" disabled={busy || !value.trim()}>Crear</button>
     </form>
@@ -253,18 +280,22 @@ function NuevoGrupoForm({ value, onChange, onSubmit, onCancel, busy }: {
 }
 
 // ── Vista de un grupo ──
-function GrupoView({ grupo, busy, onBack, onShare, onRename, onDelete, onAddPart, onRenamePart, onDeletePart, onAddDeseo, onEditDeseo, onDeleteDeseo }: {
+function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onCopyPart, onRename, onDelete, onAddPart, onRenamePart, onDeletePart, onAddDeseo, onEditDeseo, onDeleteDeseo, onRefreshDeseo }: {
   grupo: GrupoDetalle; busy: boolean
-  onBack: () => void; onShare: () => void; onRename: () => void; onDelete: () => void
+  onBack: () => void; onShare: () => void; onCopyGroup: () => void; onCopyPart: (p: Participante) => void
+  onRename: () => void; onDelete: () => void
   onAddPart: () => void; onRenamePart: (p: Participante) => void; onDeletePart: (p: Participante) => void
-  onAddDeseo: (pid: number) => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void
+  onAddDeseo: (pid: number) => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void; onRefreshDeseo: (d: Deseo) => void
 }) {
   return (
     <>
       <header className="nv-header">
         <div className="nv-topbar">
           <button className="nv-back" onClick={onBack}>‹ Grupos</button>
-          <button className="nv-btn nv-btn--sm nv-share" onClick={onShare}>🔗 Compartir</button>
+          <div className="nv-topbar-actions">
+            <button className="nv-btn nv-btn--sm" onClick={onCopyGroup}>📋 Copiar</button>
+            <button className="nv-btn nv-btn--sm nv-share" onClick={onShare}>🔗 Compartir</button>
+          </div>
         </div>
         <div className="nv-title">
           <span className="nv-logo" aria-hidden>🎁</span>
@@ -285,9 +316,12 @@ function GrupoView({ grupo, busy, onBack, onShare, onRename, onDelete, onAddPart
         <section className="nv-part" key={p.id}>
           <div className="nv-part-head">
             <span className="nv-part-avatar" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
-            <h2>{p.nombre}</h2>
-            <span className="nv-part-count">{p.deseos.length}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2>{p.nombre}</h2>
+              <div className="nv-part-total">{resumen(p.deseos)}</div>
+            </div>
             <div className="nv-part-actions">
+              <button className="nv-icon-btn" title="Copiar lista" onClick={() => onCopyPart(p)}>📋</button>
               <button className="nv-icon-btn" title="Editar" onClick={() => onRenamePart(p)}>✏️</button>
               <button className="nv-icon-btn" title="Quitar" onClick={() => onDeletePart(p)}>🗑️</button>
             </div>
@@ -295,7 +329,7 @@ function GrupoView({ grupo, busy, onBack, onShare, onRename, onDelete, onAddPart
 
           <div className="nv-deseos">
             {p.deseos.map((d) => (
-              <DeseoCard key={d.id} deseo={d} onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)} />
+              <DeseoCard key={d.id} deseo={d} onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)} onRefresh={() => onRefreshDeseo(d)} />
             ))}
           </div>
 
@@ -308,7 +342,7 @@ function GrupoView({ grupo, busy, onBack, onShare, onRename, onDelete, onAddPart
   )
 }
 
-function DeseoCard({ deseo: d, onEdit, onDelete }: { deseo: Deseo; onEdit: () => void; onDelete: () => void }) {
+function DeseoCard({ deseo: d, onEdit, onDelete, onRefresh }: { deseo: Deseo; onEdit: () => void; onDelete: () => void; onRefresh: () => void }) {
   return (
     <div className="nv-deseo">
       {d.imagenUrl
@@ -320,15 +354,14 @@ function DeseoCard({ deseo: d, onEdit, onDelete }: { deseo: Deseo; onEdit: () =>
           <div className="nv-deseo-title">{d.titulo}</div>
           {d.precio != null && <div className="nv-deseo-price">{fmtMoney(d.precio, d.moneda)}</div>}
           <div className="nv-deseo-actions">
+            {d.link && <button className="nv-icon-btn" title="Actualizar precio/imagen del link" onClick={onRefresh}>🔄</button>}
             <button className="nv-icon-btn" title="Editar" onClick={onEdit}>✏️</button>
             <button className="nv-icon-btn" title="Borrar" onClick={onDelete}>🗑️</button>
           </div>
         </div>
         <div className="nv-deseo-sub">
           <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
-          {d.link && (
-            <a className="nv-deseo-link" href={d.link} target="_blank" rel="noopener noreferrer">↗ {linkHost(d.link)}</a>
-          )}
+          {d.link && <a className="nv-deseo-link" href={d.link} target="_blank" rel="noopener noreferrer">↗ {linkHost(d.link)}</a>}
         </div>
         {d.nota && <div className="nv-deseo-nota">{d.nota}</div>}
       </div>
@@ -336,136 +369,7 @@ function DeseoCard({ deseo: d, onEdit, onDelete }: { deseo: Deseo; onEdit: () =>
   )
 }
 
-// ── Editor de deseo (bottom sheet) ──
-interface DeseoEditorState { participanteId: number; deseo?: Deseo }
-interface DeseoPayload {
-  participanteId: number; titulo: string; link: string | null; imagenUrl: string | null
-  precio: number | null; moneda: Moneda; prioridad: Prioridad; nota: string | null
-}
-
-function DeseoEditor({ state, onClose, onSave }: {
-  state: DeseoEditorState
-  onClose: () => void
-  onSave: (data: DeseoPayload, id?: number) => Promise<boolean>
-}) {
-  const d = state.deseo
-  const [link, setLink] = useState(d?.link ?? '')
-  const [titulo, setTitulo] = useState(d?.titulo ?? '')
-  const [imagenUrl, setImagenUrl] = useState<string | null>(d?.imagenUrl ?? null)
-  const [precioTxt, setPrecioTxt] = useState(d?.precio != null ? String(d.precio / 100) : '')
-  const [moneda, setMoneda] = useState<Moneda>(d?.moneda ?? 'ARS')
-  const [prioridad, setPrioridad] = useState<Prioridad>(d?.prioridad ?? 'media')
-  const [nota, setNota] = useState(d?.nota ?? '')
-  const [loadingPrev, setLoadingPrev] = useState(false)
-  const [prevMsg, setPrevMsg] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  async function traerPreview() {
-    const url = link.trim()
-    if (!url) return
-    setLoadingPrev(true); setPrevMsg(null)
-    try {
-      const res = await apiFetch(`/api/preview?url=${encodeURIComponent(url)}`)
-      const data = await res.json().catch(() => null)
-      const p = data?.preview
-      if (p) {
-        if (p.image) setImagenUrl(p.image)
-        if (p.title && !titulo.trim()) setTitulo(p.title)
-        if (p.price != null && !precioTxt.trim()) { setPrecioTxt(String(p.price / 100)); if (p.moneda) setMoneda(p.moneda) }
-        setPrevMsg(p.image || p.title ? '✓ Datos traídos del link' : 'No encontré preview; cargalo a mano.')
-      } else {
-        setPrevMsg('No encontré preview; cargalo a mano.')
-      }
-    } catch {
-      setPrevMsg('No pude leer el link.')
-    } finally { setLoadingPrev(false) }
-  }
-
-  async function submit() {
-    const t = titulo.trim()
-    const l = link.trim()
-    if (!t && !l) { setPrevMsg('Poné un título o un link.'); return }
-    setSaving(true)
-    const ok = await onSave({
-      participanteId: state.participanteId,
-      titulo: t || l,
-      link: l || null,
-      imagenUrl,
-      precio: precioTxt.trim() ? parseMoney(precioTxt) : null,
-      moneda, prioridad,
-      nota: nota.trim() || null,
-    }, d?.id)
-    if (!ok) { setSaving(false); setPrevMsg('No se pudo guardar.') }
-  }
-
-  return (
-    <div className="nv-sheet-bg" onClick={onClose}>
-      <div className="nv-sheet" onClick={(e) => e.stopPropagation()}>
-        <h3>{d ? 'Editar deseo' : 'Nuevo deseo'}</h3>
-
-        <div className="nv-field">
-          <label>Link del producto (opcional)</label>
-          <div className="nv-link-row">
-            <input className="nv-input" inputMode="url" placeholder="pegá el link…" value={link} onChange={(e) => setLink(e.target.value)} />
-            <button type="button" className="nv-btn nv-btn--sm" onClick={traerPreview} disabled={loadingPrev || !link.trim()}>
-              {loadingPrev ? <span className="nv-spin" /> : 'Traer'}
-            </button>
-          </div>
-          {prevMsg && <div className="nv-hint">{prevMsg}</div>}
-        </div>
-
-        {imagenUrl && (
-          <div className="nv-preview">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imagenUrl} alt="" />
-            <div className="nv-preview-txt">
-              <b>{titulo || 'Producto'}</b>
-              imagen del preview
-            </div>
-            <button type="button" className="nv-icon-btn" title="Quitar imagen" style={{ marginLeft: 'auto' }} onClick={() => setImagenUrl(null)}>✕</button>
-          </div>
-        )}
-
-        <div className="nv-field">
-          <label>Título</label>
-          <input className="nv-input" placeholder="Qué querés" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
-        </div>
-
-        <div className="nv-field">
-          <label>Precio aprox. (opcional)</label>
-          <div className="nv-row">
-            <input className="nv-input" inputMode="decimal" placeholder="0" value={precioTxt} onChange={(e) => setPrecioTxt(e.target.value)} />
-            <select className="nv-select" value={moneda} onChange={(e) => setMoneda(e.target.value as Moneda)} style={{ maxWidth: 90 }}>
-              <option value="ARS">ARS</option>
-              <option value="USD">USD</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="nv-field">
-          <label>Prioridad</label>
-          <div className="nv-prio-pick">
-            {(['alta', 'media', 'baja'] as Prioridad[]).map((p) => (
-              <button key={p} type="button" data-on={prioridad === p} onClick={() => setPrioridad(p)}>{PRIO_LABEL[p]}</button>
-            ))}
-          </div>
-        </div>
-
-        <div className="nv-field">
-          <label>Nota (talle, color, modelo…)</label>
-          <textarea className="nv-textarea" placeholder="Opcional" value={nota} onChange={(e) => setNota(e.target.value)} />
-        </div>
-
-        <div className="nv-sheet-actions">
-          <button type="button" className="nv-btn nv-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="button" className="nv-btn nv-btn--primary" onClick={submit} disabled={saving}>
-            {saving ? <span className="nv-spin" /> : (d ? 'Guardar' : 'Agregar')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+interface DeseoPatchBody { precio?: number | null; moneda?: Moneda; imagenUrl?: string | null }
 
 function inicial(nombre: string): string {
   return nombre.trim().charAt(0).toUpperCase() || '🎁'
