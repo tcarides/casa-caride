@@ -24,11 +24,21 @@ body {
 .nv-logo { font-size: 30px; line-height: 1; }
 .nv-title h1 { font-size: 1.3rem; font-weight: 800; }
 .nv-title p { font-size: 0.78rem; color: var(--text-sec); margin-top: 2px; }
+.nv-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .nv-back {
   background: none; border: none; color: var(--text-sec); font-size: 0.85rem;
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0; margin-bottom: 10px;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0;
 }
 .nv-back:active { transform: scale(.97); }
+.nv-share { white-space: nowrap; }
+
+.nv-toast {
+  position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 60; background: var(--bg-2, #1e1e1e); color: var(--text-pri);
+  border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 999px; padding: 10px 16px;
+  font-size: 0.85rem; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
 
 /* ── Botones ── */
 .nv-btn {

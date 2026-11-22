@@ -16,6 +16,13 @@ interface Grupo { id: number; nombre: string; createdAt: string; nParticipantes?
 interface GrupoDetalle extends Grupo { participantes: Participante[] }
 
 const PRIO_LABEL: Record<Prioridad, string> = { alta: 'Alta', media: 'Media', baja: 'Baja' }
+const BASE = '/navidad'
+
+/** Link compartible de un grupo (para fijar en WhatsApp). */
+function grupoUrl(id: number): string {
+  if (typeof window === 'undefined') return `${BASE}?g=${id}`
+  return `${window.location.origin}${BASE}?g=${id}`
+}
 
 export default function NavidadPage() {
   const [grupos, setGrupos] = useState<Grupo[] | null>(null)
@@ -23,6 +30,7 @@ export default function NavidadPage() {
   const [busy, setBusy] = useState(false)
   const [nuevoGrupo, setNuevoGrupo] = useState<string | null>(null) // null = cerrado
   const [editor, setEditor] = useState<DeseoEditorState | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const loadGrupos = useCallback(async () => {
     const res = await apiFetch('/api/grupos')
@@ -34,6 +42,7 @@ export default function NavidadPage() {
     try {
       const res = await apiFetch(`/api/grupos/${id}`)
       if (res.ok) setGrupo((await res.json()).grupo as GrupoDetalle)
+      else setGrupo(null)
     } finally { setBusy(false) }
   }, [])
 
@@ -41,7 +50,55 @@ export default function NavidadPage() {
     if (grupo) await openGrupo(grupo.id)
   }, [grupo, openGrupo])
 
-  useEffect(() => { loadGrupos() }, [loadGrupos])
+  // Abre un grupo y refleja el link en la URL (para compartir / back del navegador).
+  const abrirGrupo = useCallback((id: number) => {
+    history.pushState({}, '', `${BASE}?g=${id}`)
+    openGrupo(id)
+  }, [openGrupo])
+
+  const volverAGrupos = useCallback(() => {
+    history.pushState({}, '', BASE)
+    setGrupo(null)
+  }, [])
+
+  // Al montar: leer ?g=<id> del link (deep-link desde WhatsApp) y abrir ese grupo.
+  // Además escuchar back/forward del navegador.
+  useEffect(() => {
+    loadGrupos()
+    const idDesdeUrl = () => {
+      const g = new URLSearchParams(window.location.search).get('g')
+      return g && /^\d+$/.test(g) ? Number(g) : null
+    }
+    const inicial = idDesdeUrl()
+    if (inicial) openGrupo(inicial)
+    const onPop = () => {
+      const g = idDesdeUrl()
+      if (g) openGrupo(g); else setGrupo(null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [loadGrupos, openGrupo])
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2600)
+  }, [])
+
+  async function compartirGrupo() {
+    if (!grupo) return
+    const url = grupoUrl(grupo.id)
+    const data = { title: `🎄 ${grupo.nombre}`, text: `Lista de regalos de Navidad: ${grupo.nombre}`, url }
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try { await navigator.share(data) } catch { /* cancelado */ }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast('Link copiado ✓')
+    } catch {
+      showToast(url)
+    }
+  }
 
   // ── Grupos ──
   async function crearGrupo(nombre: string) {
@@ -109,7 +166,8 @@ export default function NavidadPage() {
       <main className="nv">
         <GrupoView
           grupo={grupo} busy={busy}
-          onBack={() => setGrupo(null)}
+          onBack={volverAGrupos}
+          onShare={compartirGrupo}
           onRename={renombrarGrupo} onDelete={borrarGrupo}
           onAddPart={agregarParticipante}
           onRenamePart={renombrarParticipante} onDeletePart={borrarParticipante}
@@ -125,6 +183,7 @@ export default function NavidadPage() {
             onSave={guardarDeseo}
           />
         )}
+        {toast && <div className="nv-toast">{toast}</div>}
       </main>
     )
   }
@@ -147,7 +206,7 @@ export default function NavidadPage() {
         <>
           <div className="nv-grupos">
             {grupos.map((g) => (
-              <button key={g.id} className="nv-grupo-card" onClick={() => openGrupo(g.id)}>
+              <button key={g.id} className="nv-grupo-card" onClick={() => abrirGrupo(g.id)}>
                 <span className="nv-chev" aria-hidden>›</span>
                 <h3><span aria-hidden>🎁</span>{g.nombre}</h3>
                 <div className="nv-meta">
@@ -194,16 +253,19 @@ function NuevoGrupoForm({ value, onChange, onSubmit, onCancel, busy }: {
 }
 
 // ── Vista de un grupo ──
-function GrupoView({ grupo, busy, onBack, onRename, onDelete, onAddPart, onRenamePart, onDeletePart, onAddDeseo, onEditDeseo, onDeleteDeseo }: {
+function GrupoView({ grupo, busy, onBack, onShare, onRename, onDelete, onAddPart, onRenamePart, onDeletePart, onAddDeseo, onEditDeseo, onDeleteDeseo }: {
   grupo: GrupoDetalle; busy: boolean
-  onBack: () => void; onRename: () => void; onDelete: () => void
+  onBack: () => void; onShare: () => void; onRename: () => void; onDelete: () => void
   onAddPart: () => void; onRenamePart: (p: Participante) => void; onDeletePart: (p: Participante) => void
   onAddDeseo: (pid: number) => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void
 }) {
   return (
     <>
       <header className="nv-header">
-        <button className="nv-back" onClick={onBack}>‹ Grupos</button>
+        <div className="nv-topbar">
+          <button className="nv-back" onClick={onBack}>‹ Grupos</button>
+          <button className="nv-btn nv-btn--sm nv-share" onClick={onShare}>🔗 Compartir</button>
+        </div>
         <div className="nv-title">
           <span className="nv-logo" aria-hidden>🎁</span>
           <div style={{ flex: 1, minWidth: 0 }}>
