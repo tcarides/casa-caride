@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
-import { currentUser } from './identity'
+import { hasSession } from './session'
 
-// Blindaje real de las APIs de la zona: decodifica el JWT del shell (runtime
-// Node, vía currentUser) y corta con 401 si no hay sesión válida. Complementa
-// al middleware de presencia de cookie (que una cookie falsa podría pasar).
+// Blindaje de las APIs de la zona: corta con 401 si no llegó la cookie de
+// sesión del shell. Gate por presencia de cookie (la zona no usa AUTH_SECRET).
 export async function requireSession(): Promise<NextResponse | null> {
-  return (await currentUser()) ? null : NextResponse.json({ error: 'no autenticado' }, { status: 401 })
+  return (await hasSession()) ? null : NextResponse.json({ error: 'no autenticado' }, { status: 401 })
 }

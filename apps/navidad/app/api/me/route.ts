@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { currentUser } from '@/lib/identity'
+import { hasSession } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  return NextResponse.json(await currentUser())
+  return NextResponse.json({ loggedIn: await hasSession() })
 }

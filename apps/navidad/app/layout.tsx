@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { redirect } from 'next/navigation'
 import './globals.css'
-import { currentUser } from '@/lib/identity'
+import { hasSession } from '@/lib/session'
 
 export const metadata: Metadata = {
   title: 'Regalos de Navidad',
@@ -21,8 +21,8 @@ export const viewport: Viewport = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Gate confiable (Node): sin sesión → al shell (que reenvía la cookie o pide login).
-  if (!(await currentUser())) redirect('https://casa-caride.vercel.app/navidad')
+  // Gate: sin cookie de sesión → al shell (que reenvía la cookie o pide login).
+  if (!(await hasSession())) redirect('https://casa-caride.vercel.app/navidad')
   return (
     <html lang="es">
       <body>
