@@ -145,9 +145,9 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
         'accept-language': 'es-AR,es;q=0.9,en;q=0.8',
       },
     })
-    if (!res.ok) return null
+    if (!res.ok) { console.log('[preview-debug] not-ok', JSON.stringify({ req: url.toString(), finalUrl: res.url, status: res.status })); return null }
     const ctype = res.headers.get('content-type') ?? ''
-    if (!ctype.includes('html')) return null
+    if (!ctype.includes('html')) { console.log('[preview-debug] not-html', JSON.stringify({ req: url.toString(), finalUrl: res.url, status: res.status, ctype })); return null }
 
     // Tope de bytes: con el <head> y el JSON-LD alcanza.
     const reader = res.body?.getReader()
@@ -187,9 +187,18 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
     if (price == null && ld.price != null) price = Math.round(ld.price * 100)
     const moneda = pickMoneda(currency ?? ld.currency ?? null)
 
+    console.log('[preview-debug] ok', JSON.stringify({
+      req: url.toString(), finalUrl: finalUrl.toString(), status: res.status, len: html.length,
+      ogImage: metaContent(html, ['og:image']), ogTitle: metaContent(html, ['og:title']),
+      ldBlocks: (html.match(/application\/ld\+json/gi) || []).length,
+      ldHasProduct: /"@type"\s*:\s*(?:"product"|\[[^\]]*"product")/i.test(html),
+      ld, out: { image, title, price, moneda },
+    }).slice(0, 1800))
+
     if (!image && !title && price == null) return null
     return { image, title, price, moneda }
-  } catch {
+  } catch (e) {
+    console.log('[preview-debug] throw', JSON.stringify({ req: rawUrl, err: (e as Error)?.message ?? String(e) }))
     return null
   } finally {
     clearTimeout(timer)
