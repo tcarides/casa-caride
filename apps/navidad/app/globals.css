@@ -202,6 +202,22 @@ body {
 .nv-dg-add { margin-top: 11px; }
 .nv-deseo-optnota { font-size: 0.78rem; color: var(--text-sec); }
 
+/* Opción: letra (A/B/C) que elige la principal (foto/precio del deseo). */
+.nv-opcion { align-items: center; }
+.nv-opciones .nv-deseo-img, .nv-opciones .nv-deseo-img--ph { width: 56px; height: 56px; }
+.nv-opcion--on { border-color: color-mix(in oklab, var(--nav) 55%, var(--border-subtle, #2a2a2a)); }
+.nv-opcion-pick {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 999px; cursor: pointer; font-family: inherit;
+  display: grid; place-items: center; font-size: 0.76rem; font-weight: 800;
+  background: none; border: 1.5px solid var(--border-subtle, #2a2a2a); color: var(--text-sec);
+}
+.nv-opcion-pick:active { transform: scale(.9); }
+.nv-opcion--on .nv-opcion-pick { background: var(--nav); border-color: var(--nav); color: #fff; }
+.nv-opcion-badge {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--nav); background: var(--nav-soft); border-radius: 999px; padding: 1px 7px;
+}
+
 /* Separador de sección dentro del sheet (ej. "Primera opción"). */
 .nv-sheet-sep {
   font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
