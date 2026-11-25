@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
-import { DeseoEditor, type DeseoPayload } from '../DeseoEditor'
+import { DeseoEditor } from '../DeseoEditor'
 
 const BASE = '/navidad'
 
@@ -47,19 +47,13 @@ export default function AgregarPage() {
     if (r.ok) setPartSel({ id: (await r.json()).id, nombre, emoji: null })
   }
 
-  async function guardar(data: DeseoPayload) {
-    const r = await apiFetch('/api/deseos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
-    if (r.ok && grupoSel) window.location.assign(`${BASE}?g=${grupoSel.id}`)
-    return r.ok
-  }
-
   if (partSel && grupoSel) {
     return (
       <main className="nv">
         <DeseoEditor
           state={{ participanteId: partSel.id, prefillLink: link || undefined, autoPreview: !!link }}
           onClose={() => window.location.assign(`${BASE}?g=${grupoSel.id}`)}
-          onSave={guardar}
+          onSaved={() => window.location.assign(`${BASE}?g=${grupoSel.id}`)}
         />
       </main>
     )
