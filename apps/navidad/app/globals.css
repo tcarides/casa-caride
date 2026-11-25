@@ -21,7 +21,7 @@ body {
   margin: -16px -16px 16px; padding: 14px 16px 12px;
 }
 .nv-title { display: flex; align-items: center; gap: 12px; }
-.nv-logo { font-size: 30px; line-height: 1; }
+.nv-logo { font-size: 30px; line-height: 1; display: inline-flex; align-items: center; color: var(--nav); }
 .nv-title h1 { font-size: 1.3rem; font-weight: 800; }
 .nv-title p { font-size: 0.78rem; color: var(--text-sec); margin-top: 2px; }
 .nv-topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
@@ -67,22 +67,36 @@ body {
 .nv-grupo-card h3 { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 9px; }
 .nv-grupo-card .nv-meta { font-size: 0.8rem; color: var(--text-sec); margin-top: 5px; }
 .nv-grupo-card .nv-chev { float: right; color: var(--text-hint, #5a5a56); }
+.nv-grupo-ico { display: inline-flex; align-items: center; color: var(--nav); }
 
-/* ── Participante ── */
-.nv-part { margin-bottom: 22px; }
-.nv-part-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.nv-part-avatar {
-  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 11px; display: grid; place-items: center;
-  font-size: 18px; background: var(--nav-soft); border: 1px solid color-mix(in oklab, var(--nav) 30%, transparent);
+/* ── Personas (listado · nivel 2) ── */
+.nv-personas { display: flex; flex-direction: column; gap: 10px; }
+.nv-persona-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  background: var(--bg-1, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: 14px; padding: 12px 14px; color: inherit;
 }
-.nv-part-head h2 { font-size: 1.1rem; font-weight: 700; flex: 1; min-width: 0; }
-.nv-part-count { font-size: 0.75rem; color: var(--text-sec); }
-.nv-part-actions { display: flex; gap: 6px; }
+.nv-persona-row:active { transform: scale(.99); }
+.nv-persona-avatar {
+  width: 40px; height: 40px; flex: 0 0 auto; border-radius: 12px; display: grid; place-items: center;
+  font-size: 1rem; font-weight: 700; color: var(--nav);
+  background: var(--nav-soft); border: 1px solid color-mix(in oklab, var(--nav) 30%, transparent);
+}
+.nv-persona-avatar--lg { width: 46px; height: 46px; font-size: 1.15rem; border-radius: 14px; }
+.nv-persona-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.nv-persona-nombre { font-size: 1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-persona-total { font-size: 0.78rem; color: var(--text-sec); margin-top: 2px; }
+.nv-persona-chev { color: var(--text-hint, #5a5a56); flex: 0 0 auto; }
+
+/* ── Botones de ícono ── */
 .nv-icon-btn {
   background: none; border: none; color: var(--text-hint, #5a5a56); cursor: pointer;
-  font-size: 0.95rem; padding: 5px; border-radius: 8px; line-height: 1;
+  padding: 6px; border-radius: 9px; display: inline-grid; place-items: center;
 }
+.nv-icon-btn svg { display: block; }
+.nv-icon-btn:hover { color: var(--text-pri); background: var(--bg-2, #1e1e1e); }
 .nv-icon-btn:active { transform: scale(.9); }
+.nv-icon-btn--danger:hover { color: #ff6b6b; background: color-mix(in oklab, #ff6b6b 14%, transparent); }
 
 /* ── Deseos ── */
 .nv-deseos { display: flex; flex-direction: column; gap: 10px; }
@@ -118,6 +132,25 @@ body {
   margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .nv-add-row { margin-top: 10px; }
+
+/* ── Buscador de personas (dentro del grupo) ── */
+.nv-search { position: relative; display: flex; align-items: center; margin: 2px 0 14px; }
+.nv-search-ico {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; color: var(--text-hint, #5a5a56); pointer-events: none;
+}
+.nv-search-input {
+  width: 100%; font-size: 0.95rem; color: var(--text-pri); background: var(--bg-1, #141414);
+  border: 1.5px solid var(--border-subtle, #2a2a2a); border-radius: 11px;
+  padding: 10px 38px; font-family: inherit;
+}
+.nv-search-input:focus { outline: none; border-color: var(--nav); }
+.nv-search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.nv-search-clear {
+  position: absolute; right: 8px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--text-hint, #5a5a56); font-size: 0.85rem; cursor: pointer; border-radius: 8px;
+}
+.nv-search-clear:hover { color: var(--text-pri); }
 
 /* ── Sheet / formulario ── */
 .nv-sheet-bg {

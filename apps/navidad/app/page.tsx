@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { fmtMoney, linkHost } from '@/lib/format'
 import { DeseoEditor, type DeseoEditorState, type DeseoPayload } from './DeseoEditor'
+import {
+  IconPencil, IconTrash, IconCopy, IconShare, IconRefresh, IconSearch,
+  IconPlus, IconChevronLeft, IconChevronRight, IconExternal, IconGift,
+} from './icons'
 
 type Moneda = 'ARS' | 'USD'
 type Prioridad = 'alta' | 'media' | 'baja'
@@ -53,6 +57,7 @@ function textoGrupo(g: GrupoDetalle): string {
 export default function NavidadPage() {
   const [grupos, setGrupos] = useState<Grupo[] | null>(null)
   const [grupo, setGrupo] = useState<GrupoDetalle | null>(null)
+  const [personaId, setPersonaId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [nuevoGrupo, setNuevoGrupo] = useState<string | null>(null)
   const [editor, setEditor] = useState<DeseoEditorState | null>(null)
@@ -78,25 +83,47 @@ export default function NavidadPage() {
 
   const abrirGrupo = useCallback((id: number) => {
     history.pushState({}, '', `${BASE}?g=${id}`)
+    setPersonaId(null)
     openGrupo(id)
   }, [openGrupo])
 
   const volverAGrupos = useCallback(() => {
     history.pushState({}, '', BASE)
+    setPersonaId(null)
     setGrupo(null)
+  }, [])
+
+  const abrirPersona = useCallback((pid: number) => {
+    setPersonaId(pid)
+    setGrupo((g) => {
+      if (g) history.pushState({}, '', `${BASE}?g=${g.id}&p=${pid}`)
+      return g
+    })
+  }, [])
+
+  const volverAPersonas = useCallback(() => {
+    setPersonaId(null)
+    setGrupo((g) => {
+      if (g) history.pushState({}, '', `${BASE}?g=${g.id}`)
+      return g
+    })
   }, [])
 
   useEffect(() => {
     loadGrupos()
-    const idDesdeUrl = () => {
-      const g = new URLSearchParams(window.location.search).get('g')
-      return g && /^\d+$/.test(g) ? Number(g) : null
+    const desdeUrl = () => {
+      const sp = new URLSearchParams(window.location.search)
+      const g = sp.get('g'); const p = sp.get('p')
+      return {
+        g: g && /^\d+$/.test(g) ? Number(g) : null,
+        p: p && /^\d+$/.test(p) ? Number(p) : null,
+      }
     }
-    const inicial = idDesdeUrl()
-    if (inicial) openGrupo(inicial)
+    const { g, p } = desdeUrl()
+    if (g) { openGrupo(g); setPersonaId(p) }
     const onPop = () => {
-      const g = idDesdeUrl()
-      if (g) openGrupo(g); else setGrupo(null)
+      const { g, p } = desdeUrl()
+      if (g) { openGrupo(g); setPersonaId(p) } else { setGrupo(null); setPersonaId(null) }
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
@@ -167,6 +194,7 @@ export default function NavidadPage() {
   async function borrarParticipante(p: Participante) {
     if (!confirm(`¿Quitar a ${p.nombre} y su lista?`)) return
     await apiFetch(`/api/participantes/${p.id}`, { method: 'DELETE' })
+    volverAPersonas()
     await reloadGrupo()
   }
 
@@ -200,19 +228,21 @@ export default function NavidadPage() {
   }
 
   // ── Render ──
-  if (grupo) {
+  const persona = grupo && personaId != null
+    ? grupo.participantes.find((p) => p.id === personaId) ?? null
+    : null
+
+  if (grupo && persona) {
     return (
       <main className="nv">
-        <GrupoView
-          grupo={grupo} busy={busy}
-          onBack={volverAGrupos}
-          onShare={compartirGrupo}
-          onCopyGroup={() => copiarTexto(textoGrupo(grupo), 'Lista copiada ✓')}
-          onCopyPart={(p) => copiarTexto(textoParticipante(grupo.nombre, p), `Lista de ${p.nombre} copiada ✓`)}
-          onRename={renombrarGrupo} onDelete={borrarGrupo}
-          onAddPart={agregarParticipante}
-          onRenamePart={renombrarParticipante} onDeletePart={borrarParticipante}
-          onAddDeseo={(pid) => setEditor({ participanteId: pid })}
+        <PersonaView
+          key={persona.id}
+          grupo={grupo} persona={persona} busy={busy}
+          onBack={volverAPersonas}
+          onCopy={() => copiarTexto(textoParticipante(grupo.nombre, persona), `Lista de ${persona.nombre} copiada ✓`)}
+          onRename={() => renombrarParticipante(persona)}
+          onDelete={() => borrarParticipante(persona)}
+          onAddDeseo={() => setEditor({ participanteId: persona.id })}
           onEditDeseo={(d) => setEditor({ participanteId: d.participanteId, deseo: d })}
           onDeleteDeseo={borrarDeseo}
           onRefreshDeseo={refrescarDeseo}
@@ -220,6 +250,24 @@ export default function NavidadPage() {
         {editor && (
           <DeseoEditor key={editor.deseo?.id ?? 'new'} state={editor} onClose={() => setEditor(null)} onSave={guardarDeseo} />
         )}
+        {toast && <div className="nv-toast">{toast}</div>}
+      </main>
+    )
+  }
+
+  if (grupo) {
+    return (
+      <main className="nv">
+        <GrupoView
+          key={grupo.id}
+          grupo={grupo} busy={busy}
+          onBack={volverAGrupos}
+          onShare={compartirGrupo}
+          onCopyGroup={() => copiarTexto(textoGrupo(grupo), 'Lista copiada ✓')}
+          onRename={renombrarGrupo} onDelete={borrarGrupo}
+          onAddPart={agregarParticipante}
+          onOpenPersona={abrirPersona}
+        />
         {toast && <div className="nv-toast">{toast}</div>}
       </main>
     )
@@ -241,8 +289,8 @@ export default function NavidadPage() {
           <div className="nv-grupos">
             {grupos.map((g) => (
               <button key={g.id} className="nv-grupo-card" onClick={() => abrirGrupo(g.id)}>
-                <span className="nv-chev" aria-hidden>›</span>
-                <h3><span aria-hidden>🎁</span>{g.nombre}</h3>
+                <IconChevronRight className="nv-chev" size={20} />
+                <h3><span className="nv-grupo-ico" aria-hidden><IconGift size={17} /></span>{g.nombre}</h3>
                 <div className="nv-meta">
                   {g.nParticipantes ?? 0} {(g.nParticipantes ?? 0) === 1 ? 'persona' : 'personas'}
                   {' · '}{g.nDeseos ?? 0} {(g.nDeseos ?? 0) === 1 ? 'deseo' : 'deseos'}
@@ -279,65 +327,125 @@ function NuevoGrupoForm({ value, onChange, onSubmit, onCancel, busy }: {
   )
 }
 
-// ── Vista de un grupo ──
-function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onCopyPart, onRename, onDelete, onAddPart, onRenamePart, onDeletePart, onAddDeseo, onEditDeseo, onDeleteDeseo, onRefreshDeseo }: {
+// ── Nivel 2: personas del grupo (con buscador) ──
+function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDelete, onAddPart, onOpenPersona }: {
   grupo: GrupoDetalle; busy: boolean
-  onBack: () => void; onShare: () => void; onCopyGroup: () => void; onCopyPart: (p: Participante) => void
+  onBack: () => void; onShare: () => void; onCopyGroup: () => void
   onRename: () => void; onDelete: () => void
-  onAddPart: () => void; onRenamePart: (p: Participante) => void; onDeletePart: (p: Participante) => void
-  onAddDeseo: (pid: number) => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void; onRefreshDeseo: (d: Deseo) => void
+  onAddPart: () => void; onOpenPersona: (pid: number) => void
+}) {
+  const [q, setQ] = useState('')
+  const filtro = q.trim()
+  const personas = filtro
+    ? grupo.participantes.filter((p) => norm(p.nombre).includes(norm(filtro)))
+    : grupo.participantes
+
+  return (
+    <>
+      <header className="nv-header">
+        <div className="nv-topbar">
+          <button className="nv-back" onClick={onBack}><IconChevronLeft size={18} /> Grupos</button>
+          <div className="nv-topbar-actions">
+            <button className="nv-btn nv-btn--sm" onClick={onCopyGroup}><IconCopy size={15} /> Copiar</button>
+            <button className="nv-btn nv-btn--sm nv-share" onClick={onShare}><IconShare size={15} /> Compartir</button>
+          </div>
+        </div>
+        <div className="nv-title">
+          <span className="nv-logo" aria-hidden><IconGift size={22} /></span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1>{grupo.nombre}</h1>
+            <p>{grupo.participantes.length} {grupo.participantes.length === 1 ? 'persona' : 'personas'}</p>
+          </div>
+          <button className="nv-icon-btn" title="Renombrar grupo" onClick={onRename}><IconPencil /></button>
+          <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar grupo" onClick={onDelete}><IconTrash /></button>
+        </div>
+      </header>
+
+      {grupo.participantes.length === 0 ? (
+        <div className="nv-empty">Sumá a las personas del grupo para armar sus listas.</div>
+      ) : (
+        <>
+          <div className="nv-search">
+            <span className="nv-search-ico" aria-hidden><IconSearch size={16} /></span>
+            <input
+              className="nv-search-input"
+              type="search"
+              inputMode="search"
+              placeholder="Buscar persona…"
+              aria-label="Buscar persona"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {filtro && (
+              <button className="nv-search-clear" title="Limpiar" aria-label="Limpiar búsqueda" onClick={() => setQ('')}>✕</button>
+            )}
+          </div>
+
+          {filtro && personas.length === 0 && (
+            <div className="nv-empty">Nadie coincide con “{q}”.</div>
+          )}
+
+          <div className="nv-personas">
+            {personas.map((p) => (
+              <button className="nv-persona-row" key={p.id} onClick={() => onOpenPersona(p.id)}>
+                <span className="nv-persona-avatar" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
+                <span className="nv-persona-info">
+                  <span className="nv-persona-nombre">{p.nombre}</span>
+                  <span className="nv-persona-total">{resumen(p.deseos)}</span>
+                </span>
+                <IconChevronRight className="nv-persona-chev" size={18} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <button className="nv-btn nv-btn--block nv-add-row" onClick={onAddPart} disabled={busy}>
+        <IconPlus size={16} /> Agregar persona
+      </button>
+    </>
+  )
+}
+
+// ── Nivel 3: deseos de una persona (ver + editar) ──
+function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onRefreshDeseo }: {
+  grupo: GrupoDetalle; persona: Participante; busy: boolean
+  onBack: () => void; onCopy: () => void; onRename: () => void; onDelete: () => void
+  onAddDeseo: () => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void; onRefreshDeseo: (d: Deseo) => void
 }) {
   return (
     <>
       <header className="nv-header">
         <div className="nv-topbar">
-          <button className="nv-back" onClick={onBack}>‹ Grupos</button>
+          <button className="nv-back" onClick={onBack}><IconChevronLeft size={18} /> {grupo.nombre}</button>
           <div className="nv-topbar-actions">
-            <button className="nv-btn nv-btn--sm" onClick={onCopyGroup}>📋 Copiar</button>
-            <button className="nv-btn nv-btn--sm nv-share" onClick={onShare}>🔗 Compartir</button>
+            <button className="nv-btn nv-btn--sm" onClick={onCopy}><IconCopy size={15} /> Copiar</button>
           </div>
         </div>
         <div className="nv-title">
-          <span className="nv-logo" aria-hidden>🎁</span>
+          <span className="nv-persona-avatar nv-persona-avatar--lg" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1>{grupo.nombre}</h1>
-            <p>{grupo.participantes.length} {grupo.participantes.length === 1 ? 'persona' : 'personas'}</p>
+            <h1>{p.nombre}</h1>
+            <p>{resumen(p.deseos)}</p>
           </div>
-          <button className="nv-icon-btn" title="Renombrar" onClick={onRename}>✏️</button>
-          <button className="nv-icon-btn" title="Borrar grupo" onClick={onDelete}>🗑️</button>
+          <button className="nv-icon-btn" title="Renombrar" onClick={onRename}><IconPencil /></button>
+          <button className="nv-icon-btn nv-icon-btn--danger" title="Quitar persona" onClick={onDelete}><IconTrash /></button>
         </div>
       </header>
 
-      {grupo.participantes.length === 0 && (
-        <div className="nv-empty">Sumá a las personas del grupo para armar sus listas.</div>
+      {p.deseos.length === 0 && (
+        <div className="nv-empty">Todavía no hay deseos.<br />Agregá el primero con el botón de abajo.</div>
       )}
 
-      {grupo.participantes.map((p) => (
-        <section className="nv-part" key={p.id}>
-          <div className="nv-part-head">
-            <span className="nv-part-avatar" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h2>{p.nombre}</h2>
-              <div className="nv-part-total">{resumen(p.deseos)}</div>
-            </div>
-            <div className="nv-part-actions">
-              <button className="nv-icon-btn" title="Copiar lista" onClick={() => onCopyPart(p)}>📋</button>
-              <button className="nv-icon-btn" title="Editar" onClick={() => onRenamePart(p)}>✏️</button>
-              <button className="nv-icon-btn" title="Quitar" onClick={() => onDeletePart(p)}>🗑️</button>
-            </div>
-          </div>
+      <div className="nv-deseos">
+        {p.deseos.map((d) => (
+          <DeseoCard key={d.id} deseo={d} onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)} onRefresh={() => onRefreshDeseo(d)} />
+        ))}
+      </div>
 
-          <div className="nv-deseos">
-            {p.deseos.map((d) => (
-              <DeseoCard key={d.id} deseo={d} onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)} onRefresh={() => onRefreshDeseo(d)} />
-            ))}
-          </div>
-
-          <button className="nv-btn nv-btn--sm nv-add-row" onClick={() => onAddDeseo(p.id)}>+ Deseo</button>
-        </section>
-      ))}
-
-      <button className="nv-btn nv-btn--block nv-add-row" onClick={onAddPart} disabled={busy}>+ Agregar persona</button>
+      <button className="nv-btn nv-btn--primary nv-btn--block nv-add-row" onClick={onAddDeseo} disabled={busy}>
+        <IconPlus size={16} /> Agregar deseo
+      </button>
     </>
   )
 }
@@ -348,20 +456,20 @@ function DeseoCard({ deseo: d, onEdit, onDelete, onRefresh }: { deseo: Deseo; on
       {d.imagenUrl
         // eslint-disable-next-line @next/next/no-img-element
         ? <img className="nv-deseo-img" src={d.imagenUrl} alt="" loading="lazy" />
-        : <div className="nv-deseo-img nv-deseo-img--ph" aria-hidden>🎁</div>}
+        : <div className="nv-deseo-img nv-deseo-img--ph" aria-hidden><IconGift size={22} /></div>}
       <div className="nv-deseo-body">
         <div className="nv-deseo-top">
           <div className="nv-deseo-title">{d.titulo}</div>
           {d.precio != null && <div className="nv-deseo-price">{fmtMoney(d.precio, d.moneda)}</div>}
           <div className="nv-deseo-actions">
-            {d.link && <button className="nv-icon-btn" title="Actualizar precio/imagen del link" onClick={onRefresh}>🔄</button>}
-            <button className="nv-icon-btn" title="Editar" onClick={onEdit}>✏️</button>
-            <button className="nv-icon-btn" title="Borrar" onClick={onDelete}>🗑️</button>
+            {d.link && <button className="nv-icon-btn" title="Actualizar precio/imagen del link" onClick={onRefresh}><IconRefresh size={16} /></button>}
+            <button className="nv-icon-btn" title="Editar" onClick={onEdit}><IconPencil size={16} /></button>
+            <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar" onClick={onDelete}><IconTrash size={16} /></button>
           </div>
         </div>
         <div className="nv-deseo-sub">
           <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
-          {d.link && <a className="nv-deseo-link" href={d.link} target="_blank" rel="noopener noreferrer">↗ {linkHost(d.link)}</a>}
+          {d.link && <a className="nv-deseo-link" href={d.link} target="_blank" rel="noopener noreferrer"><IconExternal size={13} /> {linkHost(d.link)}</a>}
         </div>
         {d.nota && <div className="nv-deseo-nota">{d.nota}</div>}
       </div>
@@ -373,4 +481,9 @@ interface DeseoPatchBody { precio?: number | null; moneda?: Moneda; imagenUrl?: 
 
 function inicial(nombre: string): string {
   return nombre.trim().charAt(0).toUpperCase() || '🎁'
+}
+
+// Normaliza para buscar sin importar acentos ni mayúsculas (José ≈ jose).
+function norm(s: string): string {
+  return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 }
