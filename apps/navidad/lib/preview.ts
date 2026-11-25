@@ -1,6 +1,7 @@
-// Preview de links (Open Graph): dado un link de producto, trae imagen, título
-// y precio leyendo las meta tags de la página. Se corre en el server. Guardas
-// anti-SSRF: solo http/https, sin hosts internos, con timeout y tope de bytes.
+// Preview de links (Open Graph + JSON-LD): dado un link de producto, trae
+// imagen, título y precio leyendo las meta tags y el JSON-LD de la página.
+// Corre en el server. Guardas anti-SSRF: solo http/https, sin hosts internos,
+// con timeout y tope de bytes.
 
 export interface LinkPreview {
   image: string | null
@@ -31,9 +32,9 @@ function hostAllowed(host: string): boolean {
 
 function metaContent(html: string, keys: string[]): string | null {
   for (const key of keys) {
-    // property="og:image" content="..."  (en cualquier orden de atributos)
+    // property|name|itemprop = "og:image" ... content="..." (cualquier orden)
     const re = new RegExp(
-      `<meta[^>]+(?:property|name)=["']${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`,
+      `<meta[^>]+(?:property|name|itemprop)=["']${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`,
       'i',
     )
     const tag = html.match(re)?.[0]
@@ -45,10 +46,68 @@ function metaContent(html: string, keys: string[]): string | null {
   return null
 }
 
+function linkHref(html: string, rel: string): string | null {
+  const re = new RegExp(`<link[^>]+rel=["']${rel}["'][^>]*>`, 'i')
+  const tag = html.match(re)?.[0]
+  return tag ? (tag.match(/href=["']([^"']+)["']/i)?.[1] ?? null) : null
+}
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x2F;/gi, '/')
+}
+
+// ── JSON-LD (schema.org Product) ──
+interface LdPick { name?: string; image?: string; price?: number; currency?: string }
+
+function firstString(v: unknown): string | undefined {
+  if (typeof v === 'string') return v
+  if (Array.isArray(v)) { for (const x of v) { const s = firstString(x); if (s) return s } return undefined }
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>
+    return firstString(o.url) ?? firstString(o.contentUrl)
+  }
+  return undefined
+}
+
+function pickFromNode(node: unknown, out: LdPick): void {
+  if (!node || typeof node !== 'object') return
+  const o = node as Record<string, unknown>
+  if (!out.name && typeof o.name === 'string') out.name = o.name
+  if (!out.image) { const img = firstString(o.image); if (img) out.image = img }
+  const offersRaw = o.offers
+  const offer = (Array.isArray(offersRaw) ? offersRaw[0] : offersRaw) as Record<string, unknown> | undefined
+  if (offer && out.price == null) {
+    const spec = (offer.priceSpecification && typeof offer.priceSpecification === 'object'
+      ? (Array.isArray(offer.priceSpecification) ? offer.priceSpecification[0] : offer.priceSpecification)
+      : undefined) as Record<string, unknown> | undefined
+    const p = offer.price ?? offer.lowPrice ?? spec?.price
+    const n = p == null ? NaN : Number(String(p).replace(/[^\d.]/g, ''))
+    if (Number.isFinite(n)) out.price = n
+    const c = offer.priceCurrency ?? spec?.priceCurrency
+    if (typeof c === 'string') out.currency = c
+  }
+}
+
+function parseJsonLd(html: string): LdPick {
+  const out: LdPick = {}
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html))) {
+    let data: unknown
+    try { data = JSON.parse(m[1].trim()) } catch { continue }
+    const roots = Array.isArray(data) ? data : [data]
+    for (const root of roots) {
+      const graph = root && typeof root === 'object' && '@graph' in root
+        ? (root as Record<string, unknown>)['@graph']
+        : null
+      const nodes = Array.isArray(graph) ? graph : [root]
+      for (const node of nodes) pickFromNode(node, out)
+      if (out.name && out.image && out.price != null) return out
+    }
+  }
+  return out
 }
 
 export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> {
@@ -62,27 +121,29 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
   if (!hostAllowed(url.hostname)) return null
 
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 6000)
+  const timer = setTimeout(() => ctrl.abort(), 9000)
   try {
     const res = await fetch(url.toString(), {
       signal: ctrl.signal,
       redirect: 'follow',
       headers: {
-        // Muchos sitios devuelven mejores OG tags con un UA de navegador.
-        'user-agent': 'Mozilla/5.0 (compatible; CasaCarideBot/1.0; +https://casa-caride.vercel.app)',
-        accept: 'text/html,application/xhtml+xml',
+        // UA de navegador real: muchos sitios (MercadoLibre, etc.) devuelven
+        // una página genérica o sin datos a clientes que parecen bots.
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'accept-language': 'es-AR,es;q=0.9,en;q=0.8',
       },
     })
     if (!res.ok) return null
     const ctype = res.headers.get('content-type') ?? ''
     if (!ctype.includes('html')) return null
 
-    // Tope de bytes: con el <head> alcanza para las meta tags.
+    // Tope de bytes: con el <head> y el JSON-LD alcanza.
     const reader = res.body?.getReader()
     if (!reader) return null
     const chunks: Uint8Array[] = []
     let total = 0
-    const MAX = 512 * 1024
+    const MAX = 1024 * 1024
     while (total < MAX) {
       const { done, value } = await reader.read()
       if (done) break
@@ -90,17 +151,27 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
       total += value.length
     }
     try { await reader.cancel() } catch { /* noop */ }
+    const finalUrl = (() => { try { return new URL(res.url || url.toString()) } catch { return url } })()
     const html = new TextDecoder('utf-8').decode(concat(chunks))
+    const ld = parseJsonLd(html)
 
-    const image = absolutize(metaContent(html, ['og:image', 'og:image:url', 'twitter:image', 'twitter:image:src']), url)
+    const image = absolutize(
+      metaContent(html, ['og:image', 'og:image:url', 'og:image:secure_url', 'twitter:image', 'twitter:image:src'])
+      ?? ld.image
+      ?? linkHref(html, 'image_src'),
+      finalUrl,
+    )
     const title =
-      metaContent(html, ['og:title', 'twitter:title']) ??
-      html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() ??
-      null
-    const amount = metaContent(html, ['og:price:amount', 'product:price:amount', 'product:price'])
-    const currency = metaContent(html, ['og:price:currency', 'product:price:currency'])
-    const price = amount ? parseAmount(amount) : null
-    const moneda = currency === 'USD' ? 'USD' : currency === 'ARS' ? 'ARS' : null
+      metaContent(html, ['og:title', 'twitter:title'])
+      ?? ld.name
+      ?? html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim()
+      ?? null
+
+    const amount = metaContent(html, ['og:price:amount', 'product:price:amount', 'product:price', 'price'])
+    const currency = metaContent(html, ['og:price:currency', 'product:price:currency', 'priceCurrency'])
+    let price = amount ? parseAmount(amount) : null
+    if (price == null && ld.price != null) price = Math.round(ld.price * 100)
+    const moneda = pickMoneda(currency ?? ld.currency ?? null)
 
     if (!image && !title && price == null) return null
     return { image, title, price, moneda }
@@ -111,6 +182,14 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
   }
 }
 
+function pickMoneda(c: string | null): 'ARS' | 'USD' | null {
+  if (!c) return null
+  const u = c.toUpperCase()
+  if (u.includes('USD') || u.includes('US$') || u.includes('U$S')) return 'USD'
+  if (u.includes('ARS') || u.includes('$')) return 'ARS'
+  return null
+}
+
 function concat(chunks: Uint8Array[]): Uint8Array {
   const total = chunks.reduce((n, c) => n + c.length, 0)
   const out = new Uint8Array(total)
@@ -119,7 +198,7 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out
 }
 
-function absolutize(src: string | null, base: URL): string | null {
+function absolutize(src: string | null | undefined, base: URL): string | null {
   if (!src) return null
   try { return new URL(src, base).toString() } catch { return null }
 }
