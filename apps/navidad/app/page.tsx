@@ -277,6 +277,9 @@ export default function NavidadPage() {
   return (
     <main className="nv">
       <header className="nv-header">
+        <div className="nv-topbar">
+          <a className="nv-back" href="/"><IconChevronLeft size={18} /> Casa Caride</a>
+        </div>
         <div className="nv-title">
           <span className="nv-logo" aria-hidden>🎄</span>
           <div><h1>Regalos de Navidad</h1><p>Las listas de la familia</p></div>

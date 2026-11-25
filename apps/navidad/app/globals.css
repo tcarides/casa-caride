@@ -28,7 +28,7 @@ body {
 .nv-topbar-actions { display: flex; gap: 8px; }
 .nv-part-total { font-size: 0.75rem; color: var(--text-sec); margin-top: 2px; }
 .nv-back {
-  background: none; border: none; color: var(--text-sec); font-size: 0.85rem;
+  background: none; border: none; color: var(--text-sec); font-size: 0.85rem; text-decoration: none;
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0;
 }
 .nv-back:active { transform: scale(.97); }
