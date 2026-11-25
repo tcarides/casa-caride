@@ -52,6 +52,7 @@ export interface Deseo {
   prioridad: Prioridad
   nota: string | null
   createdAt: string
+  opcionElegidaId: number | null  // opción "principal"; null → la primera (A)
   opciones: Opcion[]
 }
 
@@ -131,6 +132,9 @@ export async function ensureSchema(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS participantes_grupo ON participantes (grupo_id)`
   await sql`CREATE INDEX IF NOT EXISTS deseos_participante ON deseos (participante_id)`
   await sql`CREATE INDEX IF NOT EXISTS opciones_deseo ON opciones (deseo_id)`
+  // Opción "principal" de cada deseo (la que se muestra como foto/precio).
+  // null → se usa la primera (A). Si se borra esa opción, vuelve a null.
+  await sql`ALTER TABLE deseos ADD COLUMN IF NOT EXISTS opcion_elegida_id BIGINT REFERENCES opciones(id) ON DELETE SET NULL`
   // Migración idempotente: cada deseo viejo con link/imagen/precio y sin
   // opciones pasa a tener esa info como su primera opción.
   await sql`
@@ -197,7 +201,7 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
     FROM participantes WHERE grupo_id = ${id}
     ORDER BY orden ASC, created_at ASC, id ASC`
   const deseosRows = await sql`
-    SELECT d.id, d.participante_id, d.titulo, d.prioridad, d.nota, d.created_at
+    SELECT d.id, d.participante_id, d.titulo, d.prioridad, d.nota, d.opcion_elegida_id, d.created_at
     FROM deseos d
     JOIN participantes p ON p.id = d.participante_id
     WHERE p.grupo_id = ${id}`
@@ -228,6 +232,7 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
       prioridad: (r.prioridad as Prioridad) ?? 'media',
       nota: (r.nota as string | null) ?? null,
       createdAt: toIso(r.created_at),
+      opcionElegidaId: r.opcion_elegida_id == null ? null : Number(r.opcion_elegida_id),
       opciones: opcByDeseo.get(Number(r.id)) ?? [],
     })
     deseosByPart.set(pid, list)
@@ -310,6 +315,7 @@ export interface DeseoPatch {
   titulo?: string
   prioridad?: Prioridad
   nota?: string | null
+  opcionElegidaId?: number | null
 }
 
 export async function updateDeseo(id: number, p: DeseoPatch): Promise<void> {
@@ -319,7 +325,8 @@ export async function updateDeseo(id: number, p: DeseoPatch): Promise<void> {
     UPDATE deseos SET
       titulo = COALESCE(${p.titulo ?? null}, titulo),
       prioridad = COALESCE(${p.prioridad ?? null}, prioridad),
-      nota = CASE WHEN ${p.nota !== undefined} THEN ${p.nota ?? null} ELSE nota END
+      nota = CASE WHEN ${p.nota !== undefined} THEN ${p.nota ?? null} ELSE nota END,
+      opcion_elegida_id = CASE WHEN ${p.opcionElegidaId !== undefined} THEN ${p.opcionElegidaId ?? null} ELSE opcion_elegida_id END
     WHERE id = ${id}`
 }
 

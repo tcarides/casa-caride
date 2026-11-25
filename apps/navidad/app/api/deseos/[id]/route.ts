@@ -17,6 +17,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.titulo !== undefined) patch.titulo = String(body.titulo).trim()
   if (body.prioridad !== undefined) patch.prioridad = parsePrioridad(body.prioridad)
   if (body.nota !== undefined) patch.nota = body.nota ? String(body.nota).trim() : null
+  if (body.opcionElegidaId !== undefined) {
+    const n = Number(body.opcionElegidaId)
+    patch.opcionElegidaId = Number.isFinite(n) ? n : null
+  }
 
   await updateDeseo(Number(id), patch)
   return NextResponse.json({ ok: true })

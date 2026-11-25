@@ -19,7 +19,7 @@ interface Opcion {
 }
 interface Deseo {
   id: number; participanteId: number; titulo: string; prioridad: Prioridad; nota: string | null
-  createdAt: string; opciones: Opcion[]
+  createdAt: string; opcionElegidaId: number | null; opciones: Opcion[]
 }
 interface Participante { id: number; grupoId: number; nombre: string; emoji: string | null; orden: number; deseos: Deseo[] }
 interface Grupo { id: number; nombre: string; createdAt: string; nParticipantes?: number; nDeseos?: number }
@@ -35,16 +35,20 @@ function grupoUrl(id: number): string {
   return `${window.location.origin}${BASE}?g=${id}`
 }
 
-// Precio representativo de un deseo: la opción más barata con precio (para
-// totales y para mostrar "desde $X" en los listados).
-function precioRep(d: Deseo): { precio: number; moneda: Moneda } | null {
-  const conPrecio = d.opciones.filter((o) => o.precio != null)
-  if (!conPrecio.length) return null
-  const min = conPrecio.reduce((a, b) => ((b.precio ?? 0) < (a.precio ?? 0) ? b : a))
-  return { precio: min.precio as number, moneda: min.moneda }
+// Opción "principal" del deseo: la elegida, o la primera (A) si no hay elegida.
+function opcionElegida(d: Deseo): Opcion | null {
+  if (!d.opciones.length) return null
+  return d.opciones.find((o) => o.id === d.opcionElegidaId) ?? d.opciones[0]
 }
-function primeraImagen(d: Deseo): string | null {
-  return d.opciones.find((o) => o.imagenUrl)?.imagenUrl ?? null
+// Precio e imagen representativos = los de la opción principal (foto/precio del
+// deseo en listados y totales). La imagen cae a cualquier opción con foto.
+function precioRep(d: Deseo): { precio: number; moneda: Moneda } | null {
+  const o = opcionElegida(d)
+  return o && o.precio != null ? { precio: o.precio, moneda: o.moneda } : null
+}
+function imagenRep(d: Deseo): string | null {
+  const o = opcionElegida(d)
+  return o?.imagenUrl ?? d.opciones.find((x) => x.imagenUrl)?.imagenUrl ?? null
 }
 
 // ── Totales / texto para exportar ──
@@ -242,6 +246,12 @@ export default function NavidadPage() {
     await apiFetch(`/api/opciones/${o.id}`, { method: 'DELETE' })
     await reloadGrupo()
   }
+  // Marca una opción como la "principal" del deseo (la de la foto/precio).
+  async function elegirOpcion(d: Deseo, o: Opcion) {
+    if (d.opcionElegidaId === o.id) return
+    await apiFetch(`/api/deseos/${d.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ opcionElegidaId: o.id }) })
+    await reloadGrupo()
+  }
   // Refresca precio e imagen de una opción volviendo a leer su link.
   async function refrescarOpcion(o: Opcion) {
     if (!o.link) return
@@ -281,6 +291,7 @@ export default function NavidadPage() {
           onEditOpcion={(o) => setEditorOpcion({ deseoId: o.deseoId, opcion: o })}
           onDeleteOpcion={borrarOpcion}
           onRefreshOpcion={refrescarOpcion}
+          onChooseOpcion={elegirOpcion}
         />
         {editorDeseo && (
           <DeseoEditor key={editorDeseo.deseo?.id ?? 'new-deseo'} state={editorDeseo} onClose={() => setEditorDeseo(null)} onSaved={cerrarEditores} />
@@ -495,7 +506,7 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
 // y para quién es; al tocar lleva a la pantalla de esa persona (para editar).
 function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona: Participante; onOpen: () => void }) {
   const rep = precioRep(d)
-  const img = primeraImagen(d)
+  const img = imagenRep(d)
   const n = d.opciones.length
   return (
     <button className="nv-deseo nv-deseo--flat" onClick={onOpen}>
@@ -506,7 +517,7 @@ function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona
       <div className="nv-deseo-body">
         <div className="nv-deseo-top">
           <div className="nv-deseo-title">{d.titulo}</div>
-          {rep && <div className="nv-deseo-price">{n > 1 ? 'desde ' : ''}{fmtMoney(rep.precio, rep.moneda)}</div>}
+          {rep && <div className="nv-deseo-price">{fmtMoney(rep.precio, rep.moneda)}</div>}
         </div>
         <div className="nv-deseo-sub">
           <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
@@ -523,11 +534,12 @@ function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona
 }
 
 // ── Nivel 3: deseos de una persona (ver + editar, con opciones) ──
-function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion }: {
+function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion, onChooseOpcion }: {
   grupo: GrupoDetalle; persona: Participante; busy: boolean
   onBack: () => void; onCopy: () => void; onRename: () => void; onDelete: () => void
   onAddDeseo: () => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void
   onAddOpcion: (d: Deseo) => void; onEditOpcion: (o: Opcion) => void; onDeleteOpcion: (o: Opcion) => void; onRefreshOpcion: (o: Opcion) => void
+  onChooseOpcion: (d: Deseo, o: Opcion) => void
 }) {
   return (
     <>
@@ -560,6 +572,7 @@ function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDele
             onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)}
             onAddOpcion={() => onAddOpcion(d)}
             onEditOpcion={onEditOpcion} onDeleteOpcion={onDeleteOpcion} onRefreshOpcion={onRefreshOpcion}
+            onChooseOpcion={(o) => onChooseOpcion(d, o)}
           />
         ))}
       </div>
@@ -572,11 +585,14 @@ function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDele
 }
 
 // Un deseo (concepto) con su cabecera y la lista de opciones (alternativas).
-function DeseoCard({ deseo: d, onEdit, onDelete, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion }: {
+function DeseoCard({ deseo: d, onEdit, onDelete, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion, onChooseOpcion }: {
   deseo: Deseo
   onEdit: () => void; onDelete: () => void; onAddOpcion: () => void
   onEditOpcion: (o: Opcion) => void; onDeleteOpcion: (o: Opcion) => void; onRefreshOpcion: (o: Opcion) => void
+  onChooseOpcion: (o: Opcion) => void
 }) {
+  const elegida = opcionElegida(d)
+  const varias = d.opciones.length > 1
   return (
     <div className="nv-dg">
       <div className="nv-dg-head">
@@ -592,8 +608,15 @@ function DeseoCard({ deseo: d, onEdit, onDelete, onAddOpcion, onEditOpcion, onDe
       {d.nota && <div className="nv-dg-nota">{d.nota}</div>}
 
       <div className="nv-opciones">
-        {d.opciones.map((o) => (
-          <OpcionRow key={o.id} opcion={o} onEdit={() => onEditOpcion(o)} onDelete={() => onDeleteOpcion(o)} onRefresh={() => onRefreshOpcion(o)} />
+        {d.opciones.map((o, i) => (
+          <OpcionRow
+            key={o.id} opcion={o}
+            letra={String.fromCharCode(65 + i)}
+            principal={elegida?.id === o.id}
+            seleccionable={varias}
+            onChoose={() => onChooseOpcion(o)}
+            onEdit={() => onEditOpcion(o)} onDelete={() => onDeleteOpcion(o)} onRefresh={() => onRefreshOpcion(o)}
+          />
         ))}
         {d.opciones.length === 0 && <div className="nv-dg-empty">Sin opciones todavía.</div>}
       </div>
@@ -603,10 +626,22 @@ function DeseoCard({ deseo: d, onEdit, onDelete, onAddOpcion, onEditOpcion, onDe
   )
 }
 
-// Una opción (alternativa) dentro de un deseo.
-function OpcionRow({ opcion: o, onEdit, onDelete, onRefresh }: { opcion: Opcion; onEdit: () => void; onDelete: () => void; onRefresh: () => void }) {
+// Una opción (alternativa) dentro de un deseo. Con varias opciones muestra su
+// letra (A, B, C…) como selector de la opción principal (la de la foto/precio).
+function OpcionRow({ opcion: o, letra, principal, seleccionable, onChoose, onEdit, onDelete, onRefresh }: {
+  opcion: Opcion; letra: string; principal: boolean; seleccionable: boolean
+  onChoose: () => void; onEdit: () => void; onDelete: () => void; onRefresh: () => void
+}) {
   return (
-    <div className="nv-deseo">
+    <div className={`nv-deseo nv-opcion${seleccionable && principal ? ' nv-opcion--on' : ''}`}>
+      {seleccionable && (
+        <button
+          className="nv-opcion-pick" onClick={onChoose} aria-pressed={principal}
+          title={principal ? 'Opción principal (la de la foto/precio)' : 'Elegir como opción principal'}
+        >
+          {letra}
+        </button>
+      )}
       {o.imagenUrl
         // eslint-disable-next-line @next/next/no-img-element
         ? <img className="nv-deseo-img" src={o.imagenUrl} alt="" loading="lazy" />
@@ -622,6 +657,7 @@ function OpcionRow({ opcion: o, onEdit, onDelete, onRefresh }: { opcion: Opcion;
           </div>
         </div>
         <div className="nv-deseo-sub">
+          {seleccionable && principal && <span className="nv-opcion-badge">Principal</span>}
           {o.link && <a className="nv-deseo-link" href={o.link} target="_blank" rel="noopener noreferrer"><IconExternal size={13} /> {linkHost(o.link)}</a>}
           {o.nota && <span className="nv-deseo-optnota">{o.nota}</span>}
         </div>
