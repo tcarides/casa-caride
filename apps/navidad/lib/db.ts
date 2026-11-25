@@ -21,6 +21,14 @@ export function getSql(): Sql {
 export type Moneda = 'ARS' | 'USD'
 export type Prioridad = 'alta' | 'media' | 'baja'
 
+// Neon/pg devuelve TIMESTAMPTZ como objeto Date (no string). Normalizamos a
+// ISO para que el tipo `createdAt: string` sea verdad en runtime y los sorts
+// (localeCompare) y el formateo en el cliente funcionen.
+function toIso(v: unknown): string {
+  if (v instanceof Date) return v.toISOString()
+  return String(v ?? '')
+}
+
 export interface Deseo {
   id: number
   participanteId: number
@@ -112,7 +120,7 @@ export async function listGrupos(): Promise<Grupo[]> {
   return rows.map((r) => ({
     id: Number(r.id),
     nombre: r.nombre as string,
-    createdAt: r.created_at as string,
+    createdAt: toIso(r.created_at),
     nParticipantes: Number(r.n_participantes),
     nDeseos: Number(r.n_deseos),
   }))
@@ -175,7 +183,7 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
   return {
     id: Number(g.id),
     nombre: g.nombre as string,
-    createdAt: g.created_at as string,
+    createdAt: toIso(g.created_at),
     participantes: parts.map((p) => ({
       id: Number(p.id),
       grupoId: Number(p.grupo_id),
@@ -229,7 +237,7 @@ function mapDeseo(r: Record<string, unknown>): Deseo {
     moneda: (r.moneda as Moneda) ?? 'ARS',
     prioridad: (r.prioridad as Prioridad) ?? 'media',
     nota: (r.nota as string | null) ?? null,
-    createdAt: r.created_at as string,
+    createdAt: toIso(r.created_at),
   }
 }
 
