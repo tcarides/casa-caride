@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { fmtMoney, linkHost } from '@/lib/format'
-import { DeseoEditor, type DeseoEditorState, type DeseoPayload } from './DeseoEditor'
+import { DeseoEditor, type DeseoEditorState } from './DeseoEditor'
+import { OpcionEditor, type OpcionEditorState } from './OpcionForm'
 import {
   IconPencil, IconTrash, IconCopy, IconShare, IconRefresh, IconSearch,
   IconPlus, IconChevronLeft, IconChevronRight, IconExternal, IconGift,
@@ -12,9 +13,13 @@ import {
 type Moneda = 'ARS' | 'USD'
 type Prioridad = 'alta' | 'media' | 'baja'
 
+interface Opcion {
+  id: number; deseoId: number; titulo: string | null; link: string | null; imagenUrl: string | null
+  precio: number | null; moneda: Moneda; nota: string | null; orden: number
+}
 interface Deseo {
-  id: number; participanteId: number; titulo: string; link: string | null; imagenUrl: string | null
-  precio: number | null; moneda: Moneda; prioridad: Prioridad; nota: string | null; createdAt: string
+  id: number; participanteId: number; titulo: string; prioridad: Prioridad; nota: string | null
+  createdAt: string; opciones: Opcion[]
 }
 interface Participante { id: number; grupoId: number; nombre: string; emoji: string | null; orden: number; deseos: Deseo[] }
 interface Grupo { id: number; nombre: string; createdAt: string; nParticipantes?: number; nDeseos?: number }
@@ -30,28 +35,45 @@ function grupoUrl(id: number): string {
   return `${window.location.origin}${BASE}?g=${id}`
 }
 
+// Precio representativo de un deseo: la opción más barata con precio (para
+// totales y para mostrar "desde $X" en los listados).
+function precioRep(d: Deseo): { precio: number; moneda: Moneda } | null {
+  const conPrecio = d.opciones.filter((o) => o.precio != null)
+  if (!conPrecio.length) return null
+  const min = conPrecio.reduce((a, b) => ((b.precio ?? 0) < (a.precio ?? 0) ? b : a))
+  return { precio: min.precio as number, moneda: min.moneda }
+}
+function primeraImagen(d: Deseo): string | null {
+  return d.opciones.find((o) => o.imagenUrl)?.imagenUrl ?? null
+}
+
 // ── Totales / texto para exportar ──
 function resumen(deseos: Deseo[]): string {
   const n = deseos.length
   const sums: Partial<Record<Moneda, number>> = {}
-  for (const d of deseos) if (d.precio != null) sums[d.moneda] = (sums[d.moneda] ?? 0) + d.precio
+  for (const d of deseos) { const r = precioRep(d); if (r) sums[r.moneda] = (sums[r.moneda] ?? 0) + r.precio }
   const base = `${n} ${n === 1 ? 'deseo' : 'deseos'}`
   const totals = (Object.entries(sums) as [Moneda, number][]).map(([m, c]) => fmtMoney(c, m))
   return totals.length ? `${base} · ${totals.join(' · ')}` : base
 }
-function lineaDeseo(d: Deseo): string {
-  const precio = d.precio != null ? ` — ${fmtMoney(d.precio, d.moneda)}` : ''
-  const nota = d.nota ? ` (${d.nota})` : ''
-  const link = d.link ? ` — ${d.link}` : ''
-  return `• ${d.titulo}${precio}${nota}${link}`
+function lineaOpcion(o: Opcion): string {
+  const label = o.titulo || (o.link ? linkHost(o.link) : 'Opción')
+  const precio = o.precio != null ? ` — ${fmtMoney(o.precio, o.moneda)}` : ''
+  const nota = o.nota ? ` (${o.nota})` : ''
+  const link = o.link ? ` — ${o.link}` : ''
+  return `   · ${label}${precio}${nota}${link}`
+}
+function bloqueDeseo(d: Deseo): string {
+  const head = `• ${d.titulo}${d.nota ? ` (${d.nota})` : ''}`
+  return d.opciones.length ? `${head}\n${d.opciones.map(lineaOpcion).join('\n')}` : head
 }
 function textoParticipante(grupoNombre: string, p: Participante): string {
-  const body = p.deseos.length ? p.deseos.map(lineaDeseo).join('\n') : '(sin deseos todavía)'
+  const body = p.deseos.length ? p.deseos.map(bloqueDeseo).join('\n') : '(sin deseos todavía)'
   return `🎄 ${grupoNombre} — ${p.nombre}\n${body}`
 }
 function textoGrupo(g: GrupoDetalle): string {
   const bloques = g.participantes.map((p) =>
-    `${p.emoji ? p.emoji + ' ' : ''}${p.nombre}\n${p.deseos.length ? p.deseos.map(lineaDeseo).join('\n') : '(sin deseos)'}`)
+    `${p.emoji ? p.emoji + ' ' : ''}${p.nombre}\n${p.deseos.length ? p.deseos.map(bloqueDeseo).join('\n') : '(sin deseos)'}`)
   return `🎄 ${g.nombre}\n\n${bloques.join('\n\n')}`
 }
 
@@ -61,7 +83,8 @@ export default function NavidadPage() {
   const [personaId, setPersonaId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [nuevoGrupo, setNuevoGrupo] = useState<string | null>(null)
-  const [editor, setEditor] = useState<DeseoEditorState | null>(null)
+  const [editorDeseo, setEditorDeseo] = useState<DeseoEditorState | null>(null)
+  const [editorOpcion, setEditorOpcion] = useState<OpcionEditorState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   const loadGrupos = useCallback(async () => {
@@ -200,30 +223,38 @@ export default function NavidadPage() {
   }
 
   // ── Deseos ──
-  async function guardarDeseo(data: DeseoPayload, id?: number) {
-    const url = id ? `/api/deseos/${id}` : '/api/deseos'
-    const res = await apiFetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
-    if (res.ok) { setEditor(null); await reloadGrupo() }
-    return res.ok
-  }
+  // Los editores (DeseoEditor / OpcionEditor) persisten solos; acá sólo
+  // cerramos y recargamos.
+  const cerrarEditores = useCallback(async () => {
+    setEditorDeseo(null); setEditorOpcion(null)
+    await reloadGrupo()
+  }, [reloadGrupo])
+
   async function borrarDeseo(d: Deseo) {
-    if (!confirm('¿Borrar este deseo?')) return
+    if (!confirm(`¿Borrar "${d.titulo}" y sus opciones?`)) return
     await apiFetch(`/api/deseos/${d.id}`, { method: 'DELETE' })
     await reloadGrupo()
   }
-  // Refresca precio e imagen volviendo a leer el link.
-  async function refrescarDeseo(d: Deseo) {
-    if (!d.link) return
+
+  // ── Opciones ──
+  async function borrarOpcion(o: Opcion) {
+    if (!confirm('¿Borrar esta opción?')) return
+    await apiFetch(`/api/opciones/${o.id}`, { method: 'DELETE' })
+    await reloadGrupo()
+  }
+  // Refresca precio e imagen de una opción volviendo a leer su link.
+  async function refrescarOpcion(o: Opcion) {
+    if (!o.link) return
     showToast('Actualizando…')
     try {
-      const res = await apiFetch(`/api/preview?url=${encodeURIComponent(d.link)}`)
+      const res = await apiFetch(`/api/preview?url=${encodeURIComponent(o.link)}`)
       const p = (await res.json().catch(() => null))?.preview
       if (!p) { showToast('No pude leer el link'); return }
-      const patch: DeseoPatchBody = {}
+      const patch: OpcionPatchBody = {}
       if (p.price != null) { patch.precio = p.price; if (p.moneda) patch.moneda = p.moneda }
       if (p.image) patch.imagenUrl = p.image
       if (Object.keys(patch).length === 0) { showToast('Sin cambios'); return }
-      await apiFetch(`/api/deseos/${d.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) })
+      await apiFetch(`/api/opciones/${o.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) })
       await reloadGrupo(); showToast('Actualizado ✓')
     } catch { showToast('No pude actualizar') }
   }
@@ -243,13 +274,19 @@ export default function NavidadPage() {
           onCopy={() => copiarTexto(textoParticipante(grupo.nombre, persona), `Lista de ${persona.nombre} copiada ✓`)}
           onRename={() => renombrarParticipante(persona)}
           onDelete={() => borrarParticipante(persona)}
-          onAddDeseo={() => setEditor({ participanteId: persona.id })}
-          onEditDeseo={(d) => setEditor({ participanteId: d.participanteId, deseo: d })}
+          onAddDeseo={() => setEditorDeseo({ participanteId: persona.id })}
+          onEditDeseo={(d) => setEditorDeseo({ participanteId: d.participanteId, deseo: { id: d.id, titulo: d.titulo, prioridad: d.prioridad, nota: d.nota } })}
           onDeleteDeseo={borrarDeseo}
-          onRefreshDeseo={refrescarDeseo}
+          onAddOpcion={(d) => setEditorOpcion({ deseoId: d.id })}
+          onEditOpcion={(o) => setEditorOpcion({ deseoId: o.deseoId, opcion: o })}
+          onDeleteOpcion={borrarOpcion}
+          onRefreshOpcion={refrescarOpcion}
         />
-        {editor && (
-          <DeseoEditor key={editor.deseo?.id ?? 'new'} state={editor} onClose={() => setEditor(null)} onSave={guardarDeseo} />
+        {editorDeseo && (
+          <DeseoEditor key={editorDeseo.deseo?.id ?? 'new-deseo'} state={editorDeseo} onClose={() => setEditorDeseo(null)} onSaved={cerrarEditores} />
+        )}
+        {editorOpcion && (
+          <OpcionEditor key={editorOpcion.opcion?.id ?? 'new-opcion'} state={editorOpcion} onClose={() => setEditorOpcion(null)} onSaved={cerrarEditores} />
         )}
         {toast && <div className="nv-toast">{toast}</div>}
       </main>
@@ -457,19 +494,23 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
 // Fila de deseo en la tab "Deseos" (listado plano del grupo): muestra el ítem
 // y para quién es; al tocar lleva a la pantalla de esa persona (para editar).
 function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona: Participante; onOpen: () => void }) {
+  const rep = precioRep(d)
+  const img = primeraImagen(d)
+  const n = d.opciones.length
   return (
     <button className="nv-deseo nv-deseo--flat" onClick={onOpen}>
-      {d.imagenUrl
+      {img
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img className="nv-deseo-img" src={d.imagenUrl} alt="" loading="lazy" />
+        ? <img className="nv-deseo-img" src={img} alt="" loading="lazy" />
         : <div className="nv-deseo-img nv-deseo-img--ph" aria-hidden><IconGift size={22} /></div>}
       <div className="nv-deseo-body">
         <div className="nv-deseo-top">
           <div className="nv-deseo-title">{d.titulo}</div>
-          {d.precio != null && <div className="nv-deseo-price">{fmtMoney(d.precio, d.moneda)}</div>}
+          {rep && <div className="nv-deseo-price">{n > 1 ? 'desde ' : ''}{fmtMoney(rep.precio, rep.moneda)}</div>}
         </div>
         <div className="nv-deseo-sub">
           <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
+          {n > 0 && <span className="nv-opc-count">{n} {n === 1 ? 'opción' : 'opciones'}</span>}
           <span className="nv-para">
             <span className="nv-para-av" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
             {p.nombre}
@@ -481,11 +522,12 @@ function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona
   )
 }
 
-// ── Nivel 3: deseos de una persona (ver + editar) ──
-function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onRefreshDeseo }: {
+// ── Nivel 3: deseos de una persona (ver + editar, con opciones) ──
+function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion }: {
   grupo: GrupoDetalle; persona: Participante; busy: boolean
   onBack: () => void; onCopy: () => void; onRename: () => void; onDelete: () => void
-  onAddDeseo: () => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void; onRefreshDeseo: (d: Deseo) => void
+  onAddDeseo: () => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void
+  onAddOpcion: (d: Deseo) => void; onEditOpcion: (o: Opcion) => void; onDeleteOpcion: (o: Opcion) => void; onRefreshOpcion: (o: Opcion) => void
 }) {
   return (
     <>
@@ -511,9 +553,14 @@ function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDele
         <div className="nv-empty">Todavía no hay deseos.<br />Agregá el primero con el botón de abajo.</div>
       )}
 
-      <div className="nv-deseos">
+      <div className="nv-deseos-list">
         {p.deseos.map((d) => (
-          <DeseoCard key={d.id} deseo={d} onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)} onRefresh={() => onRefreshDeseo(d)} />
+          <DeseoCard
+            key={d.id} deseo={d}
+            onEdit={() => onEditDeseo(d)} onDelete={() => onDeleteDeseo(d)}
+            onAddOpcion={() => onAddOpcion(d)}
+            onEditOpcion={onEditOpcion} onDeleteOpcion={onDeleteOpcion} onRefreshOpcion={onRefreshOpcion}
+          />
         ))}
       </div>
 
@@ -524,34 +571,66 @@ function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDele
   )
 }
 
-function DeseoCard({ deseo: d, onEdit, onDelete, onRefresh }: { deseo: Deseo; onEdit: () => void; onDelete: () => void; onRefresh: () => void }) {
+// Un deseo (concepto) con su cabecera y la lista de opciones (alternativas).
+function DeseoCard({ deseo: d, onEdit, onDelete, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion }: {
+  deseo: Deseo
+  onEdit: () => void; onDelete: () => void; onAddOpcion: () => void
+  onEditOpcion: (o: Opcion) => void; onDeleteOpcion: (o: Opcion) => void; onRefreshOpcion: (o: Opcion) => void
+}) {
+  return (
+    <div className="nv-dg">
+      <div className="nv-dg-head">
+        <div className="nv-dg-titlewrap">
+          <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
+          <h3 className="nv-dg-title">{d.titulo}</h3>
+        </div>
+        <div className="nv-dg-actions">
+          <button className="nv-icon-btn" title="Editar deseo" onClick={onEdit}><IconPencil size={16} /></button>
+          <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar deseo" onClick={onDelete}><IconTrash size={16} /></button>
+        </div>
+      </div>
+      {d.nota && <div className="nv-dg-nota">{d.nota}</div>}
+
+      <div className="nv-opciones">
+        {d.opciones.map((o) => (
+          <OpcionRow key={o.id} opcion={o} onEdit={() => onEditOpcion(o)} onDelete={() => onDeleteOpcion(o)} onRefresh={() => onRefreshOpcion(o)} />
+        ))}
+        {d.opciones.length === 0 && <div className="nv-dg-empty">Sin opciones todavía.</div>}
+      </div>
+
+      <button className="nv-btn nv-btn--sm nv-dg-add" onClick={onAddOpcion}><IconPlus size={15} /> Opción</button>
+    </div>
+  )
+}
+
+// Una opción (alternativa) dentro de un deseo.
+function OpcionRow({ opcion: o, onEdit, onDelete, onRefresh }: { opcion: Opcion; onEdit: () => void; onDelete: () => void; onRefresh: () => void }) {
   return (
     <div className="nv-deseo">
-      {d.imagenUrl
+      {o.imagenUrl
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img className="nv-deseo-img" src={d.imagenUrl} alt="" loading="lazy" />
+        ? <img className="nv-deseo-img" src={o.imagenUrl} alt="" loading="lazy" />
         : <div className="nv-deseo-img nv-deseo-img--ph" aria-hidden><IconGift size={22} /></div>}
       <div className="nv-deseo-body">
         <div className="nv-deseo-top">
-          <div className="nv-deseo-title">{d.titulo}</div>
-          {d.precio != null && <div className="nv-deseo-price">{fmtMoney(d.precio, d.moneda)}</div>}
+          <div className="nv-deseo-title">{o.titulo || (o.link ? linkHost(o.link) : 'Opción')}</div>
+          {o.precio != null && <div className="nv-deseo-price">{fmtMoney(o.precio, o.moneda)}</div>}
           <div className="nv-deseo-actions">
-            {d.link && <button className="nv-icon-btn" title="Actualizar precio/imagen del link" onClick={onRefresh}><IconRefresh size={16} /></button>}
-            <button className="nv-icon-btn" title="Editar" onClick={onEdit}><IconPencil size={16} /></button>
-            <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar" onClick={onDelete}><IconTrash size={16} /></button>
+            {o.link && <button className="nv-icon-btn" title="Actualizar precio/imagen del link" onClick={onRefresh}><IconRefresh size={16} /></button>}
+            <button className="nv-icon-btn" title="Editar opción" onClick={onEdit}><IconPencil size={16} /></button>
+            <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar opción" onClick={onDelete}><IconTrash size={16} /></button>
           </div>
         </div>
         <div className="nv-deseo-sub">
-          <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
-          {d.link && <a className="nv-deseo-link" href={d.link} target="_blank" rel="noopener noreferrer"><IconExternal size={13} /> {linkHost(d.link)}</a>}
+          {o.link && <a className="nv-deseo-link" href={o.link} target="_blank" rel="noopener noreferrer"><IconExternal size={13} /> {linkHost(o.link)}</a>}
+          {o.nota && <span className="nv-deseo-optnota">{o.nota}</span>}
         </div>
-        {d.nota && <div className="nv-deseo-nota">{d.nota}</div>}
       </div>
     </div>
   )
 }
 
-interface DeseoPatchBody { precio?: number | null; moneda?: Moneda; imagenUrl?: string | null }
+interface OpcionPatchBody { precio?: number | null; moneda?: Moneda; imagenUrl?: string | null }
 
 function inicial(nombre: string): string {
   return nombre.trim().charAt(0).toUpperCase() || '🎁'

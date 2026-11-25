@@ -1,4 +1,4 @@
-import type { Moneda, Prioridad } from './db'
+import type { Moneda, Prioridad, OpcionInput } from './db'
 
 export function parseMoneda(v: unknown): Moneda {
   return v === 'USD' ? 'USD' : 'ARS'
@@ -34,4 +34,22 @@ export function parsePrecio(v: unknown): number | null {
   if (v == null || v === '') return null
   const n = Math.round(Number(v))
   return Number.isFinite(n) ? n : null
+}
+
+/** Normaliza el body de una opción (alternativa de un deseo). */
+export function parseOpcion(o: unknown): OpcionInput {
+  const x = (o ?? {}) as Record<string, unknown>
+  return {
+    titulo: textOrNull(x.titulo),
+    link: normUrl(x.link),
+    imagenUrl: normUrl(x.imagenUrl),
+    precio: parsePrecio(x.precio),
+    moneda: parseMoneda(x.moneda),
+    nota: textOrNull(x.nota),
+  }
+}
+
+/** Una opción sin ningún dato útil (no vale la pena guardarla). */
+export function opcionVacia(o: OpcionInput): boolean {
+  return !o.link && o.precio == null && !o.imagenUrl && !o.titulo && !o.nota
 }

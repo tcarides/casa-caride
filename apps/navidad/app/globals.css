@@ -179,6 +179,35 @@ body {
   font-size: 0.62rem; font-weight: 700; color: var(--nav);
   background: var(--nav-soft); border: 1px solid color-mix(in oklab, var(--nav) 30%, transparent);
 }
+.nv-opc-count {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-hint, #5a5a56);
+  background: var(--bg-2, #1e1e1e); border-radius: 999px; padding: 1px 8px;
+}
+
+/* ── Deseo con opciones (vista de persona) ── */
+.nv-deseos-list { display: flex; flex-direction: column; gap: 14px; }
+.nv-dg {
+  background: var(--bg-1, #141414); border: 1px solid var(--border-subtle, #2a2a2a);
+  border-radius: 16px; padding: 12px 12px 14px;
+}
+.nv-dg-head { display: flex; align-items: flex-start; gap: 8px; }
+.nv-dg-titlewrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.nv-dg-title { font-size: 1rem; font-weight: 700; min-width: 0; word-break: break-word; }
+.nv-dg-actions { display: flex; gap: 2px; margin-left: auto; flex: 0 0 auto; }
+.nv-dg-nota { font-size: 0.82rem; color: var(--text-sec); margin: 7px 2px 0; }
+.nv-opciones { display: flex; flex-direction: column; gap: 8px; margin-top: 11px; }
+.nv-opciones .nv-deseo { background: var(--bg-2, #1e1e1e); }
+.nv-opciones .nv-deseo-img, .nv-opciones .nv-deseo-img--ph { background: var(--bg-1, #141414); }
+.nv-dg-empty { font-size: 0.82rem; color: var(--text-hint, #5a5a56); padding: 2px 2px; }
+.nv-dg-add { margin-top: 11px; }
+.nv-deseo-optnota { font-size: 0.78rem; color: var(--text-sec); }
+
+/* Separador de sección dentro del sheet (ej. "Primera opción"). */
+.nv-sheet-sep {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-hint, #5a5a56); margin: 18px 0 12px; padding-top: 14px;
+  border-top: 1px solid var(--border-subtle, #2a2a2a);
+}
 
 /* ── Sheet / formulario ── */
 .nv-sheet-bg {

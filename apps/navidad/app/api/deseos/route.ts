@@ -1,30 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/guard'
 import { addDeseo } from '@/lib/db'
-import { parseMoneda, parsePrioridad, parsePrecio, normUrl, textOrNull } from '@/lib/parse'
+import { parsePrioridad, textOrNull, parseOpcion, opcionVacia } from '@/lib/parse'
 
 export const dynamic = 'force-dynamic'
 
-/** Agregar un deseo a la lista de un participante. */
+/** Agregar un deseo (concepto) a la lista de un participante, con sus opciones. */
 export async function POST(req: NextRequest) {
   const unauth = await requireSession()
   if (unauth) return unauth
   const body = await req.json().catch(() => null)
   const participanteId = Number(body?.participanteId)
-  const titulo = String(body?.titulo ?? '').trim()
-  const link = normUrl(body?.link)
   if (!Number.isFinite(participanteId)) return NextResponse.json({ error: 'falta participante' }, { status: 400 })
-  // Un deseo necesita al menos título o link.
-  if (!titulo && !link) return NextResponse.json({ error: 'falta título o link' }, { status: 400 })
+
+  const opcionesRaw: unknown[] = Array.isArray(body?.opciones) ? body.opciones : []
+  const opciones = opcionesRaw.map(parseOpcion).filter((o) => !opcionVacia(o))
+
+  // Un deseo necesita título; si no vino, usamos el link de la primera opción.
+  let titulo = String(body?.titulo ?? '').trim()
+  if (!titulo) titulo = opciones.find((o) => o.link)?.link ?? ''
+  if (!titulo) return NextResponse.json({ error: 'falta título o link' }, { status: 400 })
 
   const id = await addDeseo(participanteId, {
-    titulo: titulo || (link ?? ''),
-    link,
-    imagenUrl: normUrl(body?.imagenUrl),
-    precio: parsePrecio(body?.precio),
-    moneda: parseMoneda(body?.moneda),
+    titulo,
     prioridad: parsePrioridad(body?.prioridad),
     nota: textOrNull(body?.nota),
+    opciones,
   })
   return NextResponse.json({ id })
 }

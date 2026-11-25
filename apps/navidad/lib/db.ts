@@ -3,7 +3,8 @@ import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 // Regalos de Navidad: tablero familiar de listas de deseos.
 //  - grupos         → cada festejo/familia (se crean desde la app).
 //  - participantes  → personas del grupo, por nombre (pueden no tener usuario).
-//  - deseos         → ítems de la lista de cada participante (texto o link).
+//  - deseos         → "lo que quiere" cada persona (título + prioridad + nota).
+//  - opciones       → alternativas concretas de un deseo (link, imagen, precio).
 // Precios en centavos (enteros). Moneda ARS o USD. Cualquier usuario logueado
 // puede ver y editar todo (las mamás cargan lo de los hijos, etc.).
 
@@ -29,17 +30,29 @@ function toIso(v: unknown): string {
   return String(v ?? '')
 }
 
+// Prioridad para ordenar: alta → media → baja.
+const PRIO_ORDER: Record<string, number> = { alta: 0, media: 1, baja: 2 }
+
+export interface Opcion {
+  id: number
+  deseoId: number
+  titulo: string | null       // etiqueta de la opción (tienda, modelo…)
+  link: string | null
+  imagenUrl: string | null
+  precio: number | null       // centavos
+  moneda: Moneda
+  nota: string | null
+  orden: number
+}
+
 export interface Deseo {
   id: number
   participanteId: number
   titulo: string
-  link: string | null
-  imagenUrl: string | null
-  precio: number | null // centavos
-  moneda: Moneda
   prioridad: Prioridad
   nota: string | null
   createdAt: string
+  opciones: Opcion[]
 }
 
 export interface Participante {
@@ -85,6 +98,8 @@ export async function ensureSchema(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+  // La tabla deseos conserva columnas link/imagen/precio por compatibilidad y
+  // para la migración; el modelo nuevo guarda eso en `opciones`.
   await sql`
     CREATE TABLE IF NOT EXISTS deseos (
       id BIGSERIAL PRIMARY KEY,
@@ -99,8 +114,32 @@ export async function ensureSchema(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `
+  await sql`
+    CREATE TABLE IF NOT EXISTS opciones (
+      id BIGSERIAL PRIMARY KEY,
+      deseo_id BIGINT NOT NULL REFERENCES deseos(id) ON DELETE CASCADE,
+      titulo TEXT,
+      link TEXT,
+      imagen_url TEXT,
+      precio_centavos BIGINT,
+      moneda TEXT NOT NULL DEFAULT 'ARS',
+      nota TEXT,
+      orden INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
   await sql`CREATE INDEX IF NOT EXISTS participantes_grupo ON participantes (grupo_id)`
   await sql`CREATE INDEX IF NOT EXISTS deseos_participante ON deseos (participante_id)`
+  await sql`CREATE INDEX IF NOT EXISTS opciones_deseo ON opciones (deseo_id)`
+  // Migración idempotente: cada deseo viejo con link/imagen/precio y sin
+  // opciones pasa a tener esa info como su primera opción.
+  await sql`
+    INSERT INTO opciones (deseo_id, link, imagen_url, precio_centavos, moneda, orden)
+    SELECT d.id, d.link, d.imagen_url, d.precio_centavos, COALESCE(d.moneda, 'ARS'), 0
+    FROM deseos d
+    WHERE (d.link IS NOT NULL OR d.precio_centavos IS NOT NULL OR d.imagen_url IS NOT NULL)
+      AND NOT EXISTS (SELECT 1 FROM opciones o WHERE o.deseo_id = d.id)
+  `
   schemaReady = true
 }
 
@@ -111,7 +150,7 @@ export async function listGrupos(): Promise<Grupo[]> {
   const rows = await sql`
     SELECT g.id, g.nombre, g.created_at,
            COUNT(DISTINCT p.id)::int AS n_participantes,
-           COUNT(d.id)::int AS n_deseos
+           COUNT(DISTINCT d.id)::int AS n_deseos
     FROM grupos g
     LEFT JOIN participantes p ON p.grupo_id = g.id
     LEFT JOIN deseos d ON d.participante_id = p.id
@@ -142,13 +181,10 @@ export async function renameGrupo(id: number, nombre: string): Promise<void> {
 export async function deleteGrupo(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  await sql`DELETE FROM grupos WHERE id = ${id}` // cascade borra participantes y deseos
+  await sql`DELETE FROM grupos WHERE id = ${id}` // cascade borra participantes, deseos y opciones
 }
 
-// Prioridad para ordenar: alta → media → baja.
-const PRIO_ORDER: Record<string, number> = { alta: 0, media: 1, baja: 2 }
-
-/** Grupo completo: participantes (por orden) con sus deseos (por prioridad). */
+/** Grupo completo: participantes (por orden) con deseos (por prioridad) y sus opciones. */
 export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> {
   await ensureSchema()
   const sql = getSql()
@@ -160,21 +196,43 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
     SELECT id, grupo_id, nombre, emoji, orden, created_at
     FROM participantes WHERE grupo_id = ${id}
     ORDER BY orden ASC, created_at ASC, id ASC`
-  const deseos = await sql`
-    SELECT d.id, d.participante_id, d.titulo, d.link, d.imagen_url, d.precio_centavos,
-           d.moneda, d.prioridad, d.nota, d.created_at
+  const deseosRows = await sql`
+    SELECT d.id, d.participante_id, d.titulo, d.prioridad, d.nota, d.created_at
     FROM deseos d
     JOIN participantes p ON p.id = d.participante_id
     WHERE p.grupo_id = ${id}`
+  const opcionesRows = await sql`
+    SELECT o.id, o.deseo_id, o.titulo, o.link, o.imagen_url, o.precio_centavos, o.moneda, o.nota, o.orden
+    FROM opciones o
+    JOIN deseos d ON d.id = o.deseo_id
+    JOIN participantes p ON p.id = d.participante_id
+    WHERE p.grupo_id = ${id}
+    ORDER BY o.orden ASC, o.id ASC`
 
-  const byParticipante = new Map<number, Deseo[]>()
-  for (const r of deseos) {
-    const pid = Number(r.participante_id)
-    const list = byParticipante.get(pid) ?? []
-    list.push(mapDeseo(r))
-    byParticipante.set(pid, list)
+  const opcByDeseo = new Map<number, Opcion[]>()
+  for (const r of opcionesRows) {
+    const did = Number(r.deseo_id)
+    const list = opcByDeseo.get(did) ?? []
+    list.push(mapOpcion(r))
+    opcByDeseo.set(did, list)
   }
-  for (const list of byParticipante.values()) {
+
+  const deseosByPart = new Map<number, Deseo[]>()
+  for (const r of deseosRows) {
+    const pid = Number(r.participante_id)
+    const list = deseosByPart.get(pid) ?? []
+    list.push({
+      id: Number(r.id),
+      participanteId: pid,
+      titulo: r.titulo as string,
+      prioridad: (r.prioridad as Prioridad) ?? 'media',
+      nota: (r.nota as string | null) ?? null,
+      createdAt: toIso(r.created_at),
+      opciones: opcByDeseo.get(Number(r.id)) ?? [],
+    })
+    deseosByPart.set(pid, list)
+  }
+  for (const list of deseosByPart.values()) {
     list.sort((a, b) =>
       (PRIO_ORDER[a.prioridad] ?? 1) - (PRIO_ORDER[b.prioridad] ?? 1) ||
       a.createdAt.localeCompare(b.createdAt))
@@ -190,7 +248,7 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
       nombre: p.nombre as string,
       emoji: (p.emoji as string | null) ?? null,
       orden: Number(p.orden),
-      deseos: byParticipante.get(Number(p.id)) ?? [],
+      deseos: deseosByPart.get(Number(p.id)) ?? [],
     })),
   }
 }
@@ -222,53 +280,34 @@ export async function updateParticipante(id: number, p: ParticipantePatch): Prom
 export async function deleteParticipante(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  await sql`DELETE FROM participantes WHERE id = ${id}` // cascade borra sus deseos
+  await sql`DELETE FROM participantes WHERE id = ${id}` // cascade borra deseos y opciones
 }
 
 // ── Deseos ──
-function mapDeseo(r: Record<string, unknown>): Deseo {
-  return {
-    id: Number(r.id),
-    participanteId: Number(r.participante_id),
-    titulo: r.titulo as string,
-    link: (r.link as string | null) ?? null,
-    imagenUrl: (r.imagen_url as string | null) ?? null,
-    precio: r.precio_centavos == null ? null : Number(r.precio_centavos),
-    moneda: (r.moneda as Moneda) ?? 'ARS',
-    prioridad: (r.prioridad as Prioridad) ?? 'media',
-    nota: (r.nota as string | null) ?? null,
-    createdAt: toIso(r.created_at),
-  }
-}
-
 export interface DeseoInput {
   titulo: string
-  link: string | null
-  imagenUrl: string | null
-  precio: number | null
-  moneda: Moneda
   prioridad: Prioridad
   nota: string | null
+  opciones?: OpcionInput[]
 }
 
 export async function addDeseo(participanteId: number, d: DeseoInput): Promise<number> {
   await ensureSchema()
   const sql = getSql()
   const [row] = await sql`
-    INSERT INTO deseos
-      (participante_id, titulo, link, imagen_url, precio_centavos, moneda, prioridad, nota)
-    VALUES
-      (${participanteId}, ${d.titulo}, ${d.link}, ${d.imagenUrl}, ${d.precio}, ${d.moneda}, ${d.prioridad}, ${d.nota})
+    INSERT INTO deseos (participante_id, titulo, prioridad, nota)
+    VALUES (${participanteId}, ${d.titulo}, ${d.prioridad}, ${d.nota})
     RETURNING id`
-  return Number(row.id)
+  const deseoId = Number(row.id)
+  const opciones = d.opciones ?? []
+  for (let i = 0; i < opciones.length; i++) {
+    await insertOpcion(sql, deseoId, opciones[i], i)
+  }
+  return deseoId
 }
 
 export interface DeseoPatch {
   titulo?: string
-  link?: string | null
-  imagenUrl?: string | null
-  precio?: number | null
-  moneda?: Moneda
   prioridad?: Prioridad
   nota?: string | null
 }
@@ -279,10 +318,6 @@ export async function updateDeseo(id: number, p: DeseoPatch): Promise<void> {
   await sql`
     UPDATE deseos SET
       titulo = COALESCE(${p.titulo ?? null}, titulo),
-      link = CASE WHEN ${p.link !== undefined} THEN ${p.link ?? null} ELSE link END,
-      imagen_url = CASE WHEN ${p.imagenUrl !== undefined} THEN ${p.imagenUrl ?? null} ELSE imagen_url END,
-      precio_centavos = CASE WHEN ${p.precio !== undefined} THEN ${p.precio ?? null} ELSE precio_centavos END,
-      moneda = COALESCE(${p.moneda ?? null}, moneda),
       prioridad = COALESCE(${p.prioridad ?? null}, prioridad),
       nota = CASE WHEN ${p.nota !== undefined} THEN ${p.nota ?? null} ELSE nota END
     WHERE id = ${id}`
@@ -291,5 +326,75 @@ export async function updateDeseo(id: number, p: DeseoPatch): Promise<void> {
 export async function deleteDeseo(id: number): Promise<void> {
   await ensureSchema()
   const sql = getSql()
-  await sql`DELETE FROM deseos WHERE id = ${id}`
+  await sql`DELETE FROM deseos WHERE id = ${id}` // cascade borra opciones
+}
+
+// ── Opciones ──
+export interface OpcionInput {
+  titulo: string | null
+  link: string | null
+  imagenUrl: string | null
+  precio: number | null
+  moneda: Moneda
+  nota: string | null
+}
+
+function mapOpcion(r: Record<string, unknown>): Opcion {
+  return {
+    id: Number(r.id),
+    deseoId: Number(r.deseo_id),
+    titulo: (r.titulo as string | null) ?? null,
+    link: (r.link as string | null) ?? null,
+    imagenUrl: (r.imagen_url as string | null) ?? null,
+    precio: r.precio_centavos == null ? null : Number(r.precio_centavos),
+    moneda: (r.moneda as Moneda) ?? 'ARS',
+    nota: (r.nota as string | null) ?? null,
+    orden: Number(r.orden),
+  }
+}
+
+async function insertOpcion(sql: Sql, deseoId: number, o: OpcionInput, orden: number): Promise<number> {
+  const [row] = await sql`
+    INSERT INTO opciones
+      (deseo_id, titulo, link, imagen_url, precio_centavos, moneda, nota, orden)
+    VALUES
+      (${deseoId}, ${o.titulo}, ${o.link}, ${o.imagenUrl}, ${o.precio}, ${o.moneda}, ${o.nota}, ${orden})
+    RETURNING id`
+  return Number(row.id)
+}
+
+export async function addOpcion(deseoId: number, o: OpcionInput): Promise<number> {
+  await ensureSchema()
+  const sql = getSql()
+  const [{ n }] = (await sql`SELECT COALESCE(MAX(orden), -1) + 1 AS n FROM opciones WHERE deseo_id = ${deseoId}`) as { n: number }[]
+  return insertOpcion(sql, deseoId, o, Number(n))
+}
+
+export interface OpcionPatch {
+  titulo?: string | null
+  link?: string | null
+  imagenUrl?: string | null
+  precio?: number | null
+  moneda?: Moneda
+  nota?: string | null
+}
+
+export async function updateOpcion(id: number, p: OpcionPatch): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`
+    UPDATE opciones SET
+      titulo = CASE WHEN ${p.titulo !== undefined} THEN ${p.titulo ?? null} ELSE titulo END,
+      link = CASE WHEN ${p.link !== undefined} THEN ${p.link ?? null} ELSE link END,
+      imagen_url = CASE WHEN ${p.imagenUrl !== undefined} THEN ${p.imagenUrl ?? null} ELSE imagen_url END,
+      precio_centavos = CASE WHEN ${p.precio !== undefined} THEN ${p.precio ?? null} ELSE precio_centavos END,
+      moneda = COALESCE(${p.moneda ?? null}, moneda),
+      nota = CASE WHEN ${p.nota !== undefined} THEN ${p.nota ?? null} ELSE nota END
+    WHERE id = ${id}`
+}
+
+export async function deleteOpcion(id: number): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`DELETE FROM opciones WHERE id = ${id}`
 }
