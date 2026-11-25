@@ -21,6 +21,7 @@ interface Grupo { id: number; nombre: string; createdAt: string; nParticipantes?
 interface GrupoDetalle extends Grupo { participantes: Participante[] }
 
 const PRIO_LABEL: Record<Prioridad, string> = { alta: 'Alta', media: 'Media', baja: 'Baja' }
+const PRIO_ORDER: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 }
 const BASE = '/navidad'
 
 /** Link compartible de un grupo (para fijar en WhatsApp). */
@@ -334,11 +335,26 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
   onRename: () => void; onDelete: () => void
   onAddPart: () => void; onOpenPersona: (pid: number) => void
 }) {
+  const [tab, setTab] = useState<'personas' | 'deseos'>('personas')
   const [q, setQ] = useState('')
   const filtro = q.trim()
+  const hayPersonas = grupo.participantes.length > 0
+
   const personas = filtro
     ? grupo.participantes.filter((p) => norm(p.nombre).includes(norm(filtro)))
     : grupo.participantes
+
+  // Listado plano de todos los deseos del grupo (con quién lo pidió), ordenado
+  // por prioridad y después por persona.
+  const deseos = grupo.participantes
+    .flatMap((p) => p.deseos.map((d) => ({ d, p })))
+    .sort((a, b) =>
+      (PRIO_ORDER[a.d.prioridad] - PRIO_ORDER[b.d.prioridad]) ||
+      a.p.nombre.localeCompare(b.p.nombre) ||
+      a.d.titulo.localeCompare(b.d.titulo))
+  const deseosFiltrados = filtro
+    ? deseos.filter(({ d, p }) => norm(d.titulo).includes(norm(filtro)) || norm(p.nombre).includes(norm(filtro)))
+    : deseos
 
   return (
     <>
@@ -361,18 +377,27 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
         </div>
       </header>
 
-      {grupo.participantes.length === 0 ? (
+      {!hayPersonas ? (
         <div className="nv-empty">Sumá a las personas del grupo para armar sus listas.</div>
       ) : (
         <>
+          <div className="nv-tabs" role="tablist">
+            <button role="tab" aria-selected={tab === 'personas'} className={`nv-tab${tab === 'personas' ? ' nv-tab--on' : ''}`} onClick={() => setTab('personas')}>
+              Personas <span className="nv-tab-n">{grupo.participantes.length}</span>
+            </button>
+            <button role="tab" aria-selected={tab === 'deseos'} className={`nv-tab${tab === 'deseos' ? ' nv-tab--on' : ''}`} onClick={() => setTab('deseos')}>
+              Deseos <span className="nv-tab-n">{deseos.length}</span>
+            </button>
+          </div>
+
           <div className="nv-search">
             <span className="nv-search-ico" aria-hidden><IconSearch size={16} /></span>
             <input
               className="nv-search-input"
               type="search"
               inputMode="search"
-              placeholder="Buscar persona…"
-              aria-label="Buscar persona"
+              placeholder={tab === 'personas' ? 'Buscar persona…' : 'Buscar deseo o persona…'}
+              aria-label={tab === 'personas' ? 'Buscar persona' : 'Buscar deseo'}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -381,29 +406,75 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
             )}
           </div>
 
-          {filtro && personas.length === 0 && (
-            <div className="nv-empty">Nadie coincide con “{q}”.</div>
+          {tab === 'personas' ? (
+            <>
+              {filtro && personas.length === 0 && (
+                <div className="nv-empty">Nadie coincide con “{q}”.</div>
+              )}
+              <div className="nv-personas">
+                {personas.map((p) => (
+                  <button className="nv-persona-row" key={p.id} onClick={() => onOpenPersona(p.id)}>
+                    <span className="nv-persona-avatar" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
+                    <span className="nv-persona-info">
+                      <span className="nv-persona-nombre">{p.nombre}</span>
+                      <span className="nv-persona-total">{resumen(p.deseos)}</span>
+                    </span>
+                    <IconChevronRight className="nv-persona-chev" size={18} />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : deseos.length === 0 ? (
+            <div className="nv-empty">Todavía no hay deseos en este grupo.<br />Entrá a una persona para cargar el primero.</div>
+          ) : (
+            <>
+              <div className="nv-deseos-sum">{resumen(deseos.map((x) => x.d))}</div>
+              {filtro && deseosFiltrados.length === 0 && (
+                <div className="nv-empty">Ningún deseo coincide con “{q}”.</div>
+              )}
+              <div className="nv-deseos">
+                {deseosFiltrados.map(({ d, p }) => (
+                  <DeseoFlatCard key={d.id} deseo={d} persona={p} onOpen={() => onOpenPersona(p.id)} />
+                ))}
+              </div>
+            </>
           )}
-
-          <div className="nv-personas">
-            {personas.map((p) => (
-              <button className="nv-persona-row" key={p.id} onClick={() => onOpenPersona(p.id)}>
-                <span className="nv-persona-avatar" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
-                <span className="nv-persona-info">
-                  <span className="nv-persona-nombre">{p.nombre}</span>
-                  <span className="nv-persona-total">{resumen(p.deseos)}</span>
-                </span>
-                <IconChevronRight className="nv-persona-chev" size={18} />
-              </button>
-            ))}
-          </div>
         </>
       )}
 
-      <button className="nv-btn nv-btn--block nv-add-row" onClick={onAddPart} disabled={busy}>
-        <IconPlus size={16} /> Agregar persona
-      </button>
+      {tab === 'personas' && (
+        <button className="nv-btn nv-btn--block nv-add-row" onClick={onAddPart} disabled={busy}>
+          <IconPlus size={16} /> Agregar persona
+        </button>
+      )}
     </>
+  )
+}
+
+// Fila de deseo en la tab "Deseos" (listado plano del grupo): muestra el ítem
+// y para quién es; al tocar lleva a la pantalla de esa persona (para editar).
+function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona: Participante; onOpen: () => void }) {
+  return (
+    <button className="nv-deseo nv-deseo--flat" onClick={onOpen}>
+      {d.imagenUrl
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img className="nv-deseo-img" src={d.imagenUrl} alt="" loading="lazy" />
+        : <div className="nv-deseo-img nv-deseo-img--ph" aria-hidden><IconGift size={22} /></div>}
+      <div className="nv-deseo-body">
+        <div className="nv-deseo-top">
+          <div className="nv-deseo-title">{d.titulo}</div>
+          {d.precio != null && <div className="nv-deseo-price">{fmtMoney(d.precio, d.moneda)}</div>}
+        </div>
+        <div className="nv-deseo-sub">
+          <span className={`nv-prio nv-prio--${d.prioridad}`}>{PRIO_LABEL[d.prioridad]}</span>
+          <span className="nv-para">
+            <span className="nv-para-av" aria-hidden>{p.emoji || inicial(p.nombre)}</span>
+            {p.nombre}
+          </span>
+        </div>
+      </div>
+      <IconChevronRight className="nv-persona-chev" size={18} />
+    </button>
   )
 }
 

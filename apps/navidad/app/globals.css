@@ -152,6 +152,34 @@ body {
 }
 .nv-search-clear:hover { color: var(--text-pri); }
 
+/* ── Tabs del grupo (Personas / Deseos) ── */
+.nv-tabs {
+  display: flex; gap: 4px; background: var(--bg-1, #141414);
+  border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 12px; padding: 4px; margin-bottom: 12px;
+}
+.nv-tab {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 8px 10px; border: none; background: none; color: var(--text-sec); cursor: pointer;
+  font-size: 0.9rem; font-weight: 600; border-radius: 9px; font-family: inherit;
+}
+.nv-tab--on { background: var(--bg-2, #1e1e1e); color: var(--text-pri); }
+.nv-tab-n {
+  font-size: 0.72rem; font-weight: 700; color: var(--text-hint, #5a5a56);
+  background: var(--bg-2, #1e1e1e); border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+}
+.nv-tab--on .nv-tab-n { background: var(--nav); color: #fff; }
+
+/* ── Deseo en listado plano (tab Deseos) ── */
+.nv-deseos-sum { font-size: 0.8rem; color: var(--text-sec); margin: 2px 2px 10px; }
+.nv-deseo--flat { width: 100%; text-align: left; align-items: center; cursor: pointer; color: inherit; }
+.nv-deseo--flat:active { transform: scale(.99); }
+.nv-para { display: inline-flex; align-items: center; gap: 5px; font-size: 0.76rem; color: var(--text-sec); }
+.nv-para-av {
+  width: 18px; height: 18px; flex: 0 0 auto; border-radius: 6px; display: grid; place-items: center;
+  font-size: 0.62rem; font-weight: 700; color: var(--nav);
+  background: var(--nav-soft); border: 1px solid color-mix(in oklab, var(--nav) 30%, transparent);
+}
+
 /* ── Sheet / formulario ── */
 .nv-sheet-bg {
   position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55);
