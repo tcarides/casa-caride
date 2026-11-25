@@ -71,9 +71,20 @@ function firstString(v: unknown): string | undefined {
   return undefined
 }
 
+// ¿Es el nodo del producto? (y no Organization/WebSite/BreadcrumbList, que en
+// MercadoLibre traen name "Mercado Libre" + el logo y ensucian el preview).
+function isProductNode(o: Record<string, unknown>): boolean {
+  const t = o['@type']
+  const typeMatch = typeof t === 'string'
+    ? /product/i.test(t)
+    : Array.isArray(t) && t.some((x) => typeof x === 'string' && /product/i.test(x))
+  return typeMatch || o.offers != null
+}
+
 function pickFromNode(node: unknown, out: LdPick): void {
   if (!node || typeof node !== 'object') return
   const o = node as Record<string, unknown>
+  if (!isProductNode(o)) return // solo del producto: evita logo/nombre del sitio
   if (!out.name && typeof o.name === 'string') out.name = o.name
   if (!out.image) { const img = firstString(o.image); if (img) out.image = img }
   const offersRaw = o.offers
@@ -161,9 +172,12 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
       ?? linkHref(html, 'image_src'),
       finalUrl,
     )
+    const ogTitle = metaContent(html, ['og:title', 'twitter:title'])
+    // Si el og:title es genérico (el nombre del sitio), preferimos el nombre
+    // del producto del JSON-LD.
+    const generico = !ogTitle || /^(mercado\s*libre|mercadolibre|amazon.*)$/i.test(ogTitle.trim())
     const title =
-      metaContent(html, ['og:title', 'twitter:title'])
-      ?? ld.name
+      (generico ? (ld.name ?? ogTitle) : ogTitle)
       ?? html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim()
       ?? null
 
