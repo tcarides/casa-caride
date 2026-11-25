@@ -187,22 +187,78 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
     if (price == null && ld.price != null) price = Math.round(ld.price * 100)
     const moneda = pickMoneda(currency ?? ld.currency ?? null)
 
+    let out: LinkPreview = { image, title, price, moneda }
+
+    // MercadoLibre bloquea el scraping (redirige a "account-verification"). Si
+    // detectamos ML y faltan datos, los pedimos a la API pública usando el id
+    // de producto/ítem que viaja en la URL.
+    const esMeli = /mercadolibre\.|mercadolivre\.|\bmeli\./i.test(finalUrl.hostname) || /account-verification/i.test(finalUrl.href)
+    if (esMeli && (!out.image || out.price == null)) {
+      const ids = meliIds(finalUrl)
+      const api = (ids.item || ids.product) ? await meliApi(ids, ctrl.signal) : null
+      console.log('[preview-debug] meli-api', JSON.stringify({ finalUrl: finalUrl.toString(), ids, api }).slice(0, 1200))
+      if (api) {
+        const tituloGenerico = !out.title || /^mercado\s*libre$/i.test(out.title.trim())
+        out = {
+          image: out.image ?? api.image,
+          title: tituloGenerico ? (api.title ?? out.title) : out.title,
+          price: out.price ?? api.price,
+          moneda: out.moneda ?? api.moneda,
+        }
+      }
+    }
+
     console.log('[preview-debug] ok', JSON.stringify({
       req: url.toString(), finalUrl: finalUrl.toString(), status: res.status, len: html.length,
       ogImage: metaContent(html, ['og:image']), ogTitle: metaContent(html, ['og:title']),
-      ldBlocks: (html.match(/application\/ld\+json/gi) || []).length,
-      ldHasProduct: /"@type"\s*:\s*(?:"product"|\[[^\]]*"product")/i.test(html),
-      ld, out: { image, title, price, moneda },
-    }).slice(0, 1800))
+      ldBlocks: (html.match(/application\/ld\+json/gi) || []).length, out,
+    }).slice(0, 1200))
 
-    if (!image && !title && price == null) return null
-    return { image, title, price, moneda }
+    if (!out.image && !out.title && out.price == null) return null
+    return out
   } catch (e) {
     console.log('[preview-debug] throw', JSON.stringify({ req: rawUrl, err: (e as Error)?.message ?? String(e) }))
     return null
   } finally {
     clearTimeout(timer)
   }
+}
+
+// IDs de MercadoLibre que viajan en la URL (producto /p/MLA… e ítem item_id:MLA…).
+function meliIds(finalUrl: URL): { item?: string; product?: string } {
+  let s = finalUrl.href
+  for (let i = 0; i < 2; i++) { try { s = decodeURIComponent(s) } catch { break } }
+  const product = s.match(/\/p\/(ML[A-Z]\d+)/i)?.[1]
+  const item = s.match(/item_id[:=](ML[A-Z]\d+)/i)?.[1] ?? s.match(/\/(ML[A-Z]-?\d{6,})\b/i)?.[1]?.replace('-', '')
+  return { item: item?.toUpperCase(), product: product?.toUpperCase() }
+}
+
+// API pública de MercadoLibre: título, precio, moneda e imagen sin pasar por la
+// página (que bloquea bots). Prueba /items y después /products.
+async function meliApi(ids: { item?: string; product?: string }, signal: AbortSignal): Promise<LinkPreview | null> {
+  const intentos: Array<['items' | 'products', string]> = []
+  if (ids.item) intentos.push(['items', ids.item])
+  if (ids.product) intentos.push(['products', ids.product])
+  for (const [kind, id] of intentos) {
+    try {
+      const r = await fetch(`https://api.mercadolibre.com/${kind}/${id}`, { signal, headers: { accept: 'application/json' } })
+      if (!r.ok) continue
+      const j = await r.json() as Record<string, unknown>
+      if (kind === 'items') {
+        const pics = j.pictures as Array<Record<string, string>> | undefined
+        const image = pics?.[0]?.secure_url ?? pics?.[0]?.url ?? (j.thumbnail as string | undefined) ?? null
+        const price = j.price != null ? Math.round(Number(j.price) * 100) : null
+        if (price != null || image) return { image, title: (j.title as string) ?? null, price, moneda: j.currency_id === 'USD' ? 'USD' : 'ARS' }
+      } else {
+        const pics = j.pictures as Array<Record<string, string>> | undefined
+        const bb = j.buy_box_winner as Record<string, unknown> | undefined
+        const image = pics?.[0]?.url ?? pics?.[0]?.secure_url ?? null
+        const price = bb?.price != null ? Math.round(Number(bb.price) * 100) : null
+        if (price != null || image) return { image, title: (j.name as string) ?? null, price, moneda: bb?.currency_id === 'USD' ? 'USD' : 'ARS' }
+      }
+    } catch { /* probamos el siguiente */ }
+  }
+  return null
 }
 
 function pickMoneda(c: string | null): 'ARS' | 'USD' | null {
