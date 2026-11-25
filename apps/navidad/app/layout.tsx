@@ -29,8 +29,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Tokens del design system, servidos por el shell */}
         <link rel="stylesheet" href="/ds/styles.css" />
         {children}
-        {/* Back button / header estándar de Casa Caride */}
-        <script src="/casa-nav.js" async />
+        {/* Navidad maneja su propia navegación por niveles (grupo → persona)
+            con back etiquetado, así que NO usa la flecha global de casa-nav.js
+            (que navega por segmentos de URL y no entiende los niveles ?g=&p=). */}
       </body>
     </html>
   )
