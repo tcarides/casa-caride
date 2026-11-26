@@ -8,7 +8,7 @@ import { OpcionEditor, type OpcionEditorState } from './OpcionForm'
 import {
   IconPencil, IconTrash, IconCopy, IconShare, IconRefresh, IconSearch,
   IconPlus, IconChevronLeft, IconChevronRight, IconExternal, IconGift,
-} from './icons'
+} from '../icons'
 
 type Moneda = 'ARS' | 'USD'
 type Prioridad = 'alta' | 'media' | 'baja'
@@ -22,17 +22,23 @@ interface Deseo {
   createdAt: string; opcionElegidaId: number | null; opciones: Opcion[]
 }
 interface Participante { id: number; grupoId: number; nombre: string; emoji: string | null; orden: number; deseos: Deseo[] }
-interface Grupo { id: number; nombre: string; createdAt: string; nParticipantes?: number; nDeseos?: number }
+interface Grupo { id: number; nombre: string; token: string; createdAt: string; nParticipantes?: number; nDeseos?: number }
 interface GrupoDetalle extends Grupo { participantes: Participante[] }
 
 const PRIO_LABEL: Record<Prioridad, string> = { alta: 'Alta', media: 'Media', baja: 'Baja' }
 const PRIO_ORDER: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 }
 const BASE = '/navidad'
 
-/** Link compartible de un grupo (para fijar en WhatsApp). */
+/** Link interno (deep-link) de un grupo, para navegar dentro de la app. */
 function grupoUrl(id: number): string {
   if (typeof window === 'undefined') return `${BASE}?g=${id}`
   return `${window.location.origin}${BASE}?g=${id}`
+}
+
+/** Link PÚBLICO de solo lectura (se abre sin login, para fijar en WhatsApp). */
+function grupoPublicUrl(token: string): string {
+  const base = typeof window === 'undefined' ? BASE : `${window.location.origin}${BASE}`
+  return `${base}/ver/${token}`
 }
 
 // Opción "principal" del deseo: la elegida, o la primera (A) si no hay elegida.
@@ -163,15 +169,34 @@ export default function NavidadPage() {
   }, [])
 
   // ── Compartir / exportar ──
+  // Compartir: link PÚBLICO de solo lectura (cualquiera lo abre sin login).
   async function compartirGrupo() {
     if (!grupo) return
-    const url = grupoUrl(grupo.id)
+    const url = grupoPublicUrl(grupo.token)
     const data = { title: `🎄 ${grupo.nombre}`, text: `Lista de regalos de Navidad: ${grupo.nombre}`, url }
     if (typeof navigator !== 'undefined' && navigator.share) {
       try { await navigator.share(data) } catch { /* cancelado */ }
       return
     }
     try { await navigator.clipboard.writeText(url); showToast('Link copiado ✓') } catch { showToast(url) }
+  }
+  // Invitar a editar: crea una invitación a Casa Caride (member) y comparte el link.
+  async function invitarAEditar() {
+    if (!grupo) return
+    try {
+      const res = await fetch('/api/invite', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ note: `Navidad: ${grupo.nombre}` }),
+      })
+      const url = res.ok ? (await res.json().catch(() => null))?.url : null
+      if (!url) { showToast('No pude crear la invitación'); return }
+      const data = { title: 'Invitación a Casa Caride', text: `Te sumo para editar la lista de regalos: ${grupo.nombre}`, url }
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try { await navigator.share(data) } catch { /* cancelado */ }
+        return
+      }
+      try { await navigator.clipboard.writeText(url); showToast('Link de invitación copiado ✓') } catch { showToast(url) }
+    } catch { showToast('No pude crear la invitación') }
   }
   async function copiarTexto(texto: string, okMsg: string) {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -316,6 +341,7 @@ export default function NavidadPage() {
           onRename={renombrarGrupo} onDelete={borrarGrupo}
           onAddPart={agregarParticipante}
           onOpenPersona={abrirPersona}
+          onInvite={invitarAEditar}
         />
         {toast && <div className="nv-toast">{toast}</div>}
       </main>
@@ -380,11 +406,11 @@ function NuevoGrupoForm({ value, onChange, onSubmit, onCancel, busy }: {
 }
 
 // ── Nivel 2: personas del grupo (con buscador) ──
-function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDelete, onAddPart, onOpenPersona }: {
+function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDelete, onAddPart, onOpenPersona, onInvite }: {
   grupo: GrupoDetalle; busy: boolean
   onBack: () => void; onShare: () => void; onCopyGroup: () => void
   onRename: () => void; onDelete: () => void
-  onAddPart: () => void; onOpenPersona: (pid: number) => void
+  onAddPart: () => void; onOpenPersona: (pid: number) => void; onInvite: () => void
 }) {
   const [tab, setTab] = useState<'personas' | 'deseos'>('personas')
   const [q, setQ] = useState('')
@@ -494,9 +520,14 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
       )}
 
       {tab === 'personas' && (
-        <button className="nv-btn nv-btn--block nv-add-row" onClick={onAddPart} disabled={busy}>
-          <IconPlus size={16} /> Agregar persona
-        </button>
+        <>
+          <button className="nv-btn nv-btn--block nv-add-row" onClick={onAddPart} disabled={busy}>
+            <IconPlus size={16} /> Agregar persona
+          </button>
+          <button className="nv-btn nv-btn--ghost nv-btn--block nv-add-row nv-invite" onClick={onInvite}>
+            <IconShare size={15} /> Invitar a alguien a editar
+          </button>
+        </>
       )}
     </>
   )

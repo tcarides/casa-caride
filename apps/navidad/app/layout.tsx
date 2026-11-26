@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { redirect } from 'next/navigation'
 import './globals.css'
-import { hasSession } from '@/lib/session'
 
 export const metadata: Metadata = {
   title: 'Regalos de Navidad',
@@ -20,18 +18,15 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Gate: sin cookie de sesión → al shell (que reenvía la cookie o pide login).
-  if (!(await hasSession())) redirect('https://casa-caride.vercel.app/navidad')
+// Layout raíz: sólo el esqueleto HTML + estilos. El gate de sesión vive en
+// (app)/layout.tsx para que la vista pública /ver/[token] quede libre.
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body>
         {/* Tokens del design system, servidos por el shell */}
         <link rel="stylesheet" href="/ds/styles.css" />
         {children}
-        {/* Navidad maneja su propia navegación por niveles (grupo → persona)
-            con back etiquetado, así que NO usa la flecha global de casa-nav.js
-            (que navega por segmentos de URL y no entiende los niveles ?g=&p=). */}
       </body>
     </html>
   )

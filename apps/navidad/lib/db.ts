@@ -1,4 +1,9 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
+import { randomUUID } from 'node:crypto'
+
+function nuevoToken(): string {
+  return randomUUID().replace(/-/g, '').slice(0, 12)
+}
 
 // Regalos de Navidad: tablero familiar de listas de deseos.
 //  - grupos         → cada festejo/familia (se crean desde la app).
@@ -68,6 +73,7 @@ export interface Participante {
 export interface Grupo {
   id: number
   nombre: string
+  token: string          // token para el link público de solo lectura
   createdAt: string
   nParticipantes?: number
   nDeseos?: number
@@ -135,6 +141,10 @@ export async function ensureSchema(): Promise<void> {
   // Opción "principal" de cada deseo (la que se muestra como foto/precio).
   // null → se usa la primera (A). Si se borra esa opción, vuelve a null.
   await sql`ALTER TABLE deseos ADD COLUMN IF NOT EXISTS opcion_elegida_id BIGINT REFERENCES opciones(id) ON DELETE SET NULL`
+  // Token para el link público de solo lectura (compartir por WhatsApp).
+  await sql`ALTER TABLE grupos ADD COLUMN IF NOT EXISTS token TEXT`
+  await sql`UPDATE grupos SET token = substr(md5(random()::text || id::text || clock_timestamp()::text), 1, 12) WHERE token IS NULL OR token = ''`
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS grupos_token ON grupos (token)`
   // Migración idempotente: cada deseo viejo con link/imagen/precio y sin
   // opciones pasa a tener esa info como su primera opción.
   await sql`
@@ -152,17 +162,18 @@ export async function listGrupos(): Promise<Grupo[]> {
   await ensureSchema()
   const sql = getSql()
   const rows = await sql`
-    SELECT g.id, g.nombre, g.created_at,
+    SELECT g.id, g.nombre, g.token, g.created_at,
            COUNT(DISTINCT p.id)::int AS n_participantes,
            COUNT(DISTINCT d.id)::int AS n_deseos
     FROM grupos g
     LEFT JOIN participantes p ON p.grupo_id = g.id
     LEFT JOIN deseos d ON d.participante_id = p.id
-    GROUP BY g.id, g.nombre, g.created_at
+    GROUP BY g.id, g.nombre, g.token, g.created_at
     ORDER BY g.created_at ASC, g.id ASC`
   return rows.map((r) => ({
     id: Number(r.id),
     nombre: r.nombre as string,
+    token: (r.token as string) ?? '',
     createdAt: toIso(r.created_at),
     nParticipantes: Number(r.n_participantes),
     nDeseos: Number(r.n_deseos),
@@ -172,7 +183,7 @@ export async function listGrupos(): Promise<Grupo[]> {
 export async function createGrupo(nombre: string): Promise<number> {
   await ensureSchema()
   const sql = getSql()
-  const [row] = await sql`INSERT INTO grupos (nombre) VALUES (${nombre}) RETURNING id`
+  const [row] = await sql`INSERT INTO grupos (nombre, token) VALUES (${nombre}, ${nuevoToken()}) RETURNING id`
   return Number(row.id)
 }
 
@@ -192,7 +203,7 @@ export async function deleteGrupo(id: number): Promise<void> {
 export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> {
   await ensureSchema()
   const sql = getSql()
-  const grupos = await sql`SELECT id, nombre, created_at FROM grupos WHERE id = ${id}`
+  const grupos = await sql`SELECT id, nombre, token, created_at FROM grupos WHERE id = ${id}`
   if (!grupos.length) return null
   const g = grupos[0]
 
@@ -257,9 +268,20 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
   return {
     id: Number(g.id),
     nombre: g.nombre as string,
+    token: (g.token as string) ?? '',
     createdAt: toIso(g.created_at),
     participantes,
   }
+}
+
+/** Grupo completo por su token público (para la vista de solo lectura). */
+export async function getGrupoByToken(token: string): Promise<GrupoDetalle | null> {
+  if (!token) return null
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`SELECT id FROM grupos WHERE token = ${token}`
+  if (!rows.length) return null
+  return getGrupoDetalle(Number(rows[0].id))
 }
 
 // ── Participantes ──
