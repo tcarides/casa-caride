@@ -225,15 +225,42 @@ function meliIds(finalUrl: URL): { item?: string; product?: string } {
   return { item: item?.toUpperCase(), product: product?.toUpperCase() }
 }
 
-// API pública de MercadoLibre: título, precio, moneda e imagen sin pasar por la
-// página (que bloquea bots). Prueba /items y después /products.
+// Token de aplicación de MercadoLibre (grant client_credentials). Requiere
+// MELI_CLIENT_ID y MELI_CLIENT_SECRET en el entorno. Se cachea en memoria hasta
+// poco antes de expirar. Sin credenciales → null (y el preview de ML no anda).
+let _meliToken: { token: string; exp: number } | undefined
+async function meliToken(signal: AbortSignal): Promise<string | null> {
+  const id = process.env.MELI_CLIENT_ID
+  const secret = process.env.MELI_CLIENT_SECRET
+  if (!id || !secret) return null
+  if (_meliToken && _meliToken.exp > Date.now() + 60_000) return _meliToken.token
+  try {
+    const body = new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret })
+    const r = await fetch('https://api.mercadolibre.com/oauth/token', {
+      method: 'POST', signal,
+      headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+    })
+    if (!r.ok) return null
+    const j = await r.json() as { access_token?: string; expires_in?: number }
+    if (!j.access_token) return null
+    _meliToken = { token: j.access_token, exp: Date.now() + (Number(j.expires_in ?? 21600) * 1000) }
+    return _meliToken.token
+  } catch { return null }
+}
+
+// API de MercadoLibre: título, precio, moneda e imagen sin pasar por la página
+// (que bloquea bots). Usa el token de app (ML exige auth). Prueba /items y /products.
 async function meliApi(ids: { item?: string; product?: string }, signal: AbortSignal): Promise<LinkPreview | null> {
+  const token = await meliToken(signal)
+  const headers: Record<string, string> = { accept: 'application/json' }
+  if (token) headers.authorization = `Bearer ${token}`
   const intentos: Array<['items' | 'products', string]> = []
   if (ids.item) intentos.push(['items', ids.item])
   if (ids.product) intentos.push(['products', ids.product])
   for (const [kind, id] of intentos) {
     try {
-      const r = await fetch(`https://api.mercadolibre.com/${kind}/${id}`, { signal, headers: { accept: 'application/json' } })
+      const r = await fetch(`https://api.mercadolibre.com/${kind}/${id}`, { signal, headers })
       if (!r.ok) continue
       const j = await r.json() as Record<string, unknown>
       if (kind === 'items') {
