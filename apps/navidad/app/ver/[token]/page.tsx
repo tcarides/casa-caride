@@ -89,6 +89,13 @@ export default async function VerGrupo({ params }: { params: Promise<{ token: st
         </section>
       ))}
 
+      <div className="nv-pub-cta">
+        <a className="nv-btn nv-btn--primary nv-btn--block" href={`https://casa-caride.vercel.app/unirse/${grupo.token}`}>
+          Entrar para editar esta lista
+        </a>
+        <p className="nv-pub-ctahint">Con tu cuenta de Google. Para la familia que arma los regalos.</p>
+      </div>
+
       <footer className="nv-pub-foot">🎄 Casa Caride</footer>
     </main>
   )

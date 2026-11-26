@@ -29,6 +29,10 @@ export default auth(async (req) => {
   // assets estáticos (para que la página se vea sin login).
   if (path.startsWith('/navidad/ver/') || path.startsWith('/navidad/_next/')) return
 
+  // Libre: "unirse" convierte el link de una lista en invitación (valida el
+  // token y manda a /invite). Va antes del gate de login.
+  if (path.startsWith('/unirse/')) return
+
   // De acá en adelante hace falta sesión.
   if (!req.auth) {
     const url = new URL('/login', nextUrl)

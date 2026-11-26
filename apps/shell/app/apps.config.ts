@@ -63,16 +63,6 @@ export const APPS: MiniApp[] = [
     kind: 'zone',
   },
   {
-    slug: 'fixture',
-    name: 'Fixture Mundial',
-    description: 'Argentina, calendario y grupos 2026',
-    href: '/fixture',
-    emoji: '⚽',
-    hue: 'var(--app-fixture)',
-    kind: 'static',
-    access: 'public',
-  },
-  {
     slug: 'fabian',
     name: 'Fabián',
     description: 'La medicación del perro, cada 12 h',
