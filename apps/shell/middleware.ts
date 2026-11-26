@@ -25,6 +25,10 @@ export default auth(async (req) => {
   // Libre: home (launcher), apps públicas y la API pública del fixture.
   if (path === '/' || access === 'public' || path.startsWith('/api/fixture')) return
 
+  // Libre: vista pública de solo lectura de Navidad (link para compartir) y sus
+  // assets estáticos (para que la página se vea sin login).
+  if (path.startsWith('/navidad/ver/') || path.startsWith('/navidad/_next/')) return
+
   // De acá en adelante hace falta sesión.
   if (!req.auth) {
     const url = new URL('/login', nextUrl)

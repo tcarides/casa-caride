@@ -266,6 +266,13 @@ body {
 }
 .nv-prio-pick button[data-on="true"] { border-color: var(--nav); color: var(--text-pri); background: var(--nav-soft); }
 
+/* ── Botón invitar + vista pública (solo lectura) ── */
+.nv-invite { margin-top: 8px; color: var(--text-sec); }
+.nv-pub-persona { margin-bottom: 24px; }
+.nv-pub-phead { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+.nv-pub-pname { font-size: 1.15rem; font-weight: 800; min-width: 0; }
+.nv-pub-foot { text-align: center; color: var(--text-hint, #5a5a56); font-size: 0.8rem; padding: 28px 0 8px; }
+
 .nv-spin { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nvspin .7s linear infinite; }
 @keyframes nvspin { to { transform: rotate(360deg); } }
 .nv-loading { text-align: center; color: var(--text-sec); padding: 48px; }
