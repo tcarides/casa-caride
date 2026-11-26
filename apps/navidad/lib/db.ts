@@ -243,18 +243,22 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
       a.createdAt.localeCompare(b.createdAt))
   }
 
+  const participantes = parts.map((p) => ({
+    id: Number(p.id),
+    grupoId: Number(p.grupo_id),
+    nombre: p.nombre as string,
+    emoji: (p.emoji as string | null) ?? null,
+    orden: Number(p.orden),
+    deseos: deseosByPart.get(Number(p.id)) ?? [],
+  }))
+  // Personas ordenadas alfabéticamente (es: respeta acentos, ñ y mayúsculas).
+  participantes.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
+
   return {
     id: Number(g.id),
     nombre: g.nombre as string,
     createdAt: toIso(g.created_at),
-    participantes: parts.map((p) => ({
-      id: Number(p.id),
-      grupoId: Number(p.grupo_id),
-      nombre: p.nombre as string,
-      emoji: (p.emoji as string | null) ?? null,
-      orden: Number(p.orden),
-      deseos: deseosByPart.get(Number(p.id)) ?? [],
-    })),
+    participantes,
   }
 }
 
