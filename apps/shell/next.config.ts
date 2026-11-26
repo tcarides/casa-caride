@@ -43,8 +43,6 @@ const nextConfig: NextConfig = {
       { source: '/super/:path*', destination: `${SUPER_URL}/super/:path*` },
       { source: '/casas', destination: `${CASAS_URL}/casas` },
       { source: '/casas/:path*', destination: `${CASAS_URL}/casas/:path*` },
-      // App estática: URL limpia -> index.html en public/
-      { source: '/fixture', destination: '/fixture/index.html' },
     ]
 
     // Zona Fabián: solo si su URL está configurada.

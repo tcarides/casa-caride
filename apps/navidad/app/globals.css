@@ -271,6 +271,8 @@ body {
 .nv-pub-persona { margin-bottom: 24px; }
 .nv-pub-phead { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
 .nv-pub-pname { font-size: 1.15rem; font-weight: 800; min-width: 0; }
+.nv-pub-cta { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border-subtle, #2a2a2a); }
+.nv-pub-ctahint { text-align: center; color: var(--text-hint, #5a5a56); font-size: 0.78rem; margin-top: 8px; }
 .nv-pub-foot { text-align: center; color: var(--text-hint, #5a5a56); font-size: 0.8rem; padding: 28px 0 8px; }
 
 .nv-spin { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nvspin .7s linear infinite; }

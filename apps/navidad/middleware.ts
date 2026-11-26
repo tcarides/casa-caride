@@ -9,8 +9,10 @@ import { NextRequest, NextResponse } from 'next/server'
 const CANONICAL = 'https://casa-caride.vercel.app/navidad'
 
 export function middleware(req: NextRequest) {
-  // Vista pública de solo lectura (/ver/<token>): se abre sin login.
-  if (/\/ver\//.test(req.nextUrl.pathname)) return NextResponse.next()
+  // Rutas públicas (sin login): vista de solo lectura y API pública de validación.
+  if (/\/ver\//.test(req.nextUrl.pathname) || /\/api\/public\//.test(req.nextUrl.pathname)) {
+    return NextResponse.next()
+  }
 
   const hasSession =
     req.cookies.has('__Secure-authjs.session-token') ||
