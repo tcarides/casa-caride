@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireListAccess } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -17,6 +17,7 @@ interface ImportGroup {
   items?: (string | RawItem)[]
 }
 interface ImportBody {
+  listId?: number
   replace?: boolean
   categories?: ImportGroup[]
 }
@@ -32,16 +33,18 @@ interface ImportBody {
  * Carga masiva del catálogo (pensado para importar desde AnyList).
  */
 export async function POST(request: NextRequest) {
-  const denied = await requireSession()
-  if (denied) return denied
   await ensureSchema()
-  const sql = getSql()
   const body = (await request.json().catch(() => ({}))) as ImportBody
+  const gate = await requireListAccess(body.listId)
+  if ('res' in gate) return gate.res
+  const { listId } = gate
+
+  const sql = getSql()
   const groups = Array.isArray(body.categories) ? body.categories : []
 
   if (body.replace) {
-    await sql`DELETE FROM items`
-    await sql`DELETE FROM categories`
+    await sql`DELETE FROM items WHERE list_id = ${listId}`
+    await sql`DELETE FROM categories WHERE list_id = ${listId}`
   }
 
   let createdCategories = 0
@@ -54,13 +57,15 @@ export async function POST(request: NextRequest) {
     let categoryId: number | null = null
 
     if (cname) {
-      const existing = await sql`SELECT id FROM categories WHERE name = ${cname} LIMIT 1`
+      const existing = await sql`
+        SELECT id FROM categories WHERE name = ${cname} AND list_id = ${listId} LIMIT 1
+      `
       if (existing.length) {
         categoryId = existing[0].id
       } else {
         const [row] = await sql`
-          INSERT INTO categories (name, position)
-          VALUES (${cname}, ${position})
+          INSERT INTO categories (list_id, name, position)
+          VALUES (${listId}, ${cname}, ${position})
           RETURNING id
         `
         categoryId = row.id
@@ -84,8 +89,8 @@ export async function POST(request: NextRequest) {
       const note =
         typeof raw === 'object' ? (raw?.note || '').trim().slice(0, 200) || null : null
       inserts.push(
-        sql`INSERT INTO items (name, category_id, needed, checked, quantity, note)
-            VALUES (${name}, ${categoryId}, ${needed}, ${checked}, ${quantity}, ${note})`
+        sql`INSERT INTO items (list_id, name, category_id, needed, checked, quantity, note)
+            VALUES (${listId}, ${name}, ${categoryId}, ${needed}, ${checked}, ${quantity}, ${note})`
       )
       createdItems += 1
     }

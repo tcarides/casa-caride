@@ -17,7 +17,31 @@ export interface Item {
   note: string | null
 }
 
+// Resumen de una lista accesible (para el selector).
+export interface ListSummary {
+  id: number
+  name: string
+  ownerEmail: string
+  ownerName: string
+  mine: boolean
+}
+
+// Con quién está compartida una lista.
+export interface Share {
+  email: string
+  name: string
+}
+
+// Persona del directorio de Casa Caride (para elegir con quién compartir).
+export interface DirectoryUser {
+  email: string
+  name: string
+}
+
 export interface AppState {
+  list: ListSummary
+  lists: ListSummary[]
+  shares: Share[]
   categories: Category[]
   items: Item[]
 }

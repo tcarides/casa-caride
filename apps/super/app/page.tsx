@@ -5,7 +5,9 @@ import {
   useCallback, useEffect, useRef, useState,
   type Dispatch, type SetStateAction, type FormEvent, type ReactNode,
 } from 'react'
-import type { AppState, Category, EditForm, Group, Item } from '@/lib/types'
+import type {
+  AppState, Category, DirectoryUser, EditForm, Group, Item, ListSummary, Share,
+} from '@/lib/types'
 
 const POLL_MS = 4000
 const NO_CAT = '__none__'
@@ -28,18 +30,36 @@ export default function Home() {
   const [hideChecked, setHideChecked] = useState(false)
   const [reordering, setReordering] = useState(false)
   const [editing, setEditing] = useState<Item | null>(null) // item en edición
+  // ---------- listas ----------
+  const [lists, setLists] = useState<ListSummary[]>([])
+  const [current, setCurrent] = useState<ListSummary | null>(null)
+  const [shares, setShares] = useState<Share[]>([])
+  const [sharingOpen, setSharingOpen] = useState(false)
+  const listIdRef = useRef<number | null>(null) // lista activa (para el poll)
   const pending = useRef(0)
 
   // ---------- carga + sincronización ----------
   const fetchState = useCallback(async () => {
     if (pending.current > 0) return
     try {
-      const res = await apiFetch('/api/state', { cache: 'no-store' })
+      const q = listIdRef.current ? `?list=${listIdRef.current}` : ''
+      const res = await apiFetch(`/api/state${q}`, { cache: 'no-store' })
       if (!res.ok) return
       const data = (await res.json()) as AppState
       if (pending.current === 0) {
         setCategories(data.categories || [])
         setItems(data.items || [])
+        setLists(data.lists || [])
+        setShares(data.shares || [])
+        if (data.list) {
+          setCurrent(data.list)
+          listIdRef.current = data.list.id
+          try {
+            localStorage.setItem('super:list', String(data.list.id))
+          } catch {
+            /* modo privado / sin storage */
+          }
+        }
       }
     } catch {
       /* sin conexión: reintenta en el próximo poll */
@@ -48,7 +68,35 @@ export default function Home() {
     }
   }, [])
 
+  // Cambia de lista (propia ↔ compartidas) y recarga al instante.
+  const selectList = useCallback(
+    (id: number) => {
+      if (id === listIdRef.current) return
+      listIdRef.current = id
+      try {
+        localStorage.setItem('super:list', String(id))
+      } catch {
+        /* sin storage */
+      }
+      setCurrent(lists.find((l) => l.id === id) ?? null)
+      setCategories([])
+      setItems([])
+      setShares([])
+      setView('lista')
+      setLoaded(false)
+      fetchState()
+    },
+    [lists, fetchState]
+  )
+
   useEffect(() => {
+    // Arranca en la última lista elegida (si el server no la autoriza, cae en la propia).
+    try {
+      const saved = Number(localStorage.getItem('super:list'))
+      if (Number.isFinite(saved) && saved > 0) listIdRef.current = saved
+    } catch {
+      /* sin storage */
+    }
     fetchState()
     const id = setInterval(fetchState, POLL_MS)
     const onFocus = () => fetchState()
@@ -126,7 +174,7 @@ export default function Home() {
       const res = await apiFetch('/api/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, categoryId, needed: true }),
+        body: JSON.stringify({ name, categoryId, needed: true, listId: listIdRef.current }),
       })
       if (!res.ok) throw new Error('add')
       const saved = (await res.json()) as Item
@@ -155,7 +203,7 @@ export default function Home() {
       const res = await apiFetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: clean }),
+        body: JSON.stringify({ name: clean, listId: listIdRef.current }),
       })
       if (!res.ok) throw new Error('cat')
       const cat = (await res.json()) as Category
@@ -205,6 +253,53 @@ export default function Home() {
     })
   }
 
+  // ---------- compartir / renombrar ----------
+  async function renameMyList(name: string) {
+    const clean = name.trim()
+    if (!clean || !current?.mine || clean === current.name) return
+    setCurrent((c) => (c ? { ...c, name: clean } : c))
+    setLists((prev) => prev.map((l) => (l.id === current.id ? { ...l, name: clean } : l)))
+    await mutate(async () => {
+      const res = await apiFetch('/api/list', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listId: current.id, name: clean }),
+      })
+      if (!res.ok) throw new Error('rename-list')
+    })
+  }
+
+  async function addShare(user: DirectoryUser) {
+    if (!current?.mine) return
+    setShares((prev) =>
+      prev.some((s) => s.email === user.email) ? prev : [...prev, user]
+    )
+    await mutate(async () => {
+      const res = await apiFetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listId: current.id, email: user.email, name: user.name }),
+      })
+      if (!res.ok) throw new Error('share')
+      const data = (await res.json()) as { shares: Share[] }
+      setShares(data.shares || [])
+    })
+  }
+
+  async function removeShare(email: string) {
+    if (!current?.mine) return
+    setShares((prev) => prev.filter((s) => s.email !== email))
+    await mutate(async () => {
+      const res = await apiFetch(
+        `/api/share?list=${current.id}&email=${encodeURIComponent(email)}`,
+        { method: 'DELETE' }
+      )
+      if (!res.ok) throw new Error('unshare')
+      const data = (await res.json()) as { shares: Share[] }
+      setShares(data.shares || [])
+    })
+  }
+
   // ---------- reset ----------
   async function resetTrip() {
     if (!confirm('¿Terminar la compra? Se va a vaciar la lista (el catálogo queda).')) return
@@ -213,7 +308,7 @@ export default function Home() {
       const res = await apiFetch('/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'trip' }),
+        body: JSON.stringify({ scope: 'trip', listId: listIdRef.current }),
       })
       if (!res.ok) throw new Error('reset')
     })
@@ -225,7 +320,7 @@ export default function Home() {
       const res = await apiFetch('/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'checked' }),
+        body: JSON.stringify({ scope: 'checked', listId: listIdRef.current }),
       })
       if (!res.ok) throw new Error('uncheck')
     })
@@ -284,6 +379,27 @@ export default function Home() {
               <p className="summary">{summary}</p>
             </div>
           </div>
+
+          {current && (
+            <div className="list-bar">
+              <ListSwitcher lists={lists} current={current} onSelect={selectList} />
+              {current.mine ? (
+                <button
+                  type="button"
+                  className="share-btn"
+                  onClick={() => setSharingOpen(true)}
+                >
+                  <span aria-hidden>👥</span>
+                  Compartir{shares.length ? ` · ${shares.length}` : ''}
+                </button>
+              ) : (
+                <span className="shared-badge" title={`Lista de ${current.ownerName}`}>
+                  Compartida por {current.ownerName}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="tabs" role="tablist">
             <button
               className={'tab' + (view === 'lista' ? ' active' : '')}
@@ -361,7 +477,47 @@ export default function Home() {
           onDelete={deleteItem}
         />
       )}
+
+      {sharingOpen && current?.mine && (
+        <ShareModal
+          list={current}
+          shares={shares}
+          onClose={() => setSharingOpen(false)}
+          onAdd={addShare}
+          onRemove={removeShare}
+          onRename={renameMyList}
+        />
+      )}
     </>
+  )
+}
+
+// ===================== Selector de listas =====================
+function ListSwitcher({
+  lists, current, onSelect,
+}: {
+  lists: ListSummary[]
+  current: ListSummary
+  onSelect: (id: number) => void
+}) {
+  if (lists.length <= 1) {
+    return <span className="list-name" title={current.name}>{current.name}</span>
+  }
+  return (
+    <div className="list-switch">
+      <select
+        className="list-select"
+        value={current.id}
+        onChange={(e) => onSelect(Number(e.target.value))}
+        aria-label="Elegir lista"
+      >
+        {lists.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.mine ? l.name : `${l.name} · ${l.ownerName}`}
+          </option>
+        ))}
+      </select>
+    </div>
   )
 }
 
@@ -691,6 +847,142 @@ function CatalogoView({
         </section>
       ))}
     </>
+  )
+}
+
+// ===================== Modal de compartir =====================
+interface ShareModalProps {
+  list: ListSummary
+  shares: Share[]
+  onClose: () => void
+  onAdd: (user: DirectoryUser) => void
+  onRemove: (email: string) => void
+  onRename: (name: string) => void
+}
+
+function ShareModal({ list, shares, onClose, onAdd, onRemove, onRename }: ShareModalProps) {
+  const [dir, setDir] = useState<DirectoryUser[]>([])
+  const [dirLoaded, setDirLoaded] = useState(false)
+  const [name, setName] = useState(list.name)
+  const [email, setEmail] = useState('')
+
+  // Directorio de Casa Caride (endpoint del shell, en la raíz del dominio).
+  useEffect(() => {
+    let alive = true
+    fetch('/api/directory', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: DirectoryUser[]) => {
+        if (alive) setDir(Array.isArray(d) ? d : [])
+      })
+      .catch(() => {})
+      .finally(() => alive && setDirLoaded(true))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const sharedEmails = new Set(shares.map((s) => s.email.toLowerCase()))
+  // Candidatos: usuarios del directorio que no son el dueño ni ya están compartidos.
+  const candidates = dir.filter(
+    (u) =>
+      u.email.toLowerCase() !== list.ownerEmail.toLowerCase() &&
+      !sharedEmails.has(u.email.toLowerCase())
+  )
+
+  function addManual(e: FormEvent) {
+    e.preventDefault()
+    const mail = email.trim().toLowerCase()
+    if (!mail || !mail.includes('@')) return
+    const match = dir.find((u) => u.email.toLowerCase() === mail)
+    onAdd({ email: mail, name: match?.name || mail })
+    setEmail('')
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-handle" />
+        <h3 className="modal-title">Compartir mi lista</h3>
+
+        <label className="field">
+          <span className="field-label">Nombre de la lista</span>
+          <input
+            className="field-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => onRename(name)}
+            maxLength={60}
+          />
+        </label>
+
+        <div className="field">
+          <span className="field-label">Compartida con</span>
+          {shares.length === 0 ? (
+            <p className="share-empty">Todavía no la compartiste con nadie.</p>
+          ) : (
+            <ul className="share-list">
+              {shares.map((s) => (
+                <li key={s.email} className="share-row">
+                  <div className="share-who">
+                    <span className="share-name">{s.name}</span>
+                    <span className="share-mail">{s.email}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost danger small"
+                    onClick={() => onRemove(s.email)}
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="field">
+          <span className="field-label">Agregar a alguien de Casa Caride</span>
+          {candidates.length > 0 ? (
+            <div className="share-chips">
+              {candidates.map((u) => (
+                <button
+                  key={u.email}
+                  type="button"
+                  className="share-chip"
+                  onClick={() => onAdd(u)}
+                >
+                  + {u.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="share-empty">
+              {dirLoaded ? 'No hay más personas para agregar.' : 'Cargando…'}
+            </p>
+          )}
+          <form className="share-manual" onSubmit={addManual}>
+            <input
+              className="field-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="…o pegá un email"
+              aria-label="Email a invitar"
+            />
+            <button type="submit" className="btn-ghost small" disabled={!email.trim()}>
+              Agregar
+            </button>
+          </form>
+        </div>
+
+        <div className="modal-actions">
+          <span className="share-hint">Pueden ver y editar esta lista.</span>
+          <button type="button" className="btn-primary" onClick={onClose}>
+            Listo
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

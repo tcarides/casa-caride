@@ -36,13 +36,14 @@ export const APPS: MiniApp[] = [
   {
     slug: 'super',
     name: 'Lista del súper',
-    description: 'La compra compartida de Flor y Tomás',
+    description: 'Tu lista de compras, para compartir con quien quieras',
     href: '/super',
     emoji: '🛒',
     icon: '/apps/super.png',
     iconBg: '#34C77B',
     hue: 'var(--app-super)',
     kind: 'zone',
+    access: 'open',
   },
   {
     slug: 'casas',
