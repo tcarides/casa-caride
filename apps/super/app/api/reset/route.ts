@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireListAccess } from '@/lib/guard'
 import { getSql, ensureSchema } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// POST /api/reset  { scope: "trip" | "checked" }
+// POST /api/reset  { listId, scope: "trip" | "checked" }
 //  - trip:    termina la compra → desmarca todo (needed=false, checked=false)
 //  - checked: solo destilda lo comprado, manteniendo la lista
 export async function POST(request: NextRequest) {
-  const denied = await requireSession()
-  if (denied) return denied
   await ensureSchema()
+  const body = (await request.json().catch(() => ({}))) as { scope?: string; listId?: number }
+  const gate = await requireListAccess(body.listId)
+  if ('res' in gate) return gate.res
+  const { listId } = gate
+
   const sql = getSql()
-  const body = (await request.json().catch(() => ({}))) as { scope?: string }
   const scope = body.scope === 'checked' ? 'checked' : 'trip'
 
   if (scope === 'checked') {
-    await sql`UPDATE items SET checked = FALSE WHERE checked = TRUE`
+    await sql`UPDATE items SET checked = FALSE WHERE list_id = ${listId} AND checked = TRUE`
   } else {
-    await sql`UPDATE items SET needed = FALSE, checked = FALSE WHERE needed = TRUE OR checked = TRUE`
+    await sql`
+      UPDATE items SET needed = FALSE, checked = FALSE
+      WHERE list_id = ${listId} AND (needed = TRUE OR checked = TRUE)
+    `
   }
   return NextResponse.json({ ok: true })
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
-import { getSql, ensureSchema } from '@/lib/db'
+import { requireListAccess } from '@/lib/guard'
+import { getSql, ensureSchema, listIdOfItem } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,11 +17,12 @@ type Params = { params: Promise<{ id: string }> }
 
 // PATCH /api/items/:id  { needed?, checked?, name?, categoryId? }
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   await ensureSchema()
-  const sql = getSql()
   const { id } = await params
+  const gate = await requireListAccess(await listIdOfItem(id))
+  if ('res' in gate) return gate.res
+
+  const sql = getSql()
   const body = (await request.json().catch(() => ({}))) as ItemPatch
 
   if (typeof body.needed === 'boolean') {
@@ -60,11 +61,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 // DELETE /api/items/:id  → elimina del catálogo
 export async function DELETE(request: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   await ensureSchema()
-  const sql = getSql()
   const { id } = await params
+  const gate = await requireListAccess(await listIdOfItem(id))
+  if ('res' in gate) return gate.res
+
+  const sql = getSql()
   await sql`DELETE FROM items WHERE id = ${id}`
   return NextResponse.json({ ok: true })
 }

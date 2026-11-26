@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
-import { getSql, ensureSchema } from '@/lib/db'
+import { requireListAccess } from '@/lib/guard'
+import { getSql, ensureSchema, listIdOfCategory } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,11 +13,12 @@ type Params = { params: Promise<{ id: string }> }
 
 // PATCH /api/categories/:id  { name?, position? }
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   await ensureSchema()
-  const sql = getSql()
   const { id } = await params
+  const gate = await requireListAccess(await listIdOfCategory(id))
+  if ('res' in gate) return gate.res
+
+  const sql = getSql()
   const body = (await request.json().catch(() => ({}))) as CategoryPatch
 
   if (typeof body.name === 'string') {
@@ -34,11 +35,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
 // DELETE /api/categories/:id  → borra la sección; sus productos quedan sin categoría
 export async function DELETE(request: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   await ensureSchema()
-  const sql = getSql()
   const { id } = await params
+  const gate = await requireListAccess(await listIdOfCategory(id))
+  if ('res' in gate) return gate.res
+
+  const sql = getSql()
   await sql`UPDATE items SET category_id = NULL WHERE category_id = ${id}`
   await sql`DELETE FROM categories WHERE id = ${id}`
   return NextResponse.json({ ok: true })
