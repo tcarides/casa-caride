@@ -74,8 +74,13 @@ export function OpcionForm({ value, onChange, autoPreview }: {
           if (p.moneda) patch.moneda = p.moneda
         }
         onChange({ ...value, ...patch })
-        setPrevMsg(p.image || p.title ? '✓ Datos traídos del link' : 'No encontré preview; cargalo a mano.')
-      } else { setPrevMsg('No encontré preview; cargalo a mano.') }
+        // "Éxito" = trajo lo útil (foto o precio). Si solo vino el nombre del
+        // sitio, avisamos honesto (MercadoLibre bloquea el preview desde el server).
+        const trajoUtil = !!p.image || p.price != null
+        setPrevMsg(trajoUtil
+          ? '✓ Datos traídos del link'
+          : 'Este sitio no deja traer foto ni precio (ej. MercadoLibre). Cargalos a mano 👇')
+      } else { setPrevMsg('No pude leer el link; cargá los datos a mano.') }
     } catch { setPrevMsg('No pude leer el link.') } finally { setLoadingPrev(false) }
   }
 

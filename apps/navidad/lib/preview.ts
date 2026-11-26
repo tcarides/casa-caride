@@ -145,9 +145,9 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
         'accept-language': 'es-AR,es;q=0.9,en;q=0.8',
       },
     })
-    if (!res.ok) { console.log('[preview-debug] not-ok', JSON.stringify({ req: url.toString(), finalUrl: res.url, status: res.status })); return null }
+    if (!res.ok) return null
     const ctype = res.headers.get('content-type') ?? ''
-    if (!ctype.includes('html')) { console.log('[preview-debug] not-html', JSON.stringify({ req: url.toString(), finalUrl: res.url, status: res.status, ctype })); return null }
+    if (!ctype.includes('html')) return null
 
     // Tope de bytes: con el <head> y el JSON-LD alcanza.
     const reader = res.body?.getReader()
@@ -196,7 +196,6 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
     if (esMeli && (!out.image || out.price == null)) {
       const ids = meliIds(finalUrl)
       const api = (ids.item || ids.product) ? await meliApi(ids, ctrl.signal) : null
-      console.log('[preview-debug] meli-api', JSON.stringify({ finalUrl: finalUrl.toString(), ids, api }).slice(0, 1200))
       if (api) {
         const tituloGenerico = !out.title || /^mercado\s*libre$/i.test(out.title.trim())
         out = {
@@ -208,16 +207,9 @@ export async function fetchPreview(rawUrl: string): Promise<LinkPreview | null> 
       }
     }
 
-    console.log('[preview-debug] ok', JSON.stringify({
-      req: url.toString(), finalUrl: finalUrl.toString(), status: res.status, len: html.length,
-      ogImage: metaContent(html, ['og:image']), ogTitle: metaContent(html, ['og:title']),
-      ldBlocks: (html.match(/application\/ld\+json/gi) || []).length, out,
-    }).slice(0, 1200))
-
     if (!out.image && !out.title && out.price == null) return null
     return out
-  } catch (e) {
-    console.log('[preview-debug] throw', JSON.stringify({ req: rawUrl, err: (e as Error)?.message ?? String(e) }))
+  } catch {
     return null
   } finally {
     clearTimeout(timer)
