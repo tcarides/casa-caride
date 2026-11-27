@@ -32,14 +32,23 @@ export default async function VerGrupo({ params }: { params: Promise<{ token: st
         </div>
       </header>
 
-      <PublicList participantes={grupo.participantes} />
-
-      <div className="nv-pub-cta">
-        <a className="nv-btn nv-btn--primary nv-btn--block" href={`https://casa-caride.vercel.app/unirse/${grupo.token}`}>
-          Entrar para editar esta lista
+      <div className="nv-pub-banner">
+        <div className="nv-pub-banner-body">
+          <p className="nv-pub-banner-title">👀 Estás mirando esta lista (solo lectura)</p>
+          <p className="nv-pub-banner-sub">
+            ¿Sos de la familia que arma los regalos? Entrá con tu cuenta de Google
+            para agregar y editar deseos.
+          </p>
+        </div>
+        <a
+          className="nv-btn nv-btn--primary nv-btn--block"
+          href={`https://casa-caride.vercel.app/unirse/${grupo.token}`}
+        >
+          Entrar con Google para editar
         </a>
-        <p className="nv-pub-ctahint">Con tu cuenta de Google. Para la familia que arma los regalos.</p>
       </div>
+
+      <PublicList participantes={grupo.participantes} />
 
       <footer className="nv-pub-foot">🎄 Casa Caride</footer>
     </main>
