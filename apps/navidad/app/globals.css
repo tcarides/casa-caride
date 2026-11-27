@@ -278,3 +278,8 @@ body {
 .nv-spin { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nvspin .7s linear infinite; }
 @keyframes nvspin { to { transform: rotate(360deg); } }
 .nv-loading { text-align: center; color: var(--text-sec); padding: 48px; }
+
+/* ---------- Vista pública: acordeón de persona ---------- */
+.nv-pub-pacc { display: flex; flex-direction: column; }
+.nv-pub-pacc .nv-persona-row { width: 100%; }
+.nv-pub-pacc-body { margin: 10px 0 2px; padding-left: 6px; }
