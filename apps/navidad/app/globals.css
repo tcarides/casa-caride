@@ -283,3 +283,22 @@ body {
 .nv-pub-pacc { display: flex; flex-direction: column; }
 .nv-pub-pacc .nv-persona-row { width: 100%; }
 .nv-pub-pacc-body { margin: 10px 0 2px; padding-left: 6px; }
+
+/* ---------- Vista pública: banner "entrá para editar" (arriba) ---------- */
+.nv-pub-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 2px 0 16px;
+  padding: 14px;
+  background: var(--nav-soft);
+  border: 1px solid color-mix(in oklab, var(--nav) 30%, transparent);
+  border-radius: 14px;
+}
+.nv-pub-banner-title { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-pri); }
+.nv-pub-banner-sub {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-sec, #a5a5a0);
+}
