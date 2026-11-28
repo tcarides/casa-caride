@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireOpcion } from '@/lib/guard'
 import { updateOpcion, deleteOpcion, type OpcionPatch } from '@/lib/db'
 import { parseMoneda, parsePrecio, normUrl, textOrNull } from '@/lib/parse'
 
@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 
 /** Editar una opción. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
   const { id } = await params
+  const gate = await requireOpcion(req, Number(id), 'read')
+  if ('res' in gate) return gate.res
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'body inválido' }, { status: 400 })
 
@@ -26,10 +26,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 /** Borrar una opción. */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const gate = await requireOpcion(req, Number(id), 'read')
+  if ('res' in gate) return gate.res
   await deleteOpcion(Number(id))
   return NextResponse.json({ ok: true })
 }

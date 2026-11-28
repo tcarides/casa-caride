@@ -1,36 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireGrupo } from '@/lib/guard'
 import { getGrupoDetalle, renameGrupo, deleteGrupo } from '@/lib/db'
+import { listAcceso } from '@/lib/access'
 
 export const dynamic = 'force-dynamic'
 
-/** Detalle de un grupo: participantes con sus deseos. */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
+/** Detalle. Los emails de las personas solo viajan si podés administrar. */
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const grupo = await getGrupoDetalle(Number(id))
+  const gate = await requireGrupo(req, Number(id), 'read')
+  if ('res' in gate) return gate.res
+  const grupo = await getGrupoDetalle(gate.grupoId)
   if (!grupo) return NextResponse.json({ error: 'no existe' }, { status: 404 })
-  return NextResponse.json({ grupo })
+  const canManage = gate.canManage
+  const acceso = canManage ? await listAcceso(gate.grupoId) : []
+  const participantes = canManage
+    ? grupo.participantes
+    : grupo.participantes.map((p) => ({ ...p, userEmail: null }))
+  return NextResponse.json({
+    grupo: {
+      ...grupo,
+      participantes,
+      canManage,
+      acceso,
+      ownerEmail: canManage ? grupo.ownerEmail : null,
+    },
+  })
 }
 
-/** Renombrar un grupo. */
+/** Renombrar un grupo (dueño o admin). */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
   const { id } = await params
+  const gate = await requireGrupo(req, Number(id), 'manage')
+  if ('res' in gate) return gate.res
   const body = await req.json().catch(() => null)
   const nombre = String(body?.nombre ?? '').trim()
   if (!nombre) return NextResponse.json({ error: 'falta nombre' }, { status: 400 })
-  await renameGrupo(Number(id), nombre)
+  await renameGrupo(gate.grupoId, nombre)
   return NextResponse.json({ ok: true })
 }
 
-/** Borrar un grupo (con sus participantes y deseos). */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
+/** Borrar un grupo (dueño o admin). */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await deleteGrupo(Number(id))
+  const gate = await requireGrupo(req, Number(id), 'manage')
+  if ('res' in gate) return gate.res
+  await deleteGrupo(gate.grupoId)
   return NextResponse.json({ ok: true })
 }

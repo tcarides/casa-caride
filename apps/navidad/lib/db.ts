@@ -10,8 +10,10 @@ function nuevoToken(): string {
 //  - participantes  → personas del grupo, por nombre (pueden no tener usuario).
 //  - deseos         → "lo que quiere" cada persona (título + prioridad + nota).
 //  - opciones       → alternativas concretas de un deseo (link, imagen, precio).
-// Precios en centavos (enteros). Moneda ARS o USD. Cualquier usuario logueado
-// puede ver y editar todo (las mamás cargan lo de los hijos, etc.).
+// Precios en centavos (enteros). Moneda ARS o USD.
+// Quién ve un grupo: el admin, quien lo creó, quien está en grupo_acceso
+// (link, invitación o alta del admin) y la persona cuyo apodo está vinculado
+// a su usuario. El apodo (nombre) no se reemplaza por el nombre de la cuenta.
 
 type Sql = NeonQueryFunction<false, false>
 let _sql: Sql | undefined
@@ -67,6 +69,7 @@ export interface Participante {
   nombre: string
   emoji: string | null
   orden: number
+  userEmail: string | null
   deseos: Deseo[]
 }
 
@@ -80,6 +83,8 @@ export interface Grupo {
 }
 
 export interface GrupoDetalle extends Grupo {
+  ownerEmail: string | null
+  ownerName: string | null
   participantes: Participante[]
 }
 
@@ -145,6 +150,25 @@ export async function ensureSchema(): Promise<void> {
   await sql`ALTER TABLE grupos ADD COLUMN IF NOT EXISTS token TEXT`
   await sql`UPDATE grupos SET token = substr(md5(random()::text || id::text || clock_timestamp()::text), 1, 12) WHERE token IS NULL OR token = ''`
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS grupos_token ON grupos (token)`
+  await sql`ALTER TABLE grupos ADD COLUMN IF NOT EXISTS owner_email TEXT`
+  await sql`ALTER TABLE grupos ADD COLUMN IF NOT EXISTS owner_name TEXT`
+  await sql`ALTER TABLE participantes ADD COLUMN IF NOT EXISTS user_email TEXT`
+  await sql`
+    CREATE TABLE IF NOT EXISTS grupo_acceso (
+      grupo_id BIGINT NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      name TEXT NOT NULL,
+      origen TEXT NOT NULL DEFAULT 'miembro',
+      PRIMARY KEY (grupo_id, email)
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS acceso_meta (
+      k TEXT PRIMARY KEY,
+      v JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
   // Migración idempotente: cada deseo viejo con link/imagen/precio y sin
   // opciones pasa a tener esa info como su primera opción.
   await sql`
@@ -158,9 +182,11 @@ export async function ensureSchema(): Promise<void> {
 }
 
 // ── Grupos ──
-export async function listGrupos(): Promise<Grupo[]> {
+export async function listGrupos(viewer: { email: string; role: string }): Promise<Grupo[]> {
   await ensureSchema()
   const sql = getSql()
+  const e = viewer.email.toLowerCase()
+  const admin = viewer.role === 'admin'
   const rows = await sql`
     SELECT g.id, g.nombre, g.token, g.created_at,
            COUNT(DISTINCT p.id)::int AS n_participantes,
@@ -168,6 +194,10 @@ export async function listGrupos(): Promise<Grupo[]> {
     FROM grupos g
     LEFT JOIN participantes p ON p.grupo_id = g.id
     LEFT JOIN deseos d ON d.participante_id = p.id
+    WHERE ${admin}
+       OR lower(g.owner_email) = ${e}
+       OR EXISTS (SELECT 1 FROM grupo_acceso a WHERE a.grupo_id = g.id AND lower(a.email) = ${e})
+       OR EXISTS (SELECT 1 FROM participantes m WHERE m.grupo_id = g.id AND lower(m.user_email) = ${e})
     GROUP BY g.id, g.nombre, g.token, g.created_at
     ORDER BY g.created_at ASC, g.id ASC`
   return rows.map((r) => ({
@@ -180,11 +210,20 @@ export async function listGrupos(): Promise<Grupo[]> {
   }))
 }
 
-export async function createGrupo(nombre: string): Promise<number> {
+export async function createGrupo(nombre: string, owner: { email: string; name: string }): Promise<number> {
   await ensureSchema()
   const sql = getSql()
-  const [row] = await sql`INSERT INTO grupos (nombre, token) VALUES (${nombre}, ${nuevoToken()}) RETURNING id`
-  return Number(row.id)
+  const email = owner.email.toLowerCase()
+  const [row] = await sql`
+    INSERT INTO grupos (nombre, token, owner_email, owner_name)
+    VALUES (${nombre}, ${nuevoToken()}, ${email}, ${owner.name})
+    RETURNING id`
+  const id = Number(row.id)
+  await sql`
+    INSERT INTO grupo_acceso (grupo_id, email, name, origen)
+    VALUES (${id}, ${email}, ${owner.name}, 'creador')
+    ON CONFLICT (grupo_id, email) DO NOTHING`
+  return id
 }
 
 export async function renameGrupo(id: number, nombre: string): Promise<void> {
@@ -203,12 +242,12 @@ export async function deleteGrupo(id: number): Promise<void> {
 export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> {
   await ensureSchema()
   const sql = getSql()
-  const grupos = await sql`SELECT id, nombre, token, created_at FROM grupos WHERE id = ${id}`
+  const grupos = await sql`SELECT id, nombre, token, owner_email, owner_name, created_at FROM grupos WHERE id = ${id}`
   if (!grupos.length) return null
   const g = grupos[0]
 
   const parts = await sql`
-    SELECT id, grupo_id, nombre, emoji, orden, created_at
+    SELECT id, grupo_id, nombre, emoji, orden, user_email, created_at
     FROM participantes WHERE grupo_id = ${id}
     ORDER BY orden ASC, created_at ASC, id ASC`
   const deseosRows = await sql`
@@ -260,6 +299,7 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
     nombre: p.nombre as string,
     emoji: (p.emoji as string | null) ?? null,
     orden: Number(p.orden),
+    userEmail: (p.user_email as string | null) ?? null,
     deseos: deseosByPart.get(Number(p.id)) ?? [],
   }))
   // Personas ordenadas alfabéticamente (es: respeta acentos, ñ y mayúsculas).
@@ -270,18 +310,27 @@ export async function getGrupoDetalle(id: number): Promise<GrupoDetalle | null> 
     nombre: g.nombre as string,
     token: (g.token as string) ?? '',
     createdAt: toIso(g.created_at),
+    ownerEmail: (g.owner_email as string | null) ?? null,
+    ownerName: (g.owner_name as string | null) ?? null,
     participantes,
   }
 }
 
-/** Grupo completo por su token público (para la vista de solo lectura). */
+/** Grupo por token, sin emails: la vista pública no lleva cuentas vinculadas. */
 export async function getGrupoByToken(token: string): Promise<GrupoDetalle | null> {
   if (!token) return null
   await ensureSchema()
   const sql = getSql()
   const rows = await sql`SELECT id FROM grupos WHERE token = ${token}`
   if (!rows.length) return null
-  return getGrupoDetalle(Number(rows[0].id))
+  const detalle = await getGrupoDetalle(Number(rows[0].id))
+  if (!detalle) return null
+  return {
+    ...detalle,
+    ownerEmail: null,
+    ownerName: detalle.ownerName,
+    participantes: detalle.participantes.map((p) => ({ ...p, userEmail: null })),
+  }
 }
 
 // ── Participantes ──

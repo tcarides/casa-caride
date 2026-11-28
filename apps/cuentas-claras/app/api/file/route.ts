@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireGasto } from '@/lib/guard'
 import { get } from '@vercel/blob'
 import { getGastoComprobante } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// Sirve el comprobante privado por id de gasto (el pathname sale de la DB, así
-// no exponemos un proxy abierto al store).
+// Sirve el comprobante privado por id de gasto, solo si podés ver esa cuenta.
 export async function GET(req: NextRequest) {
-  const denied = await requireSession()
-  if (denied) return denied
   const id = Number(new URL(req.url).searchParams.get('gasto'))
   if (!id) return NextResponse.json({ error: 'gasto requerido' }, { status: 400 })
+  const gate = await requireGasto(req, id, 'read')
+  if ('res' in gate) return gate.res
   const pathname = await getGastoComprobante(id)
   if (!pathname) return NextResponse.json({ error: 'sin comprobante' }, { status: 404 })
 

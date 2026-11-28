@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireParticipanteCuenta } from '@/lib/guard'
 import { updateParticipante, deleteParticipante, setEstadoCarga, claimParticipante, unclaimParticipante, type EstadoCarga } from '@/lib/db'
-import { currentEmail } from '@/lib/identity'
+import { setParticipanteUser } from '@/lib/access'
+import { fetchDirectory } from '@/lib/directory'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,21 +11,36 @@ type Params = { params: Promise<{ id: string }> }
 const ESTADOS: EstadoCarga[] = ['pendiente', 'listo', 'sin_gastos']
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   const id = Number((await params).id)
-  const b = (await req.json().catch(() => ({}))) as { name?: string; alias?: string; estado?: string; claim?: boolean }
+  const b = (await req.json().catch(() => ({}))) as {
+    name?: string; alias?: string; estado?: string; claim?: boolean; userEmail?: string | null
+  }
+  const links = b.userEmail !== undefined
+  const gate = await requireParticipanteCuenta(req, id, links ? 'manage' : 'read')
+  if ('res' in gate) return gate.res
 
-  // "Este soy yo" / "no soy yo": vincula o suelta el participante a mi sesión.
-  if (b.claim !== undefined) {
-    const email = await currentEmail()
-    if (!email) return NextResponse.json({ error: 'sin sesión' }, { status: 401 })
-    if (b.claim) await claimParticipante(id, email)
-    else await unclaimParticipante(id, email)
+  // Vincular el nombre libre a una cuenta de Casa Caride. El nombre no cambia.
+  if (links) {
+    const raw = b.userEmail == null ? '' : String(b.userEmail).trim().toLowerCase()
+    if (!raw) {
+      await setParticipanteUser(id, null)
+    } else {
+      if (!raw.includes('@')) return NextResponse.json({ error: 'email inválido' }, { status: 400 })
+      const directory = await fetchDirectory(req.headers.get('cookie') ?? '')
+      const known = directory?.find((u) => u.email.toLowerCase() === raw)
+      if (!known) return NextResponse.json({ error: 'ese usuario no está en Casa Caride' }, { status: 400 })
+      await setParticipanteUser(id, known.email.toLowerCase())
+    }
     return NextResponse.json({ ok: true })
   }
 
-  // Cambio de estado de carga (toggle desde la lista de participantes).
+  // "Este soy yo" / "no soy yo": vincula o suelta el participante a mi sesión.
+  if (b.claim !== undefined) {
+    if (b.claim) await claimParticipante(id, gate.user.email)
+    else await unclaimParticipante(id, gate.user.email)
+    return NextResponse.json({ ok: true })
+  }
+
   if (b.estado !== undefined) {
     if (!ESTADOS.includes(b.estado as EstadoCarga)) {
       return NextResponse.json({ error: 'estado inválido' }, { status: 400 })
@@ -39,10 +55,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true })
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
-  await deleteParticipante(Number((await params).id))
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const id = Number((await params).id)
+  const gate = await requireParticipanteCuenta(req, id, 'read')
+  if ('res' in gate) return gate.res
+  await deleteParticipante(id)
   return NextResponse.json({ ok: true })
 }
-

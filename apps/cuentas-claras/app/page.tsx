@@ -38,7 +38,14 @@ export default function Home() {
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      await fetch(`${API}/join`).catch(() => {})
+      if (!cancel) await load()
+    })()
+    return () => { cancel = true }
+  }, [load])
   useEffect(() => {
     fetch(`${API}/me`).then((r) => r.ok ? r.json() : null).then(setMe).catch(() => {}).finally(() => setMeReady(true))
   }, [])
@@ -101,8 +108,7 @@ export default function Home() {
       )}
 
       <p className="cc-hint">
-        Ves las cuentas que creaste y aquellas donde te marcaste como participante.
-        ¿Te falta una? Abrí su link y tocá <strong>“soy yo”</strong> en tu nombre.
+        Ves las cuentas en las que participás. Si te comparten el link, al abrirlo quedás adentro.
       </p>
     </main>
   )

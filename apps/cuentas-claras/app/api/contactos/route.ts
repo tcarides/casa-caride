@@ -1,12 +1,11 @@
-import { NextResponse } from 'next/server'
-import { currentEmail } from '@/lib/identity'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireReady } from '@/lib/guard'
 import { getContactos } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// Todos mis contactos con los grupos donde figura cada uno (vista Contactos).
-export async function GET() {
-  const email = await currentEmail()
-  if (!email) return NextResponse.json([])
-  return NextResponse.json(await getContactos(email))
+export async function GET(req: NextRequest) {
+  const ready = await requireReady(req)
+  if ('res' in ready) return ready.res
+  return NextResponse.json(await getContactos(ready.user.email))
 }

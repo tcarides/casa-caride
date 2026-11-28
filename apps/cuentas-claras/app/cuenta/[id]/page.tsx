@@ -7,8 +7,9 @@ type EstadoCarga = 'pendiente' | 'listo' | 'sin_gastos'
 interface Participante { id: number; name: string; alias: string | null; estado: EstadoCarga; userEmail: string | null; origen: 'cuenta' | 'grupo' }
 interface Gasto { id: number; descripcion: string; monto: number; pagadorId: number; comprobanteUrl: string | null }
 interface Liquidacion { id: number; fromId: number; toId: number; monto: number; pagado: boolean }
-interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada'; fecha: string | null; saldada: boolean }
-interface Detail { cuenta: Cuenta; participantes: Participante[]; gastos: Gasto[]; liquidaciones: Liquidacion[] }
+interface Cuenta { id: number; name: string; status: 'abierta' | 'cerrada'; fecha: string | null; saldada: boolean; token?: string }
+interface CasaUser { name: string; email: string }
+interface Detail { cuenta: Cuenta; participantes: Participante[]; gastos: Gasto[]; liquidaciones: Liquidacion[]; canManage?: boolean }
 interface Contacto { name: string; alias: string | null; email: string | null }
 // Clave estable de un contacto: email si está registrado, si no el nombre.
 // Evita que dos personas distintas con el mismo nombre colisionen al tildar.
@@ -43,6 +44,7 @@ export default function CuentaPage() {
   const [d, setD] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<{ email: string; name: string } | null>(null)
+  const [casaUsers, setCasaUsers] = useState<CasaUser[]>([])
 
   // forms
   const [pName, setPName] = useState('')
@@ -69,6 +71,10 @@ export default function CuentaPage() {
     if (r.ok) setD(await r.json())
     setLoading(false)
   }, [id])
+  useEffect(() => {
+    fetch(`${API}/users`).then((r) => r.ok ? r.json() : []).then(setCasaUsers).catch(() => {})
+    fetch(`${API}/join`).catch(() => {})
+  }, [])
   useEffect(() => { void load() }, [load])
 
   // Mis contactos (gente de mis grupos), mis grupos y mi identidad.
@@ -100,6 +106,7 @@ export default function CuentaPage() {
   if (!d) return <main className="cc"><p className="cc-empty">No se encontró la cuenta.</p></main>
 
   const { cuenta, participantes, gastos, liquidaciones } = d
+  const canManage = !!d.canManage
   const abierta = cuenta.status === 'abierta'
   const total = gastos.reduce((s, g) => s + g.monto, 0)
   const porCabeza = participantes.length ? total / participantes.length : 0
@@ -287,6 +294,21 @@ export default function CuentaPage() {
     })
     await load()
   }
+  async function vincular(p: Participante, email: string) {
+    const next = email || null
+    setD((prev) => prev ? { ...prev, participantes: prev.participantes.map((x) => x.id === p.id ? { ...x, userEmail: next } : x) } : prev)
+    const r = await fetch(`${API}/participantes/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userEmail: next }),
+    })
+    if (!r.ok) await load()
+  }
+  function compartirCuenta() {
+    if (!cuenta.token) return
+    const url = `${window.location.origin}/cuentas-claras/compartir/cuenta/${cuenta.token}`
+    navigator.clipboard?.writeText(url)
+    alert('Link copiado. Quien lo abra queda en la cuenta.')
+  }
   async function borrarCuenta() {
     if (!confirm(`¿Borrar la cuenta "${cuenta.name}"? Se eliminan sus gastos y participantes. No se puede deshacer.`)) return
     const r = await fetch(`${API}/cuentas/${id}`, { method: 'DELETE' })
@@ -317,6 +339,9 @@ export default function CuentaPage() {
         <div className="cc-title">
           <div><h1>{cuenta.name}</h1>
             <p>{abierta ? 'Abierta' : cuenta.saldada ? '✓ Saldada' : 'Cerrada'} · {money(total)} en {gastos.length} gasto{gastos.length === 1 ? '' : 's'}</p>
+            {cuenta.token && (
+              <button className="cc-chip" type="button" onClick={compartirCuenta}>Compartir link</button>
+            )}
             <div className="cc-fecha">
               {editFecha ? (
                 <input className="cc-input cc-fecha-input" type="date" autoFocus
@@ -361,6 +386,13 @@ export default function CuentaPage() {
                     )}
                   </span>
                   <span className="cc-item-sub">{p.alias ? `alias: ${p.alias}` : 'sin alias'}</span>
+                  {canManage && (
+                    <select className="cc-input" aria-label={`Vincular a ${p.name}`} value={p.userEmail ?? ''}
+                      onChange={(e) => { void vincular(p, e.target.value) }}>
+                      <option value="">Sin vincular</option>
+                      {casaUsers.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+                    </select>
+                  )}
                   {abierta && (
                     <div className="cc-estado">
                       {p.estado === 'pendiente' ? (
@@ -557,9 +589,11 @@ export default function CuentaPage() {
         </section>
       )}
 
-      <button className="cc-btn cc-ghost cc-btn-block cc-danger" onClick={borrarCuenta}>
-        Borrar cuenta
-      </button>
+      {canManage && (
+        <button className="cc-btn cc-ghost cc-btn-block cc-danger" onClick={borrarCuenta}>
+          Borrar cuenta
+        </button>
+      )}
     </main>
   )
 }

@@ -81,6 +81,9 @@ export default auth(async (req) => {
   // assets estáticos (para que la página se vea sin login).
   if (path.startsWith('/navidad/ver/') || path.startsWith('/navidad/_next/')) return done()
 
+  // Libre: link para sumarse a un grupo o una cuenta de Cuentas Claras.
+  if (path.startsWith('/cuentas-claras/compartir/') || path.startsWith('/cuentas-claras/_next/')) return done()
+
   // Libre: "unirse" convierte el link de una lista en invitación (valida el
   // token y manda a /invite). Va antes del gate de login.
   if (path.startsWith('/unirse/')) return done()

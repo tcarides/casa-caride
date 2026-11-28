@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireDeseo } from '@/lib/guard'
 import { updateDeseo, deleteDeseo, type DeseoPatch } from '@/lib/db'
 import { parsePrioridad } from '@/lib/parse'
 
@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 
 /** Editar un deseo (título, prioridad, nota). Las opciones van por /api/opciones. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
   const { id } = await params
+  const gate = await requireDeseo(req, Number(id), 'read')
+  if ('res' in gate) return gate.res
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'body inválido' }, { status: 400 })
 
@@ -27,10 +27,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 /** Borrar un deseo (con sus opciones). */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const unauth = await requireSession()
-  if (unauth) return unauth
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const gate = await requireDeseo(req, Number(id), 'read')
+  if ('res' in gate) return gate.res
   await deleteDeseo(Number(id))
   return NextResponse.json({ ok: true })
 }

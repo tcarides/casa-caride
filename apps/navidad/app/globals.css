@@ -319,3 +319,15 @@ body {
   line-height: 1.4;
   color: var(--text-sec, #a5a5a0);
 }
+
+.nv-acceso { margin: 8px 0 18px; padding: 14px; border: 1px solid var(--border-subtle, #2a2a2a); border-radius: 14px; }
+.nv-acceso h2 { margin: 0 0 6px; font-size: 0.95rem; }
+.nv-acceso-note { margin: 0 0 12px; color: var(--text-sec, #a5a5a0); font-size: 0.82rem; line-height: 1.4; }
+.nv-acceso-list, .nv-acceso-extra { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.nv-acceso-list li, .nv-acceso-extra li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.nv-acceso-nick { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-acceso-select { max-width: 58%; }
+.nv-acceso-add { display: flex; gap: 8px; margin-top: 12px; }
+.nv-acceso-add .nv-input { flex: 1; min-width: 0; }
+.nv-vincular { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 0.75rem; color: var(--text-sec, #a5a5a0); }
+.nv-vincular select { font: inherit; }

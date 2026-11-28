@@ -71,6 +71,9 @@ export async function ensureSchema(): Promise<void> {
   // Multi-uso: max_usos = 1 (una persona) · 0 (ilimitado) · N (hasta N). usos = contador.
   await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS max_usos INTEGER NOT NULL DEFAULT 1`
   await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS usos INTEGER NOT NULL DEFAULT 0`
+  // A qué lista o grupo suma esta invitación: "navidad:<token>",
+  // "cuentas:<token>" o "cuentas-grupo:<token>". Vacío = solo alta en la casa.
+  await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS join_ref TEXT`
   await sql`
     CREATE TABLE IF NOT EXISTS impersonation_log (
       id           BIGSERIAL PRIMARY KEY,
@@ -212,10 +215,11 @@ export interface Invite {
   token: string
   note: string
   apps: string[]
+  joinRef: string | null
 }
 
 export async function createInvite(
-  note: string, apps: string[], createdBy: string, maxUsos = 1, days = 7,
+  note: string, apps: string[], createdBy: string, maxUsos = 1, days = 7, joinRef: string | null = null,
 ): Promise<string> {
   await ensureSchema()
   const sql = getSql()
@@ -224,8 +228,8 @@ export async function createInvite(
   // El preset guardado incluye las apps abiertas: todo invitado las tiene.
   const preset = mergeDefaultApps(apps)
   await sql`
-    INSERT INTO invites (token, note, apps_preset, created_by, expires_at, max_usos)
-    VALUES (${token}, ${note}, ${preset.join(',')}, ${createdBy}, ${expires}, ${maxUsos})
+    INSERT INTO invites (token, note, apps_preset, created_by, expires_at, max_usos, join_ref)
+    VALUES (${token}, ${note}, ${preset.join(',')}, ${createdBy}, ${expires}, ${maxUsos}, ${joinRef})
   `
   return token
 }
@@ -245,12 +249,17 @@ function inviteUsable(r: Record<string, unknown>): boolean {
 export async function getValidInvite(token: string): Promise<Invite | null> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT note, apps_preset, used_by, expires_at, max_usos, usos FROM invites WHERE token = ${token}`
+  const rows = await sql`SELECT note, apps_preset, used_by, expires_at, max_usos, usos, join_ref FROM invites WHERE token = ${token}`
   if (!rows.length) return null
   const r = rows[0]
   if (!inviteUsable(r)) return null
   const preset = (r.apps_preset as string) || ''
-  return { token, note: (r.note as string) ?? '', apps: preset ? preset.split(',') : [] }
+  return {
+    token,
+    note: (r.note as string) ?? '',
+    apps: preset ? preset.split(',') : [],
+    joinRef: (r.join_ref as string | null) ?? null,
+  }
 }
 
 /** Crea el usuario (member) con las apps del preset y registra el uso de la invitación. */
@@ -317,6 +326,42 @@ export async function logImpersonation(
     INSERT INTO impersonation_log (admin_email, target_email, action)
     VALUES (${adminEmail.toLowerCase()}, ${targetEmail.toLowerCase()}, ${action})
   `
+}
+
+export interface JoinHint {
+  app: string
+  email: string
+  token: string | null
+  nombre: string | null
+}
+
+/** Invitaciones ya usadas que apuntan a una lista o un grupo, para el backfill. */
+export async function listJoinHints(): Promise<JoinHint[]> {
+  await ensureSchema()
+  const sql = getSql()
+  const rows = await sql`
+    SELECT note, used_by, join_ref FROM invites
+    WHERE used_by IS NOT NULL
+  `
+  const out: JoinHint[] = []
+  for (const r of rows) {
+    const email = String(r.used_by ?? '').toLowerCase()
+    if (!email.includes('@')) continue
+    const ref = (r.join_ref as string | null) ?? ''
+    const colon = ref.indexOf(':')
+    if (colon > 0) {
+      const app = ref.slice(0, colon)
+      const token = ref.slice(colon + 1)
+      if ((app === 'navidad' || app === 'cuentas' || app === 'cuentas-grupo') && token) {
+        out.push({ app, email, token, nombre: null })
+        continue
+      }
+    }
+    const note = String(r.note ?? '')
+    const m = /^Navidad:\s*(.+)$/i.exec(note)
+    if (m?.[1]) out.push({ app: 'navidad', email, token: null, nombre: m[1].trim() })
+  }
+  return out
 }
 
 export async function deleteInvite(token: string): Promise<void> {

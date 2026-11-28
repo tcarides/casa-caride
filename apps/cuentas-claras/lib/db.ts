@@ -1,5 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { computeBalances, simplifyDebts } from './calc'
+
+function nuevoToken(): string {
+  return randomUUID().replace(/-/g, '').slice(0, 12)
+}
 
 // Cuentas Claras: cuentas (eventos), participantes, gastos y liquidaciones.
 // Montos en centavos (enteros). Moneda: ARS.
@@ -22,6 +27,7 @@ export interface Cuenta {
   ownerEmail: string | null
   fecha: string | null // 'YYYY-MM-DD' del evento (opcional)
   saldada: boolean // cerrada y sin deudas pendientes
+  token: string
   createdAt: string
   closedAt: string | null
 }
@@ -139,51 +145,99 @@ export async function ensureSchema(): Promise<void> {
       alias TEXT
     )
   `
+  await sql`ALTER TABLE grupos ADD COLUMN IF NOT EXISTS token TEXT`
+  await sql`ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS token TEXT`
+  await sql`UPDATE grupos SET token = substr(md5(random()::text || id::text || clock_timestamp()::text), 1, 12) WHERE token IS NULL OR token = ''`
+  await sql`UPDATE cuentas SET token = substr(md5(random()::text || id::text || clock_timestamp()::text), 1, 12) WHERE token IS NULL OR token = ''`
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS grupos_token ON grupos (token)`
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS cuentas_token ON cuentas (token)`
+  // Acceso explícito (link, invitación, admin). El dueño y el participante
+  // vinculado también entran, sin depender de esta tabla.
+  await sql`
+    CREATE TABLE IF NOT EXISTS grupo_acceso (
+      grupo_id BIGINT NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      name TEXT NOT NULL,
+      origen TEXT NOT NULL DEFAULT 'miembro',
+      PRIMARY KEY (grupo_id, email)
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS cuenta_acceso (
+      cuenta_id BIGINT NOT NULL REFERENCES cuentas(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      name TEXT NOT NULL,
+      origen TEXT NOT NULL DEFAULT 'miembro',
+      PRIMARY KEY (cuenta_id, email)
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS acceso_meta (
+      k TEXT PRIMARY KEY,
+      v JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
   schemaReady = true
 }
 
 // ── Cuentas ──
-// Cada uno ve lo suyo: las cuentas que creó (owner_email) o donde figura como
-// participante vinculado a su email. Las legacy sin dueño (owner_email NULL)
-// quedan visibles para todos para no perder datos viejos.
-export async function listCuentas(email: string | null): Promise<Cuenta[]> {
+// Antes, `owner_email IS NULL` mostraba la cuenta a cualquier logueado. Una
+// cuenta vieja como "Asado Timón" le aparecía a Clara aunque no la hubiera
+// creado ni figurara en ella. Ahora la ve el admin, el dueño, quien está
+// vinculado como participante y quien entró por link o invitación.
+export async function listCuentas(viewer: { email: string; role: string }): Promise<Cuenta[]> {
   await ensureSchema()
   const sql = getSql()
-  const e = email?.toLowerCase() ?? null
+  const e = viewer.email.toLowerCase()
+  const admin = viewer.role === 'admin'
   const rows = await sql`
-    SELECT id, name, status, owner_email, fecha, created_at, closed_at,
+    SELECT id, name, status, owner_email, fecha, token, created_at, closed_at,
       (status = 'cerrada' AND NOT EXISTS (
         SELECT 1 FROM liquidaciones l WHERE l.cuenta_id = c.id AND l.pagado = false
       )) AS saldada
     FROM cuentas c
-    WHERE c.owner_email IS NULL
+    WHERE ${admin}
        OR lower(c.owner_email) = ${e}
        OR EXISTS (
             SELECT 1 FROM participantes p
             WHERE p.cuenta_id = c.id AND lower(p.user_email) = ${e}
+          )
+       OR EXISTS (
+            SELECT 1 FROM cuenta_acceso a
+            WHERE a.cuenta_id = c.id AND lower(a.email) = ${e}
           )
     ORDER BY created_at DESC
   `
   return rows.map((r) => ({
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
     ownerEmail: (r.owner_email as string | null) ?? null, fecha: (r.fecha as string | null) ?? null,
-    saldada: r.saldada === true,
+    saldada: r.saldada === true, token: (r.token as string) ?? '',
     createdAt: r.created_at as string, closedAt: (r.closed_at as string | null) ?? null,
   }))
 }
 
-export async function createCuenta(name: string, ownerEmail: string | null): Promise<number> {
+export async function createCuenta(name: string, owner: { email: string; name: string } | null): Promise<number> {
   await ensureSchema()
   const sql = getSql()
-  const [row] = await sql`INSERT INTO cuentas (name, owner_email) VALUES (${name}, ${ownerEmail}) RETURNING id`
-  return Number(row.id)
+  const email = owner?.email.toLowerCase() ?? null
+  const [row] = await sql`
+    INSERT INTO cuentas (name, owner_email, token) VALUES (${name}, ${email}, ${nuevoToken()}) RETURNING id`
+  const id = Number(row.id)
+  if (email && owner) {
+    await sql`
+      INSERT INTO cuenta_acceso (cuenta_id, email, name, origen)
+      VALUES (${id}, ${email}, ${owner.name}, 'creador')
+      ON CONFLICT (cuenta_id, email) DO NOTHING`
+  }
+  return id
 }
 
 export async function getCuenta(id: number): Promise<Cuenta | null> {
   await ensureSchema()
   const sql = getSql()
   const rows = await sql`
-    SELECT id, name, status, owner_email, fecha, created_at, closed_at,
+    SELECT id, name, status, owner_email, fecha, token, created_at, closed_at,
       (status = 'cerrada' AND NOT EXISTS (
         SELECT 1 FROM liquidaciones l WHERE l.cuenta_id = c.id AND l.pagado = false
       )) AS saldada
@@ -193,7 +247,7 @@ export async function getCuenta(id: number): Promise<Cuenta | null> {
   return {
     id: Number(r.id), name: r.name as string, status: r.status as Cuenta['status'],
     ownerEmail: (r.owner_email as string | null) ?? null, fecha: (r.fecha as string | null) ?? null,
-    saldada: r.saldada === true,
+    saldada: r.saldada === true, token: (r.token as string) ?? '',
     createdAt: r.created_at as string, closedAt: (r.closed_at as string | null) ?? null,
   }
 }
@@ -414,24 +468,38 @@ export async function listContactos(): Promise<{ name: string; alias: string }[]
 export interface Grupo { id: number; name: string; miembros: number }
 export interface Miembro { id: number; name: string; alias: string | null; userEmail: string | null }
 
-export async function listGrupos(ownerEmail: string | null): Promise<Grupo[]> {
+export async function listGrupos(viewer: { email: string; role: string }): Promise<Grupo[]> {
   await ensureSchema()
   const sql = getSql()
+  const e = viewer.email.toLowerCase()
+  const admin = viewer.role === 'admin'
   const rows = await sql`
     SELECT g.id, g.name, COUNT(m.id) AS miembros
     FROM grupos g LEFT JOIN grupo_miembros m ON m.grupo_id = g.id
-    WHERE g.owner_email IS NOT DISTINCT FROM ${ownerEmail}
+    WHERE ${admin}
+       OR lower(g.owner_email) = ${e}
+       OR EXISTS (SELECT 1 FROM grupo_miembros gm WHERE gm.grupo_id = g.id AND lower(gm.user_email) = ${e})
+       OR EXISTS (SELECT 1 FROM grupo_acceso a WHERE a.grupo_id = g.id AND lower(a.email) = ${e})
     GROUP BY g.id, g.name
     ORDER BY g.name ASC
   `
   return rows.map((r) => ({ id: Number(r.id), name: r.name as string, miembros: Number(r.miembros) }))
 }
 
-export async function createGrupo(ownerEmail: string | null, name: string): Promise<number> {
+export async function createGrupo(owner: { email: string; name: string } | null, name: string): Promise<number> {
   await ensureSchema()
   const sql = getSql()
-  const [row] = await sql`INSERT INTO grupos (owner_email, name) VALUES (${ownerEmail}, ${name}) RETURNING id`
-  return Number(row.id)
+  const email = owner?.email.toLowerCase() ?? null
+  const [row] = await sql`
+    INSERT INTO grupos (owner_email, name, token) VALUES (${email}, ${name}, ${nuevoToken()}) RETURNING id`
+  const id = Number(row.id)
+  if (email && owner) {
+    await sql`
+      INSERT INTO grupo_acceso (grupo_id, email, name, origen)
+      VALUES (${id}, ${email}, ${owner.name}, 'creador')
+      ON CONFLICT (grupo_id, email) DO NOTHING`
+  }
+  return id
 }
 
 /** Dueño de un grupo (para chequear permisos). */
@@ -442,11 +510,17 @@ export async function grupoOwner(grupoId: number): Promise<string | null | undef
   return rows.length ? ((rows[0].owner_email as string | null) ?? null) : undefined
 }
 
-export async function getGrupo(grupoId: number): Promise<{ id: number; name: string } | null> {
+export async function getGrupo(grupoId: number): Promise<{ id: number; name: string; token: string; ownerEmail: string | null } | null> {
   await ensureSchema()
   const sql = getSql()
-  const rows = await sql`SELECT id, name FROM grupos WHERE id = ${grupoId}`
-  return rows.length ? { id: Number(rows[0].id), name: rows[0].name as string } : null
+  const rows = await sql`SELECT id, name, token, owner_email FROM grupos WHERE id = ${grupoId}`
+  if (!rows.length) return null
+  return {
+    id: Number(rows[0].id),
+    name: rows[0].name as string,
+    token: (rows[0].token as string) ?? '',
+    ownerEmail: (rows[0].owner_email as string | null) ?? null,
+  }
 }
 
 export async function deleteGrupo(grupoId: number): Promise<void> {
@@ -498,6 +572,8 @@ export async function getMisContactos(email: string): Promise<{ name: string; al
       SELECT id FROM grupos WHERE lower(owner_email) = ${e}
       UNION
       SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_acceso WHERE lower(email) = ${e}
     )
     SELECT DISTINCT ON (COALESCE(lower(m.user_email), lower(m.name)))
       m.name, m.alias, m.user_email AS email
@@ -522,6 +598,8 @@ export async function getContactos(email: string): Promise<{ name: string; alias
       SELECT id FROM grupos WHERE lower(owner_email) = ${e}
       UNION
       SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_acceso WHERE lower(email) = ${e}
     ),
     raw AS (
       SELECT
@@ -563,6 +641,8 @@ export async function linkContacto(ownerEmail: string, name: string, contactEmai
       SELECT id FROM grupos WHERE lower(owner_email) = ${e}
       UNION
       SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_acceso WHERE lower(email) = ${e}
     )
     UPDATE grupo_miembros SET user_email = ${ce}
     WHERE grupo_id IN (SELECT id FROM mis_grupos)
@@ -585,6 +665,8 @@ export async function getCoGroupUsers(email: string): Promise<{ name: string; em
       SELECT id FROM grupos WHERE lower(owner_email) = ${e}
       UNION
       SELECT grupo_id AS id FROM grupo_miembros WHERE lower(user_email) = ${e}
+      UNION
+      SELECT grupo_id AS id FROM grupo_acceso WHERE lower(email) = ${e}
     )
     SELECT DISTINCT ON (lower(m.user_email)) m.name, m.user_email AS email
     FROM grupo_miembros m

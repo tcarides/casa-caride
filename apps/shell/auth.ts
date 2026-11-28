@@ -4,6 +4,7 @@ import { authConfig } from './auth.config'
 import { getUserByEmail, getValidInvite, consumeInvite } from '@/lib/db'
 
 export const INVITE_COOKIE = 'cc_invite'
+export const JOIN_COOKIE = 'cc_join'
 
 // Config completa (runtime Node): suma las callbacks que consultan la DB.
 // La usan el route handler de /api/auth y los Server Components/Actions.
@@ -16,15 +17,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       const email = user.email?.toLowerCase()
       if (!email) return false
-      if (await getUserByEmail(email)) return true
 
-      const token = (await cookies()).get(INVITE_COOKIE)?.value
-      if (token) {
-        const inv = await getValidInvite(token)
-        if (inv) {
-          await consumeInvite(token, email, user.name ?? inv.note ?? email, inv.apps)
-          return true
-        }
+      const jar = await cookies()
+      const token = jar.get(INVITE_COOKIE)?.value
+      const inv = token ? await getValidInvite(token) : null
+      if (inv?.joinRef) {
+        jar.set(JOIN_COOKIE, inv.joinRef, { httpOnly: true, sameSite: 'lax', maxAge: 3600, path: '/' })
+      }
+
+      if (await getUserByEmail(email)) return true
+      if (inv) {
+        await consumeInvite(token!, email, user.name ?? inv.note ?? email, inv.apps)
+        return true
       }
       return '/login?error=not-allowed'
     },

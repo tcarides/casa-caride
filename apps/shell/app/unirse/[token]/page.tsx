@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createInvite } from '@/lib/db'
+import { auth } from '@/auth'
 
 export const metadata = { title: 'Unirte · Casa Caride' }
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,8 @@ export default async function UnirsePage({ params }: { params: Promise<{ token: 
     }
   } catch { /* red/parseo → inválido */ }
 
+  if ((await auth())?.user) redirect(`/navidad/ver/${token}`)
+
   if (!ok) {
     return (
       <main className="login">
@@ -36,6 +39,6 @@ export default async function UnirsePage({ params }: { params: Promise<{ token: 
   }
 
   // Invitación de un solo uso (member → apps abiertas, incluida Navidad).
-  const inviteToken = await createInvite(`Navidad${nombre ? ': ' + nombre : ''}`, [], 'lista', 1, 14)
+  const inviteToken = await createInvite(`Navidad${nombre ? ': ' + nombre : ''}`, [], 'lista', 1, 14, `navidad:${token}`)
   redirect(`/invite/${inviteToken}`)
 }

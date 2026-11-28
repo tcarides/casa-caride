@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@casa/boot": "*",
+    "@casa/people": "*",
     "@casa/view-as": "*",
     "@neondatabase/serverless": "^0.10.0",
     "next": "^16.2.7",

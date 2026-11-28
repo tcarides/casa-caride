@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireCuenta } from '@/lib/guard'
+import { listCuentaAcceso } from '@/lib/access'
 import {
   getCuenta, getParticipantes, getGastos, getLiquidaciones,
   closeCuenta, reopenCuenta, deleteCuenta, getPendientes, setFecha,
@@ -9,22 +10,26 @@ export const dynamic = 'force-dynamic'
 
 type Params = { params: Promise<{ id: string }> }
 
-export async function GET(_req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
+export async function GET(req: NextRequest, { params }: Params) {
   const id = Number((await params).id)
+  const gate = await requireCuenta(req, id, 'read')
+  if ('res' in gate) return gate.res
   const cuenta = await getCuenta(id)
   if (!cuenta) return NextResponse.json({ error: 'no existe' }, { status: 404 })
-  const [participantes, gastos, liquidaciones] = await Promise.all([
+  const [participantes, gastos, liquidaciones, acceso] = await Promise.all([
     getParticipantes(id), getGastos(id), getLiquidaciones(id),
+    gate.canManage ? listCuentaAcceso(id) : Promise.resolve([]),
   ])
-  return NextResponse.json({ cuenta, participantes, gastos, liquidaciones })
+  const people = gate.canManage
+    ? participantes
+    : participantes.map((p) => ({ ...p, userEmail: p.userEmail?.toLowerCase() === gate.user.email ? p.userEmail : null }))
+  return NextResponse.json({ cuenta, participantes: people, gastos, liquidaciones, canManage: gate.canManage, acceso })
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   const id = Number((await params).id)
+  const gate = await requireCuenta(req, id, 'read')
+  if ('res' in gate) return gate.res
   const b = (await req.json().catch(() => ({}))) as { action?: string; fecha?: string | null }
 
   // Fijar / limpiar la fecha del evento ('YYYY-MM-DD' o null).
@@ -51,9 +56,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true })
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
-  await deleteCuenta(Number((await params).id))
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const id = Number((await params).id)
+  const gate = await requireCuenta(req, id, 'manage')
+  if ('res' in gate) return gate.res
+  await deleteCuenta(id)
   return NextResponse.json({ ok: true })
 }

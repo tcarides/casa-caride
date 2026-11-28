@@ -1,4 +1,6 @@
 import { getGrupoByToken } from '@/lib/db'
+import { grantGrupoAccess } from '@/lib/access'
+import { currentUser, isViewingAs } from '@/lib/identity'
 import { IconGift } from '../../icons'
 import PublicList from './PublicList'
 
@@ -20,6 +22,15 @@ export default async function VerGrupo({ params }: { params: Promise<{ token: st
     )
   }
 
+  // Abrir el link con la sesión iniciada suma a la persona. "Ver como" es
+  // solo lectura: mirar la lista no mete a Clara (ni a nadie) como miembro.
+  let joined = false
+  const user = await currentUser()
+  if (user && !(await isViewingAs())) {
+    await grantGrupoAccess(grupo.id, user.email, user.name, 'link')
+    joined = true
+  }
+
   return (
     <main className="nv">
       <header className="nv-header">
@@ -34,17 +45,20 @@ export default async function VerGrupo({ params }: { params: Promise<{ token: st
 
       <div className="nv-pub-banner">
         <div className="nv-pub-banner-body">
-          <p className="nv-pub-banner-title">👀 Estás mirando esta lista (solo lectura)</p>
+          <p className="nv-pub-banner-title">
+            {joined ? 'Listo, esta lista quedó entre las tuyas' : '👀 Estás mirando esta lista (solo lectura)'}
+          </p>
           <p className="nv-pub-banner-sub">
-            ¿Sos de la familia que arma los regalos? Entrá con tu cuenta de Google
-            para agregar y editar deseos.
+            {joined
+              ? 'La vas a ver en Regalos de Navidad cuando entres con tu cuenta.'
+              : '¿Sos de la familia que arma los regalos? Entrá con tu cuenta de Google para agregar y editar deseos.'}
           </p>
         </div>
         <a
           className="nv-btn nv-btn--primary nv-btn--block"
-          href={`https://casa-caride.vercel.app/unirse/${grupo.token}`}
+          href={joined ? `/navidad?g=${grupo.id}` : `https://casa-caride.vercel.app/unirse/${grupo.token}`}
         >
-          Entrar con Google para editar
+          {joined ? 'Abrir en mis listas' : 'Entrar con Google para editar'}
         </a>
       </div>
 

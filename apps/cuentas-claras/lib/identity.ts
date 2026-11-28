@@ -14,3 +14,7 @@ export async function currentUser(): Promise<{ email: string; name: string; role
   const u = await zone.currentViewer()
   return u ? { email: u.email, name: u.name, role: u.role } : null
 }
+
+export async function isViewingAs(): Promise<boolean> {
+  return zone.isViewingAs()
+}
