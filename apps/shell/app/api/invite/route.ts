@@ -5,9 +5,9 @@ import { createInvite } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 // Crea una invitación para sumar a un contacto. Pensado para ser llamado desde
-// las zonas (ej. Cuentas Claras). El preset de apps se fuerza vacío: el invitado
-// queda como 'member' y sólo ve las apps abiertas/públicas (Cuentas Claras es
-// 'open'), nunca apps de permiso. Las invitaciones quedan visibles en /admin.
+// las zonas (ej. Cuentas Claras). El preset que manda la zona va vacío: el
+// invitado queda como 'member' con las apps abiertas (súper, cuentas, navidad),
+// nunca con apps de permiso. Las invitaciones quedan visibles en /admin.
 export async function POST(req: NextRequest) {
   const session = await auth()
   const email = session?.user?.email

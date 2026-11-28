@@ -7,7 +7,7 @@ Una sola **PWA** que reúne las mini-apps de la familia. El usuario instala
 |---|---|---|---|---|
 | 🛒 Lista del súper | `/super` | Zona Next.js | Con permiso | La compra compartida de Flor y Tomás |
 | 🏠 Compra de casas | `/casas` | Zona Next.js | Con permiso | Propiedades, mapa y favoritos |
-| 👶 Olivia | `/olivia` | Zona Next.js | Con permiso | Historia clínica del embarazo |
+| 👶 Olivia | `/olivia` | Zona Next.js | Con permiso | Historia clínica |
 | 🐶 Fabián | `/fabian` | Zona Next.js | Con permiso | La medicación del perro, cada 12 h (push) |
 | 🧾 Cuentas Claras | `/cuentas-claras` | Zona Next.js | Abierta (login) | Dividí asados y eventos sin vueltas |
 | ⚽ Fixture Mundial | `/fixture` | Estática (HTML) | Pública | Argentina, calendario, grupos y llaves 2026 |

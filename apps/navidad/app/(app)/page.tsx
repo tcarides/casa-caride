@@ -9,6 +9,7 @@ import {
   IconPencil, IconTrash, IconCopy, IconShare, IconRefresh, IconSearch,
   IconPlus, IconChevronLeft, IconChevronRight, IconExternal, IconGift,
 } from '../icons'
+import { CasaBack } from '../CasaBack'
 
 type Moneda = 'ARS' | 'USD'
 type Prioridad = 'alta' | 'media' | 'baja'
@@ -351,12 +352,15 @@ export default function NavidadPage() {
   return (
     <main className="nv">
       <header className="nv-header">
-        <div className="nv-topbar">
-          <a className="nv-back" href="/"><IconChevronLeft size={18} /> Casa Caride</a>
-        </div>
-        <div className="nv-title">
-          <span className="nv-logo" aria-hidden>🎄</span>
-          <div><h1>Regalos de Navidad</h1><p>Las listas de la familia</p></div>
+        <div className="casa-headrow">
+          <CasaBack href="/" />
+          <div className="nv-title">
+            <span className="nv-logo" aria-hidden>🎄</span>
+            <div className="casa-title">
+              <h1>Regalos de Navidad</h1>
+              <p>Las listas de la familia</p>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -435,7 +439,7 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
 
   return (
     <>
-      <header className="nv-header">
+      <header className="nv-header" data-casa-nav="off">
         <div className="nv-topbar">
           <button className="nv-back" onClick={onBack}><IconChevronLeft size={18} /> Grupos</button>
           <div className="nv-topbar-actions">
@@ -574,7 +578,7 @@ function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDele
 }) {
   return (
     <>
-      <header className="nv-header">
+      <header className="nv-header" data-casa-nav="off">
         <div className="nv-topbar">
           <button className="nv-back" onClick={onBack}><IconChevronLeft size={18} /> {grupo.nombre}</button>
           <div className="nv-topbar-actions">

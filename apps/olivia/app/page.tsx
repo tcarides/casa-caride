@@ -79,7 +79,7 @@ export default function OliviaPage() {
             <span className="ol-dog">👶</span>
             <div className="casa-title">
               <h1>Olivia</h1>
-              <p>Historia clínica del embarazo</p>
+              <p>Historia clínica</p>
             </div>
           </div>
         </div>
