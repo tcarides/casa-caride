@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
+import { BootDismiss, BootScreen } from '@casa/boot'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -22,11 +24,13 @@ export const viewport: Viewport = {
 // (app)/layout.tsx para que la vista pública /ver/[token] quede libre.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
+        <BootScreen />
         {/* Tokens del design system, servidos por el shell */}
         <link rel="stylesheet" href="/ds/styles.css" />
-        {children}
+        <Suspense fallback={null}>{children}</Suspense>
+        <BootDismiss />
         <script src="/view-as.js" defer />
       </body>
     </html>

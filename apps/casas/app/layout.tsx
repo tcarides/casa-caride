@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
 import { redirect } from 'next/navigation'
 import '@fontsource-variable/inter'
 import { Toaster } from 'sonner'
+import { BootDismiss, BootScreen } from '@casa/boot'
 import './globals.css'
 import { currentUser } from '@/lib/identity'
 
@@ -22,15 +24,23 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+async function Gate({ children }: { children: React.ReactNode }) {
   if (!(await currentUser())) redirect('https://casa-caride.vercel.app/casas')
+  return children
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <BootScreen />
         {/* Tokens del design system, servidos por el shell. */}
         <link rel="stylesheet" href="/ds/styles.css" />
-        {children}
+        <Suspense fallback={null}>
+          <Gate>{children}</Gate>
+        </Suspense>
         {/* Navegación compartida de Casa Caride (módulo servido por el shell). */}
+        <BootDismiss />
         <script src="/casa-nav.js" async />
         <Toaster
           position="bottom-center"

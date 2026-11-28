@@ -1,0 +1,11 @@
+{
+  "name": "@casa/boot",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "peerDependencies": {
+    "react": "^19"
+  }
+}

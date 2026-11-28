@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
 import { redirect } from 'next/navigation'
+import { BootDismiss, BootScreen } from '@casa/boot'
 import './globals.css'
 import { currentUser } from '@/lib/identity'
 
@@ -22,15 +24,23 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+async function Gate({ children }: { children: React.ReactNode }) {
   // Gate confiable (Node): sin sesión → al shell (que reenvía la cookie o pide login).
   if (!(await currentUser())) redirect('https://casa-caride.vercel.app/cuentas-claras')
+  return children
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
+        <BootScreen />
         {/* Tokens del design system, servidos por el shell */}
         <link rel="stylesheet" href="/ds/styles.css" />
-        {children}
+        <Suspense fallback={null}>
+          <Gate>{children}</Gate>
+        </Suspense>
+        <BootDismiss />
         {/* Back button / header estándar de Casa Caride */}
         <script src="/casa-nav.js" async />
       </body>
