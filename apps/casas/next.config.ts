@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@casa/view-as'],
+  transpilePackages: ['@casa/view-as', '@casa/boot'],
   // Zona Multi-Zones: esta app se sirve bajo /casas dentro de Casa Caride.
   basePath: '/casas',
   // Asegura que data/properties.json se incluya en las serverless functions de Vercel

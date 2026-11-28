@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@casa/boot": "*",
     "@casa/view-as": "*",
     "@fontsource-variable/inter": "^5.2.8",
     "@types/leaflet": "^1.9.21",

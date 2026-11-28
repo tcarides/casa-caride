@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
+import { BootDismiss, BootScreen } from '@casa/boot'
 import './globals.css'
 import { SWRegister } from './sw-register'
 import { ViewAsBanner } from './ViewAsBanner'
@@ -31,12 +33,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
+        <BootScreen />
         {/* Tokens del design system, compartidos por todas las mini-apps */}
         <link rel="stylesheet" href="/ds/styles.css" />
-        <ViewAsBanner />
+        <Suspense fallback={null}>
+          <ViewAsBanner />
+        </Suspense>
         {children}
+        <BootDismiss />
         <script src="/view-as.js" defer />
         <SWRegister />
       </body>

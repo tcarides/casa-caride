@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import type { Metadata, Viewport } from 'next'
 import { redirect } from 'next/navigation'
+import { BootDismiss, BootScreen } from '@casa/boot'
 import './globals.css'
 import { currentUser } from '@/lib/identity'
 
@@ -22,14 +24,22 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+async function Gate({ children }: { children: React.ReactNode }) {
   if (!(await currentUser())) redirect('https://casa-caride.vercel.app/olivia')
+  return children
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
+        <BootScreen />
         {/* DS tokens compartidos, servidos por el shell */}
         <link rel="stylesheet" href="/ds/styles.css" />
-        {children}
+        <Suspense fallback={null}>
+          <Gate>{children}</Gate>
+        </Suspense>
+        <BootDismiss />
         {/* Back button y header estándar de Casa Caride */}
         <script src="/casa-nav.js" async />
       </body>
