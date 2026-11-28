@@ -25,11 +25,23 @@ export type MiniApp = {
   /**
    * Nivel de acceso (default 'permission'):
    *  - 'public'     → se usa sin login (se ve y funciona deslogueado).
-   *  - 'open'       → se ve en el launcher (incluso deslogueado), pero al hacer
-   *                   click pide login; logueado la usa cualquiera.
-   *  - 'permission' → requiere login + permiso del admin (no se ve deslogueado).
+   *  - 'open'       → default de todo usuario. Se ve en el launcher (incluso
+   *                   deslogueado), pero al hacer click pide login; logueado
+   *                   la usa cualquiera, sin fila en app_access. Un usuario
+   *                   nuevo además recibe la fila prendida para que /admin
+   *                   la muestre habilitada. No se puede revocar por usuario:
+   *                   el gate no mira la fila, así nadie que ya entra la pierde.
+   *  - 'permission' → login + permiso del admin. Sin permiso se ve en el
+   *                   launcher, en la sección "Bloqueadas", y la URL redirige
+   *                   a /?denied= (no se abre). Deslogueado no se muestra.
    */
   access?: 'public' | 'open' | 'permission'
+}
+
+export type AccessLevel = NonNullable<MiniApp['access']>
+
+export function accessOf(app: MiniApp): AccessLevel {
+  return app.access ?? 'permission'
 }
 
 export const APPS: MiniApp[] = [
@@ -57,7 +69,7 @@ export const APPS: MiniApp[] = [
   {
     slug: 'olivia',
     name: 'Olivia',
-    description: 'Historia clínica del embarazo',
+    description: 'Historia clínica',
     href: '/olivia',
     emoji: '👶',
     icon: '/apps/olivia.png',
@@ -103,11 +115,18 @@ export const APPS: MiniApp[] = [
     description: 'Las listas de regalos de la familia',
     href: '/navidad',
     emoji: '🎄',
+    icon: '/apps/navidad.png',
+    iconBg: '#E0484D',
     hue: '#E0484D',
     kind: 'zone',
     access: 'open',
   },
 ]
+
+/** Apps que cualquier usuario logueado puede abrir (access: 'open'). */
+export function defaultMemberApps(): string[] {
+  return APPS.filter((a) => accessOf(a) === 'open').map((a) => a.slug)
+}
 
 /**
  * Apps EXTERNAS (otro dominio, otro login): en el launcher son sólo un link,

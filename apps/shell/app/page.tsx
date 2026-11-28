@@ -1,124 +1,17 @@
-import type { CSSProperties } from 'react'
-import { ADMIN_LINKS, APPS } from './apps.config'
-import { InstallInfo } from './InstallInfo'
-import { auth, signOut } from '@/auth'
-import { getEnabledApps } from '@/lib/db'
+import { Suspense } from 'react'
+import { Launcher } from './launcher'
+import { LauncherLoader } from './LauncherLoader'
 
-export default async function Home({
+// El page es síncrono para que el fallback (el loader) salga en el primer HTML,
+// mientras el launcher resuelve sesión y permisos. Sin JS de por medio.
+export default function Page({
   searchParams,
 }: {
   searchParams: Promise<{ denied?: string }>
 }) {
-  const session = await auth()
-  const { denied } = await searchParams
-
-  const loggedIn = !!session?.user
-  const isAdmin = session?.user?.role === 'admin'
-  const email = session?.user?.email ?? ''
-  const name = session?.user?.name ?? ''
-
-  const enabled = loggedIn && !isAdmin ? new Set(await getEnabledApps(email)) : null
-
-  // Qué apps mostrar:
-  //  - deslogueado: públicas + 'open' (se ven, pero al usarlas piden login).
-  //  - admin: todas.
-  //  - member: públicas + 'open' + las habilitadas.
-  const apps = APPS.filter((a) => {
-    const access = a.access ?? 'permission'
-    if (access === 'public' || access === 'open') return true
-    if (!loggedIn) return false
-    return isAdmin || enabled!.has(a.slug)
-  })
-  const deniedApp = denied ? APPS.find((a) => a.slug === denied) : null
-
   return (
-    <main className="home">
-      <header className="home__header">
-        <img className="home__logo" src="/icon-192.png" alt="" aria-hidden width={54} height={54} />
-        <div className="home__heading">
-          <h1 className="home__title">Casa Caride</h1>
-          <p className="home__subtitle">Apps para la vida de todos los días</p>
-        </div>
-        <InstallInfo />
-      </header>
-
-      <div className="home__userbar">
-        <span className="home__who">{loggedIn ? `${name || email}${isAdmin ? ' · admin' : ''}` : 'No estás logueado'}</span>
-        <span className="home__useractions">
-          {loggedIn ? (
-            <>
-              {isAdmin && <a href="/admin" className="home__userlink">Admin</a>}
-              <form
-                action={async () => {
-                  'use server'
-                  await signOut({ redirectTo: '/' })
-                }}
-              >
-                <button type="submit" className="home__userlink home__signout">Salir</button>
-              </form>
-            </>
-          ) : (
-            <a href="/login" className="home__userlink">Entrar</a>
-          )}
-        </span>
-      </div>
-
-      {deniedApp && (
-        <p className="home__denied">
-          No tenés acceso a <strong>{deniedApp.name}</strong>. Pedile a Tomás que te lo habilite.
-        </p>
-      )}
-
-      <section className="grid" aria-label="Mini-apps">
-        {apps.map((app) => {
-          const access = app.access ?? 'permission'
-          const needsLogin = !loggedIn && access !== 'public'
-          return (
-            <a
-              key={app.slug}
-              href={app.href}
-              className={app.icon ? 'tile tile--art' : 'tile'}
-              style={{ '--tile-hue': app.hue, '--art-bg': app.iconBg } as CSSProperties}
-            >
-              {app.icon ? (
-                <img className="tile__art" src={app.icon} alt="" aria-hidden />
-              ) : (
-                <>
-                  <span className="tile__glow" aria-hidden />
-                  <span className="tile__emoji" aria-hidden>{app.emoji}</span>
-                </>
-              )}
-              {needsLogin && <span className="tile__tag">🔒 login</span>}
-              {!needsLogin && app.kind === 'static' && <span className="tile__tag">estática</span>}
-              <span className="tile__meta">
-                <span className="tile__name">{app.name}</span>
-                <span className="tile__desc">{app.description}</span>
-              </span>
-            </a>
-          )
-        })}
-        {isAdmin &&
-          ADMIN_LINKS.map((link) => (
-            <a
-              key={link.slug}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="tile"
-              style={{ '--tile-hue': link.hue } as CSSProperties}
-            >
-              <span className="tile__glow" aria-hidden />
-              <span className="tile__emoji" aria-hidden>{link.emoji}</span>
-              <span className="tile__tag">↗ aparte</span>
-              <span className="tile__name">{link.name}</span>
-              <span className="tile__desc">{link.description}</span>
-            </a>
-          ))}
-      </section>
-
-      <footer className="home__footer">
-        <span>Instalá esta app en tu pantalla de inicio 📲</span>
-      </footer>
-    </main>
+    <Suspense fallback={<LauncherLoader />}>
+      <Launcher searchParams={searchParams} />
+    </Suspense>
   )
 }

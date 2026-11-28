@@ -1,5 +1,5 @@
-import { listUsers, getAllAccess, listPendingInvites } from '@/lib/db'
-import { APPS } from '../apps.config'
+import { listUsers, getAllAccess, listPendingInvites, mergeDefaultApps } from '@/lib/db'
+import { APPS, accessOf } from '../apps.config'
 import { toggleAccess, createUser, removeUser, newInvite, removeInvite } from './actions'
 
 export const metadata = { title: 'Admin · Casa Caride' }
@@ -19,8 +19,9 @@ export default async function AdminPage() {
       </header>
 
       <p className="admin__hint">
-        Prendé o apagá cada app por usuario. El admin ve todo. Los cambios se
-        aplican al instante.
+        Prendé o apagá cada app por usuario. Lista del súper, Cuentas Claras y
+        Regalos de Navidad vienen habilitadas para todos. El admin ve todo. Los
+        cambios se aplican al instante.
       </p>
 
       <div className="admin__tablewrap">
@@ -45,8 +46,16 @@ export default async function AdminPage() {
                     <span className="admin__umail">{u.email}{isAdmin ? ' · admin' : ''}</span>
                   </td>
                   {APPS.map((a) => {
-                    if (isAdmin) {
-                      return <td key={a.slug} className="admin__cell admin__cell--all">✓</td>
+                    // 'open'/'public' las usa cualquier logueado: el gate no mira
+                    // la fila, así que el tilde no se puede apagar (no mentimos).
+                    if (isAdmin || accessOf(a) !== 'permission') {
+                      return (
+                        <td
+                          key={a.slug}
+                          className="admin__cell admin__cell--all"
+                          title={isAdmin ? 'El admin ve todo' : 'Incluida para todos los usuarios'}
+                        >✓</td>
+                      )
                     }
                     const on = enabled.has(a.slug)
                     return (
@@ -98,16 +107,28 @@ export default async function AdminPage() {
         <h2 className="admin__subtitle">Invitar por WhatsApp</h2>
         <p className="admin__hint">
           Generá un link. La persona entra con su Google y queda registrada con
-          las apps que tildes.
+          las apps que tildes. Lista del súper, Cuentas Claras y Regalos de
+          Navidad se incluyen siempre.
         </p>
         <form action={newInvite} className="admin__inviteform">
           <input className="admin__input" name="note" placeholder="Para quién (ej. Mamá, o 'Amigos')" />
           <div className="admin__appchecks">
-            {APPS.map((a) => (
-              <label key={a.slug} className="admin__check">
-                <input type="checkbox" name="app" value={a.slug} /> {a.emoji} {a.name}
-              </label>
-            ))}
+            {APPS.map((a) => {
+              const included = accessOf(a) !== 'permission'
+              return (
+                <label key={a.slug} className="admin__check">
+                  <input
+                    type="checkbox"
+                    name="app"
+                    value={a.slug}
+                    defaultChecked={included}
+                    disabled={included}
+                  />
+                  {included && <input type="hidden" name="app" value={a.slug} />}
+                  {' '}{a.emoji} {a.name}
+                </label>
+              )
+            })}
           </div>
           <label className="admin__check">
             <input type="checkbox" name="multi" /> 🔗 Link para varias personas (lo usan todos hasta que venza)
@@ -120,7 +141,7 @@ export default async function AdminPage() {
             {invites.map((inv) => {
               const url = `${base}/invite/${inv.token}`
               const wa = `https://wa.me/?text=${encodeURIComponent(`Te invito a Casa Caride 🏡 ${url}`)}`
-              const appNames = inv.apps
+              const appNames = mergeDefaultApps(inv.apps)
                 .map((s) => APPS.find((a) => a.slug === s)?.name ?? s)
                 .join(', ') || 'sin apps'
               return (

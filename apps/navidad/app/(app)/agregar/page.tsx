@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { DeseoEditor } from '../DeseoEditor'
+import { CasaBack } from '../../CasaBack'
 
 const BASE = '/navidad'
 
@@ -62,9 +63,15 @@ export default function AgregarPage() {
   return (
     <main className="nv">
       <header className="nv-header">
-        <div className="nv-title">
-          <span className="nv-logo" aria-hidden>🎄</span>
-          <div><h1>Agregar deseo</h1><p>{link ? 'desde un link compartido' : 'elegí dónde guardarlo'}</p></div>
+        <div className="casa-headrow">
+          <CasaBack href="/navidad" />
+          <div className="nv-title">
+            <img className="nv-logo" src="/navidad/navidad.png" alt="" aria-hidden width={36} height={36} />
+            <div className="casa-title">
+              <h1>Agregar deseo</h1>
+              <p>{link ? 'desde un link compartido' : 'elegí dónde guardarlo'}</p>
+            </div>
+          </div>
         </div>
       </header>
 

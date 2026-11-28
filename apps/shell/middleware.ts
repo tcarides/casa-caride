@@ -1,21 +1,24 @@
 import NextAuth from 'next-auth'
 import { authConfig } from './auth.config'
 import { isAppAllowed } from '@/lib/db'
-import { APPS } from '@/app/apps.config'
+import { APPS, accessOf } from '@/app/apps.config'
 
 const { auth } = NextAuth(authConfig)
 
 const APP_SLUGS = APPS.map((a) => a.slug)
-const ACCESS = new Map(APPS.map((a) => [a.slug, a.access ?? 'permission']))
+const ACCESS = new Map(APPS.map((a) => [a.slug, accessOf(a)]))
 function appSlug(path: string): string | null {
   const seg = path.split('/')[1]
   return APP_SLUGS.includes(seg) ? seg : null
 }
 
-// Acceso por niveles (la home y las apps públicas no requieren login):
+// Acceso por niveles (la home y las apps públicas no requieren login).
+// Tiene que coincidir con el launcher: lo que se ve bloqueado no se abre por URL.
 //  - public     → libre (deslogueado).
-//  - open       → requiere login para usar; logueado, cualquiera.
-//  - permission → requiere login + permiso del admin.
+//  - open       → login, y después cualquiera (súper, cuentas, navidad). No
+//                 consulta app_access: una fila en false no saca el acceso a
+//                 quien ya lo tiene.
+//  - permission → login + permiso del admin. Sin permiso → /?denied=<slug>.
 export default auth(async (req) => {
   const { nextUrl } = req
   const path = nextUrl.pathname

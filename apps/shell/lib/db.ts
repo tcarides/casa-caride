@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
-import { APPS } from '@/app/apps.config'
+import { APPS, defaultMemberApps } from '@/app/apps.config'
 
 // Base de datos del shell: usuarios (allowlist), acceso por app e invitaciones.
 // La sesión es JWT (no usamos esta DB para la sesión, solo para autorización).
@@ -151,11 +151,29 @@ export async function addUser(
 ): Promise<void> {
   await ensureSchema()
   const sql = getSql()
+  const e = email.toLowerCase()
   await sql`
     INSERT INTO users (email, name, role, user_id)
-    VALUES (${email.toLowerCase()}, ${name}, ${role}, ${userId})
+    VALUES (${e}, ${name}, ${role}, ${userId})
     ON CONFLICT (email) DO UPDATE SET name = ${name}, role = ${role}
   `
+  // Member nuevo: súper, cuentas y navidad quedan prendidas en la grilla.
+  // DO NOTHING no toca filas que ya existan (no apaga ni reabre nada).
+  if (role === 'member') await grantDefaultApps(e)
+}
+
+/** Apps abiertas para un member. No pisa un permiso ya guardado. */
+export async function grantDefaultApps(email: string): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  const e = email.toLowerCase()
+  for (const app of defaultMemberApps()) {
+    await sql`
+      INSERT INTO app_access (email, app_key, enabled)
+      VALUES (${e}, ${app}, TRUE)
+      ON CONFLICT (email, app_key) DO NOTHING
+    `
+  }
 }
 
 export async function deleteUser(email: string): Promise<void> {
@@ -194,9 +212,11 @@ export async function createInvite(
   const sql = getSql()
   const token = randomBytes(16).toString('base64url')
   const expires = new Date(Date.now() + days * 86_400_000).toISOString()
+  // El preset guardado incluye las apps abiertas: todo invitado las tiene.
+  const preset = mergeDefaultApps(apps)
   await sql`
     INSERT INTO invites (token, note, apps_preset, created_by, expires_at, max_usos)
-    VALUES (${token}, ${note}, ${apps.join(',')}, ${createdBy}, ${expires}, ${maxUsos})
+    VALUES (${token}, ${note}, ${preset.join(',')}, ${createdBy}, ${expires}, ${maxUsos})
   `
   return token
 }
@@ -235,7 +255,11 @@ export async function consumeInvite(
     INSERT INTO users (email, name, role) VALUES (${e}, ${name}, 'member')
     ON CONFLICT (email) DO NOTHING
   `
-  for (const app of apps) {
+  // Invitaciones viejas pueden no traer las apps abiertas en el preset: se suman
+  // igual. Solo corre para quien todavía no era usuario (el signIn no consume
+  // la invitación si el email ya existe), así que no reabre ni quita nada de
+  // cuentas que ya estaban.
+  for (const app of mergeDefaultApps(apps)) {
     await sql`
       INSERT INTO app_access (email, app_key, enabled) VALUES (${e}, ${app}, TRUE)
       ON CONFLICT (email, app_key) DO UPDATE SET enabled = TRUE
@@ -266,6 +290,12 @@ export async function listPendingInvites(): Promise<PendingInvite[]> {
     maxUsos: Number(r.max_usos ?? 1),
     usos: Number(r.usos ?? 0),
   }))
+}
+
+/** Apps del preset más las abiertas por default, sin repetir. */
+export function mergeDefaultApps(apps: string[]): string[] {
+  const extras = apps.filter((a) => a && !defaultMemberApps().includes(a))
+  return [...defaultMemberApps(), ...extras]
 }
 
 export async function deleteInvite(token: string): Promise<void> {
