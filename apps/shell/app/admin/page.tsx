@@ -1,14 +1,16 @@
 import { listUsers, getAllAccess, listPendingInvites } from '@/lib/db'
+import { getViewer } from '@/lib/view-as'
 import { APPS } from '../apps.config'
-import { toggleAccess, createUser, removeUser, newInvite, removeInvite } from './actions'
+import { toggleAccess, createUser, removeUser, newInvite, removeInvite, startViewAs } from './actions'
 
 export const metadata = { title: 'Admin · Casa Caride' }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
-  const [users, access, invites] = await Promise.all([
-    listUsers(), getAllAccess(), listPendingInvites(),
+  const [{ real, viewing }, users, access, invites] = await Promise.all([
+    getViewer(), listUsers(), getAllAccess(), listPendingInvites(),
   ])
+  const me = real?.email ?? ''
   const base = process.env.AUTH_URL ?? ''
 
   return (
@@ -20,7 +22,8 @@ export default async function AdminPage() {
 
       <p className="admin__hint">
         Prendé o apagá cada app por usuario. El admin ve todo. Los cambios se
-        aplican al instante.
+        aplican al instante. Para ver la casa como la ve esa persona, tocá
+        Ver como: es solo lectura y dura una hora.
       </p>
 
       <div className="admin__tablewrap">
@@ -31,6 +34,7 @@ export default async function AdminPage() {
               {APPS.map((a) => (
                 <th key={a.slug} title={a.name}>{a.emoji}</th>
               ))}
+              <th className="admin__viewcol">Ver</th>
               <th></th>
             </tr>
           </thead>
@@ -66,6 +70,24 @@ export default async function AdminPage() {
                       </td>
                     )
                   })}
+                  <td className="admin__cell">
+                    {u.email === me ? (
+                      <span className="admin__umail">vos</span>
+                    ) : (
+                      <form action={startViewAs}>
+                        <input type="hidden" name="email" value={u.email} />
+                        <button
+                          type="submit"
+                          className="admin__viewas"
+                          disabled={!!viewing}
+                          title={viewing ? 'Primero salí de la vista actual' : `Ver la casa como ${u.name}`}
+                          aria-label={`Ver la casa como ${u.name}`}
+                        >
+                          Ver como
+                        </button>
+                      </form>
+                    )}
+                  </td>
                   <td>
                     {!isAdmin && (
                       <form action={removeUser}>

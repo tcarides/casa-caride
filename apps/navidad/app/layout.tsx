@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Tokens del design system, servidos por el shell */}
         <link rel="stylesheet" href="/ds/styles.css" />
         {children}
+        <script src="/view-as.js" defer />
       </body>
     </html>
   )

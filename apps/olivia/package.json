@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@casa/view-as": "*",
     "@neondatabase/serverless": "^0.10.0",
     "@vercel/blob": "^2.4.0",
     "next": "^16.2.7",

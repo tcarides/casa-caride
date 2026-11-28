@@ -71,6 +71,15 @@ export async function ensureSchema(): Promise<void> {
   // Multi-uso: max_usos = 1 (una persona) · 0 (ilimitado) · N (hasta N). usos = contador.
   await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS max_usos INTEGER NOT NULL DEFAULT 1`
   await sql`ALTER TABLE invites ADD COLUMN IF NOT EXISTS usos INTEGER NOT NULL DEFAULT 0`
+  await sql`
+    CREATE TABLE IF NOT EXISTS impersonation_log (
+      id           BIGSERIAL PRIMARY KEY,
+      admin_email  TEXT NOT NULL,
+      target_email TEXT NOT NULL,
+      action       TEXT NOT NULL,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
 
   // Seed idempotente de usuarios iniciales.
   for (const u of SEED_USERS) {
@@ -266,6 +275,18 @@ export async function listPendingInvites(): Promise<PendingInvite[]> {
     maxUsos: Number(r.max_usos ?? 1),
     usos: Number(r.usos ?? 0),
   }))
+}
+
+/** Auditoría de "ver como": quién entró a mirar a quién, y cuándo salió. */
+export async function logImpersonation(
+  adminEmail: string, targetEmail: string, action: 'start' | 'stop',
+): Promise<void> {
+  await ensureSchema()
+  const sql = getSql()
+  await sql`
+    INSERT INTO impersonation_log (admin_email, target_email, action)
+    VALUES (${adminEmail.toLowerCase()}, ${targetEmail.toLowerCase()}, ${action})
+  `
 }
 
 export async function deleteInvite(token: string): Promise<void> {
