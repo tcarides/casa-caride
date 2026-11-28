@@ -355,7 +355,7 @@ export default function NavidadPage() {
         <div className="casa-headrow">
           <CasaBack href="/" />
           <div className="nv-title">
-            <span className="nv-logo" aria-hidden>🎄</span>
+            <img className="nv-logo" src="/navidad/navidad.png" alt="" aria-hidden width={36} height={36} />
             <div className="casa-title">
               <h1>Regalos de Navidad</h1>
               <p>Las listas de la familia</p>

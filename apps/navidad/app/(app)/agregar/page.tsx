@@ -66,7 +66,7 @@ export default function AgregarPage() {
         <div className="casa-headrow">
           <CasaBack href="/navidad" />
           <div className="nv-title">
-            <span className="nv-logo" aria-hidden>🎄</span>
+            <img className="nv-logo" src="/navidad/navidad.png" alt="" aria-hidden width={36} height={36} />
             <div className="casa-title">
               <h1>Agregar deseo</h1>
               <p>{link ? 'desde un link compartido' : 'elegí dónde guardarlo'}</p>
