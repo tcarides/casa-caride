@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { getValidInvite } from '@/lib/db'
 import { signIn, INVITE_COOKIE } from '@/auth'
+import { joinPath } from '@/lib/join'
 import { APPS } from '../../apps.config'
 
 export const metadata = { title: 'Invitación · Casa Caride' }
@@ -44,7 +45,7 @@ export default async function InvitePage({
             ;(await cookies()).set(INVITE_COOKIE, token, {
               httpOnly: true, sameSite: 'lax', maxAge: 900, path: '/',
             })
-            await signIn('google', { redirectTo: '/' })
+            await signIn('google', { redirectTo: joinPath(invite.joinRef) })
           }}
         >
           <button type="submit" className="login__btn">

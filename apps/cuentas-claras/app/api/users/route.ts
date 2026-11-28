@@ -1,32 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { currentUser } from '@/lib/identity'
+import { requireReady } from '@/lib/guard'
 import { getCoGroupUsers, getUserAliases } from '@/lib/db'
+import { fetchDirectory } from '@/lib/directory'
 
 export const dynamic = 'force-dynamic'
 
-const SHELL = 'https://casa-caride.vercel.app'
-
 type Dir = { name: string; email: string }
 
-// Directorio para el selector de "usuario registrado" al armar un grupo:
-//  - admin → todos los registrados (los pide al shell, reenviando la cookie).
-//  - resto → solo con los que comparte algún grupo (se calcula acá).
-// En ambos casos adjunta el alias guardado del usuario (para prellenarlo).
+// Directorio para vincular un nombre libre con una cuenta. El shell ya se lo
+// da a cualquier logueado (/api/directory). Si el shell no responde, quedan
+// las personas con las que comparte un grupo.
 export async function GET(req: NextRequest) {
-  const me = await currentUser()
-  if (!me) return NextResponse.json([], { status: 200 })
+  const ready = await requireReady(req)
+  if ('res' in ready) return ready.res
 
-  let list: Dir[] | null = null
-  if (me.role === 'admin') {
-    try {
-      const cookie = req.headers.get('cookie') ?? ''
-      const r = await fetch(`${SHELL}/api/users`, { headers: { cookie }, cache: 'no-store' })
-      if (r.ok) list = (await r.json()) as Dir[]
-    } catch {
-      /* sin red / shell caído: caemos al listado por contexto */
-    }
-  }
-  if (!list) list = await getCoGroupUsers(me.email)
+  let list: Dir[] | null = await fetchDirectory(req.headers.get('cookie') ?? '')
+  if (!list) list = await getCoGroupUsers(ready.user.email)
 
   const aliases = await getUserAliases()
   return NextResponse.json(

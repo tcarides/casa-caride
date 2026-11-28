@@ -1,12 +1,11 @@
-import { NextResponse } from 'next/server'
-import { currentEmail } from '@/lib/identity'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireReady } from '@/lib/guard'
 import { getMisContactos } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// Mis contactos para sumar a una cuenta: miembros de los grupos que comparto.
-export async function GET() {
-  const email = await currentEmail()
-  if (!email) return NextResponse.json([])
-  return NextResponse.json(await getMisContactos(email))
+export async function GET(req: NextRequest) {
+  const ready = await requireReady(req)
+  if ('res' in ready) return ready.res
+  return NextResponse.json(await getMisContactos(ready.user.email))
 }

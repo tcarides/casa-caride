@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireCuenta } from '@/lib/guard'
 import { addGasto } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireSession()
-  if (denied) return denied
   const cuentaId = Number((await params).id)
+  const gate = await requireCuenta(req, cuentaId, 'read')
+  if ('res' in gate) return gate.res
   const b = (await req.json().catch(() => ({}))) as {
     descripcion?: string; monto?: number; pagadorId?: number
     comprobanteUrl?: string; comprobantePath?: string

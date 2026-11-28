@@ -1,31 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
-import { getGrupo, grupoOwner, getMiembros, deleteGrupo } from '@/lib/db'
-import { currentEmail } from '@/lib/identity'
+import { requireGrupo } from '@/lib/guard'
+import { getGrupo, getMiembros, deleteGrupo } from '@/lib/db'
+import { listGrupoAcceso } from '@/lib/access'
 
 export const dynamic = 'force-dynamic'
 
-type Params = { params: Promise<{ id: string }> }
-
-export async function GET(_req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id)
+  const gate = await requireGrupo(req, id, 'read')
+  if ('res' in gate) return gate.res
   const grupo = await getGrupo(id)
   if (!grupo) return NextResponse.json({ error: 'no existe' }, { status: 404 })
-  if ((await grupoOwner(id)) !== (await currentEmail())) {
-    return NextResponse.json({ error: 'sin acceso' }, { status: 403 })
-  }
-  return NextResponse.json({ grupo, miembros: await getMiembros(id) })
+  return NextResponse.json({
+    grupo,
+    miembros: await getMiembros(id),
+    canManage: gate.canManage,
+    acceso: gate.canManage ? await listGrupoAcceso(id) : [],
+  })
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id)
-  if ((await grupoOwner(id)) !== (await currentEmail())) {
-    return NextResponse.json({ error: 'sin acceso' }, { status: 403 })
-  }
+  const gate = await requireGrupo(req, id, 'manage')
+  if ('res' in gate) return gate.res
   await deleteGrupo(id)
   return NextResponse.json({ ok: true })
 }

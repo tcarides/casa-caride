@@ -19,6 +19,11 @@ export async function middleware(req: NextRequest) {
   })
   if (blocked) return NextResponse.json(blocked, { status: 403 })
 
+  // Link para sumarse y la validación pública del token (sin login).
+  if (/\/compartir\//.test(req.nextUrl.pathname) || /\/api\/public\//.test(req.nextUrl.pathname)) {
+    return NextResponse.next()
+  }
+
   const hasSession =
     req.cookies.has('__Secure-authjs.session-token') ||
     req.cookies.has('authjs.session-token')

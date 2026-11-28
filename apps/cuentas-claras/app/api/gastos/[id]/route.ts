@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession } from '@/lib/guard'
+import { requireGasto } from '@/lib/guard'
 import { deleteGasto, updateGasto } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
   const id = Number((await params).id)
+  const gate = await requireGasto(req, id, 'read')
+  if ('res' in gate) return gate.res
   const b = (await req.json().catch(() => ({}))) as {
     descripcion?: string; monto?: number; pagadorId?: number
   }
@@ -23,9 +23,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true })
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  const denied = await requireSession()
-  if (denied) return denied
-  await deleteGasto(Number((await params).id))
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const id = Number((await params).id)
+  const gate = await requireGasto(req, id, 'read')
+  if ('res' in gate) return gate.res
+  await deleteGasto(id)
   return NextResponse.json({ ok: true })
 }

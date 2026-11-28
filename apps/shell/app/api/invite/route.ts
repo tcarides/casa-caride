@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readonlyBody } from '@casa/view-as'
 import { createInvite } from '@/lib/db'
+import { isJoinRef } from '@/lib/join'
 import { getViewer } from '@/lib/view-as'
 
 export const dynamic = 'force-dynamic'
@@ -15,10 +16,11 @@ export async function POST(req: NextRequest) {
   const email = real?.email
   if (!email) return NextResponse.json({ error: 'no autenticado' }, { status: 401 })
 
-  const b = (await req.json().catch(() => ({}))) as { note?: string }
+  const b = (await req.json().catch(() => ({}))) as { note?: string; joinRef?: string }
   const note = (b.note ?? '').trim().slice(0, 60) || 'Invitado/a'
+  const joinRef = isJoinRef(b.joinRef) ? b.joinRef : null
 
-  const token = await createInvite(note, [], email, 1, 14)
+  const token = await createInvite(note, [], email, 1, 14, joinRef)
   const base = process.env.AUTH_URL ?? new URL(req.url).origin
   return NextResponse.json({ url: `${base}/invite/${token}`, token })
 }

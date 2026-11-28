@@ -3,7 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 
 interface Miembro { id: number; name: string; alias: string | null; userEmail: string | null }
-interface Detail { grupo: { id: number; name: string }; miembros: Miembro[] }
+interface Acceso { email: string; name: string; origen: string }
+interface Detail {
+  grupo: { id: number; name: string; token?: string }
+  miembros: Miembro[]
+  canManage?: boolean
+  acceso?: Acceso[]
+}
 interface RegUser { name: string; email: string; alias: string | null }
 interface Contacto { name: string; alias: string | null; email: string | null }
 const API = '/cuentas-claras/api'
@@ -27,14 +33,17 @@ export default function GrupoPage() {
     if (r.ok) setD(await r.json())
     setLoading(false)
   }, [id])
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    fetch(`${API}/join`).finally(() => { void load() })
+  }, [load])
   useEffect(() => {
     fetch(`${API}/users`).then((r) => r.ok ? r.json() : []).then(setRegUsers).catch(() => {})
     fetch(`${API}/mis-contactos`).then((r) => r.ok ? r.json() : []).then(setMisContactos).catch(() => {})
   }, [])
 
   if (loading) return <main className="cc"><p className="cc-empty">Cargando…</p></main>
-  if (!d) return <main className="cc"><p className="cc-empty">No se encontró el grupo (o no es tuyo).</p></main>
+  if (!d) return <main className="cc"><p className="cc-empty">No se encontró el grupo (o no participás).</p></main>
+  const canManage = !!d.canManage
 
   function resetForm() { setEditId(null); setName(''); setAlias(''); setEmail('') }
   function onName(v: string) {
@@ -99,7 +108,17 @@ export default function GrupoPage() {
     <main className="cc">
       <header className="cc-header">
         <div className="cc-title">
-          <div><h1>{d.grupo.name}</h1><p>{d.miembros.length} contacto{d.miembros.length === 1 ? '' : 's'}</p></div>
+          <div>
+            <h1>{d.grupo.name}</h1>
+            <p>{d.miembros.length} contacto{d.miembros.length === 1 ? '' : 's'}</p>
+            {d.grupo.token && (
+              <button className="cc-chip" type="button" onClick={() => {
+                const url = `${window.location.origin}/cuentas-claras/compartir/grupo/${d.grupo.token}`
+                navigator.clipboard?.writeText(url)
+                alert('Link copiado. Quien lo abra queda en el grupo.')
+              }}>Compartir link</button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -110,18 +129,18 @@ export default function GrupoPage() {
               <div className="cc-item-main">
                 <span className="cc-item-name">
                   {m.name}
-                  {m.userEmail && <span className="cc-soyyo on" title={`Vinculado a ${m.userEmail}`}>🔗 {m.userEmail}</span>}
+                  {m.userEmail && <span className="cc-soyyo on" title={m.userEmail}>vinculada</span>}
                 </span>
                 <span className="cc-item-sub">{m.alias ? `alias: ${m.alias}` : 'sin alias'}</span>
               </div>
-              <button className="cc-mini" onClick={() => startEdit(m)} aria-label="Editar">✎</button>
-              <button className="cc-mini" onClick={() => delMiembro(m.id)} aria-label="Quitar">✕</button>
+              {canManage && <button className="cc-mini" onClick={() => startEdit(m)} aria-label="Editar">✎</button>}
+              {canManage && <button className="cc-mini" onClick={() => delMiembro(m.id)} aria-label="Quitar">✕</button>}
             </li>
           ))}
           {d.miembros.length === 0 && <li className="cc-empty">Sumá contactos al grupo 👇</li>}
         </ul>
 
-        {!editId && regDisponibles.length > 0 && (
+        {canManage && !editId && regDisponibles.length > 0 && (
           <div className="cc-addrow">
             <select className="cc-input" value="" onChange={(e) => pickRegistrado(e.target.value)}>
               <option value="">Sumar usuario registrado…</option>
@@ -130,7 +149,7 @@ export default function GrupoPage() {
           </div>
         )}
 
-        <form className="cc-gastoform" onSubmit={submitMiembro}>
+        {canManage && <form className="cc-gastoform" onSubmit={submitMiembro}>
           {editId && <span className="cc-sec" style={{ margin: 0 }}>Editando contacto</span>}
           <div className="cc-gastoform-row">
             <input ref={nameRef} className="cc-input" value={name} onChange={(e) => onName(e.target.value)}
@@ -146,9 +165,9 @@ export default function GrupoPage() {
           <datalist id="cc-misc">
             {misContactos.map((c) => <option key={c.name} value={c.name} />)}
           </datalist>
-        </form>
+        </form>}
 
-        {!editId && contactosDisponibles.length > 0 && (
+        {canManage && !editId && contactosDisponibles.length > 0 && (
           <div className="cc-contactos">
             <button className="cc-chip" type="button" onClick={() => setShowContactos((v) => !v)}>
               {showContactos ? '▲ Ocultar contactos' : `👥 Sumar desde mis contactos (${contactosDisponibles.length})`}
@@ -178,7 +197,7 @@ export default function GrupoPage() {
         )}
       </section>
 
-      <button className="cc-btn cc-ghost cc-btn-block cc-danger" onClick={delGrupo}>Borrar grupo</button>
+      {canManage && <button className="cc-btn cc-ghost cc-btn-block cc-danger" onClick={delGrupo}>Borrar grupo</button>}
     </main>
   )
 }

@@ -10,6 +10,7 @@ import {
   IconPlus, IconChevronLeft, IconChevronRight, IconExternal, IconGift,
 } from '../icons'
 import { CasaBack } from '../CasaBack'
+import { AccesoPanel } from './AccesoPanel'
 
 type Moneda = 'ARS' | 'USD'
 type Prioridad = 'alta' | 'media' | 'baja'
@@ -22,9 +23,16 @@ interface Deseo {
   id: number; participanteId: number; titulo: string; prioridad: Prioridad; nota: string | null
   createdAt: string; opcionElegidaId: number | null; opciones: Opcion[]
 }
-interface Participante { id: number; grupoId: number; nombre: string; emoji: string | null; orden: number; deseos: Deseo[] }
+interface Participante { id: number; grupoId: number; nombre: string; emoji: string | null; orden: number; userEmail: string | null; deseos: Deseo[] }
 interface Grupo { id: number; nombre: string; token: string; createdAt: string; nParticipantes?: number; nDeseos?: number }
-interface GrupoDetalle extends Grupo { participantes: Participante[] }
+interface Acceso { email: string; name: string; origen: string }
+interface GrupoDetalle extends Grupo {
+  participantes: Participante[]
+  canManage?: boolean
+  acceso?: Acceso[]
+  ownerName?: string | null
+}
+interface CasaUser { email: string; name: string }
 
 const PRIO_LABEL: Record<Prioridad, string> = { alta: 'Alta', media: 'Media', baja: 'Baja' }
 const PRIO_ORDER: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 }
@@ -97,6 +105,7 @@ export default function NavidadPage() {
   const [editorDeseo, setEditorDeseo] = useState<DeseoEditorState | null>(null)
   const [editorOpcion, setEditorOpcion] = useState<OpcionEditorState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [users, setUsers] = useState<CasaUser[]>([])
 
   const loadGrupos = useCallback(async () => {
     const res = await apiFetch('/api/grupos')
@@ -145,7 +154,7 @@ export default function NavidadPage() {
   }, [])
 
   useEffect(() => {
-    loadGrupos()
+    let cancel = false
     const desdeUrl = () => {
       const sp = new URLSearchParams(window.location.search)
       const g = sp.get('g'); const p = sp.get('p')
@@ -154,14 +163,20 @@ export default function NavidadPage() {
         p: p && /^\d+$/.test(p) ? Number(p) : null,
       }
     }
-    const { g, p } = desdeUrl()
-    if (g) { openGrupo(g); setPersonaId(p) }
+    ;(async () => {
+      await apiFetch('/api/join').catch(() => {})
+      if (cancel) return
+      await loadGrupos()
+      const { g, p } = desdeUrl()
+      if (g) { openGrupo(g); setPersonaId(p) }
+    })()
+    apiFetch('/api/users').then((r) => (r.ok ? r.json() : [])).then((u) => { if (!cancel) setUsers(u) }).catch(() => {})
     const onPop = () => {
       const { g, p } = desdeUrl()
       if (g) { openGrupo(g); setPersonaId(p) } else { setGrupo(null); setPersonaId(null) }
     }
     window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
+    return () => { cancel = true; window.removeEventListener('popstate', onPop) }
   }, [loadGrupos, openGrupo])
 
   const showToast = useCallback((msg: string) => {
@@ -187,7 +202,7 @@ export default function NavidadPage() {
     try {
       const res = await fetch('/api/invite', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ note: `Navidad: ${grupo.nombre}` }),
+        body: JSON.stringify({ note: `Navidad: ${grupo.nombre}`, joinRef: `navidad:${grupo.token}` }),
       })
       const url = res.ok ? (await res.json().catch(() => null))?.url : null
       if (!url) { showToast('No pude crear la invitación'); return }
@@ -244,6 +259,15 @@ export default function NavidadPage() {
     if (!nombre || nombre === p.nombre) return
     await apiFetch(`/api/participantes/${p.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nombre }) })
     await reloadGrupo()
+  }
+  async function vincularPersona(participanteId: number, email: string) {
+    await apiFetch(`/api/participantes/${participanteId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userEmail: email || null }),
+    })
+    await reloadGrupo()
+    await loadGrupos()
   }
   async function borrarParticipante(p: Participante) {
     if (!confirm(`¿Quitar a ${p.nombre} y su lista?`)) return
@@ -310,6 +334,9 @@ export default function NavidadPage() {
           onCopy={() => copiarTexto(textoParticipante(grupo.nombre, persona), `Lista de ${persona.nombre} copiada ✓`)}
           onRename={() => renombrarParticipante(persona)}
           onDelete={() => borrarParticipante(persona)}
+          canManage={!!grupo.canManage}
+          users={users}
+          onLink={(email) => vincularPersona(persona.id, email)}
           onAddDeseo={() => setEditorDeseo({ participanteId: persona.id })}
           onEditDeseo={(d) => setEditorDeseo({ participanteId: d.participanteId, deseo: { id: d.id, titulo: d.titulo, prioridad: d.prioridad, nota: d.nota } })}
           onDeleteDeseo={borrarDeseo}
@@ -343,6 +370,8 @@ export default function NavidadPage() {
           onAddPart={agregarParticipante}
           onOpenPersona={abrirPersona}
           onInvite={invitarAEditar}
+          users={users}
+          onAccessChanged={() => { void reloadGrupo(); void loadGrupos() }}
         />
         {toast && <div className="nv-toast">{toast}</div>}
       </main>
@@ -410,11 +439,13 @@ function NuevoGrupoForm({ value, onChange, onSubmit, onCancel, busy }: {
 }
 
 // ── Nivel 2: personas del grupo (con buscador) ──
-function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDelete, onAddPart, onOpenPersona, onInvite }: {
+function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDelete, onAddPart, onOpenPersona, onInvite, users, onAccessChanged }: {
   grupo: GrupoDetalle; busy: boolean
   onBack: () => void; onShare: () => void; onCopyGroup: () => void
   onRename: () => void; onDelete: () => void
   onAddPart: () => void; onOpenPersona: (pid: number) => void; onInvite: () => void
+  users: CasaUser[]
+  onAccessChanged: () => void
 }) {
   const [tab, setTab] = useState<'personas' | 'deseos'>('personas')
   const [q, setQ] = useState('')
@@ -453,10 +484,25 @@ function GrupoView({ grupo, busy, onBack, onShare, onCopyGroup, onRename, onDele
             <h1>{grupo.nombre}</h1>
             <p>{grupo.participantes.length} {grupo.participantes.length === 1 ? 'persona' : 'personas'}</p>
           </div>
-          <button className="nv-icon-btn" title="Renombrar grupo" onClick={onRename}><IconPencil /></button>
-          <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar grupo" onClick={onDelete}><IconTrash /></button>
+          {grupo.canManage && (
+            <button className="nv-icon-btn" title="Renombrar grupo" onClick={onRename}><IconPencil /></button>
+          )}
+          {grupo.canManage && (
+            <button className="nv-icon-btn nv-icon-btn--danger" title="Borrar grupo" onClick={onDelete}><IconTrash /></button>
+          )}
         </div>
       </header>
+
+      {grupo.canManage && (
+        <AccesoPanel
+          grupoId={grupo.id}
+          ownerName={grupo.ownerName ?? null}
+          acceso={grupo.acceso ?? []}
+          participantes={grupo.participantes}
+          users={users}
+          onChanged={onAccessChanged}
+        />
+      )}
 
       {!hayPersonas ? (
         <div className="nv-empty">Sumá a las personas del grupo para armar sus listas.</div>
@@ -569,12 +615,15 @@ function DeseoFlatCard({ deseo: d, persona: p, onOpen }: { deseo: Deseo; persona
 }
 
 // ── Nivel 3: deseos de una persona (ver + editar, con opciones) ──
-function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion, onChooseOpcion }: {
+function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDelete, onAddDeseo, onEditDeseo, onDeleteDeseo, onAddOpcion, onEditOpcion, onDeleteOpcion, onRefreshOpcion, onChooseOpcion, canManage, users, onLink }: {
   grupo: GrupoDetalle; persona: Participante; busy: boolean
   onBack: () => void; onCopy: () => void; onRename: () => void; onDelete: () => void
   onAddDeseo: () => void; onEditDeseo: (d: Deseo) => void; onDeleteDeseo: (d: Deseo) => void
   onAddOpcion: (d: Deseo) => void; onEditOpcion: (o: Opcion) => void; onDeleteOpcion: (o: Opcion) => void; onRefreshOpcion: (o: Opcion) => void
   onChooseOpcion: (d: Deseo, o: Opcion) => void
+  canManage: boolean
+  users: CasaUser[]
+  onLink: (email: string) => void
 }) {
   return (
     <>
@@ -590,6 +639,20 @@ function PersonaView({ grupo, persona: p, busy, onBack, onCopy, onRename, onDele
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1>{p.nombre}</h1>
             <p>{resumen(p.deseos)}</p>
+            {canManage && (
+              <label className="nv-vincular">
+                Vincular con
+                <select
+                  className="nv-input"
+                  aria-label={`Vincular a ${p.nombre}`}
+                  value={p.userEmail ?? ''}
+                  onChange={(e) => onLink(e.target.value)}
+                >
+                  <option value="">Sin vincular</option>
+                  {users.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+                </select>
+              </label>
+            )}
           </div>
           <button className="nv-icon-btn" title="Renombrar" onClick={onRename}><IconPencil /></button>
           <button className="nv-icon-btn nv-icon-btn--danger" title="Quitar persona" onClick={onDelete}><IconTrash /></button>
