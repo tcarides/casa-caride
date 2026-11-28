@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { ADMIN_LINKS, APPS, accessOf, type MiniApp } from './apps.config'
 import { InstallInfo } from './InstallInfo'
-import { auth, signOut } from '@/auth'
+import { getViewer } from '@/lib/view-as'
 import { getEnabledApps } from '@/lib/db'
 
 type TileMode = 'open' | 'login' | 'locked'
@@ -23,15 +23,18 @@ function tileMode(
 export async function Launcher({
   searchParams,
 }: {
-  searchParams: Promise<{ denied?: string }>
+  searchParams: Promise<{ denied?: string; 'solo-lectura'?: string }>
 }) {
-  const session = await auth()
-  const { denied } = await searchParams
+  const { effective, viewing } = await getViewer()
+  const params = await searchParams
+  const denied = params.denied
+  const soloLectura = params['solo-lectura']
 
-  const loggedIn = !!session?.user
-  const isAdmin = session?.user?.role === 'admin'
-  const email = session?.user?.email ?? ''
-  const name = session?.user?.name ?? ''
+  // Identidad efectiva: con "ver como" es la de esa persona (rol, email, nombre).
+  const loggedIn = !!effective
+  const isAdmin = effective?.role === 'admin'
+  const email = effective?.email ?? ''
+  const name = effective?.name ?? ''
 
   // El admin no necesita filas. Un member: las 'open' se abren igual (aunque
   // no haya fila) y las de permiso sólo si están habilitadas.
@@ -62,13 +65,8 @@ export async function Launcher({
           {loggedIn ? (
             <>
               {isAdmin && <a href="/admin" className="home__userlink">Admin</a>}
-              <form
-                action={async () => {
-                  'use server'
-                  await signOut({ redirectTo: '/' })
-                }}
-              >
-                <button type="submit" className="home__userlink home__signout">Salir</button>
+              <form action="/api/session/logout" method="post">
+                <button type="submit" className="home__userlink home__signout">{viewing ? 'Cerrar sesión' : 'Salir'}</button>
               </form>
             </>
           ) : (
@@ -80,6 +78,14 @@ export async function Launcher({
       {deniedApp && (
         <p className="home__denied">
           No tenés acceso a <strong>{deniedApp.name}</strong>. Pedile a Tomás que te lo habilite.
+        </p>
+      )}
+
+      {soloLectura && (
+        <p className="home__denied">
+          {viewing
+            ? <>Estás viendo como <strong>{viewing.name}</strong>. No podés crear, editar ni borrar nada.</>
+            : 'No podés modificar nada en esta vista.'}
         </p>
       )}
 

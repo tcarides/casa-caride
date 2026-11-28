@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@casa/view-as": "*",
     "@neondatabase/serverless": "^0.10.4",
     "next": "^16.2.7",
     "next-auth": "^5.0.0-beta.31",

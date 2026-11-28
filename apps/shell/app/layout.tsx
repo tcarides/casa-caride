@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { SWRegister } from './sw-register'
+import { ViewAsBanner } from './ViewAsBanner'
 
 export const metadata: Metadata = {
   title: 'Casa Caride',
@@ -34,7 +35,9 @@ export default function RootLayout({
       <body>
         {/* Tokens del design system, compartidos por todas las mini-apps */}
         <link rel="stylesheet" href="/ds/styles.css" />
+        <ViewAsBanner />
         {children}
+        <script src="/view-as.js" defer />
         <SWRegister />
       </body>
     </html>

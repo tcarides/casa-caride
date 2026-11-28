@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { currentUser } from '@/lib/identity'
+import { currentUser, isViewingAs } from '@/lib/identity'
 import {
   getSql,
   ensureSchema,
   getOrCreateMyList,
+  findMyList,
   accessibleLists,
   canAccessList,
   getListById,
@@ -21,13 +22,24 @@ export async function GET(request: NextRequest) {
 
   const sql = getSql()
   const wanted = Number(request.nextUrl.searchParams.get('list'))
+  const viewing = await isViewingAs()
 
   // Resolver la lista a mostrar: la pedida (si tiene acceso) o la propia.
-  let listId: number
+  // Viendo como otra persona no se le crea la lista: solo se lee.
+  let listId: number | null
   if (Number.isFinite(wanted) && wanted > 0 && (await canAccessList(wanted, user.email))) {
     listId = wanted
+  } else if (viewing) {
+    listId = (await findMyList(user.email))?.id ?? null
   } else {
     listId = (await getOrCreateMyList(user.email, user.name)).id
+  }
+
+  if (listId == null) {
+    return NextResponse.json(
+      { list: null, lists: await accessibleLists(user.email), shares: [], categories: [], items: [] },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 
   const [lists, listRow] = await Promise.all([accessibleLists(user.email), getListById(listId)])

@@ -37,6 +37,7 @@ const GASTOS_URL = zoneUrl('GASTOS', 3006, true) // opcional: no rompe si falta
 const NAVIDAD_URL = zoneUrl('NAVIDAD', 3007, true) // opcional: no rompe si falta
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@casa/view-as'],
   async rewrites() {
     const rules = [
       { source: '/super', destination: `${SUPER_URL}/super` },

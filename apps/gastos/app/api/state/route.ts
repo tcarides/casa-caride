@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/guard'
-import { ensureMonth, listPersonas } from '@/lib/db'
+import { isViewingAs } from '@/lib/identity'
+import { ensureMonth, listMovimientos, listPersonas } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'periodo inválido (YYYY-MM)' }, { status: 400 })
   }
 
-  const [movimientos, personas] = await Promise.all([ensureMonth(periodo), listPersonas()])
+  // Ver como: no generar los fijos del mes (eso escribe). Se lee lo que ya está.
+  const movimientos = (await isViewingAs()) ? await listMovimientos(periodo) : await ensureMonth(periodo)
+  const personas = await listPersonas()
   return NextResponse.json({ periodo, personas, movimientos })
 }

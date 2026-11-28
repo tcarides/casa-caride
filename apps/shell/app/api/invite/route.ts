@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { readonlyBody } from '@casa/view-as'
 import { createInvite } from '@/lib/db'
+import { getViewer } from '@/lib/view-as'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +10,9 @@ export const dynamic = 'force-dynamic'
 // invitado queda como 'member' con las apps abiertas (súper, cuentas, navidad),
 // nunca con apps de permiso. Las invitaciones quedan visibles en /admin.
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  const email = session?.user?.email
+  const { real, viewing } = await getViewer()
+  if (viewing) return NextResponse.json(readonlyBody(viewing.name), { status: 403 })
+  const email = real?.email
   if (!email) return NextResponse.json({ error: 'no autenticado' }, { status: 401 })
 
   const b = (await req.json().catch(() => ({}))) as { note?: string }

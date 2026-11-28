@@ -159,6 +159,17 @@ export interface ShareRow {
  * Devuelve la lista propia del usuario, creándola la primera vez.
  * El nombre por defecto es "Lista de {nombre}".
  */
+/** Lista propia, sin crearla. Null si todavía no tiene. */
+export async function findMyList(email: string): Promise<ListRow | null> {
+  const sql = getSql()
+  const e = email.toLowerCase()
+  const rows = (await sql`
+    SELECT id, name, owner_email AS "ownerEmail", owner_name AS "ownerName"
+    FROM lists WHERE owner_email = ${e}
+  `) as ListRow[]
+  return rows[0] ?? null
+}
+
 export async function getOrCreateMyList(email: string, name: string): Promise<ListRow> {
   const sql = getSql()
   const e = email.toLowerCase()

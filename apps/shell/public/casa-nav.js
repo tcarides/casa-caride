@@ -100,4 +100,10 @@
     });
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
+
+  // Barra de "ver como" (el shell también la incluye directo; el flag evita el doble).
+  var viewAs = document.createElement('script');
+  viewAs.src = '/view-as.js';
+  viewAs.defer = true;
+  document.head.appendChild(viewAs);
 })();

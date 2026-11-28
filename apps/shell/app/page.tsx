@@ -7,7 +7,7 @@ import { LauncherLoader } from './LauncherLoader'
 export default function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ denied?: string }>
+  searchParams: Promise<{ denied?: string; 'solo-lectura'?: string }>
 }) {
   return (
     <Suspense fallback={<LauncherLoader />}>
