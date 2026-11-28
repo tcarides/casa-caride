@@ -103,6 +103,8 @@ export const APPS: MiniApp[] = [
     description: 'Las listas de regalos de la familia',
     href: '/navidad',
     emoji: '🎄',
+    icon: '/apps/navidad.png',
+    iconBg: '#E0484D',
     hue: '#E0484D',
     kind: 'zone',
     access: 'open',
