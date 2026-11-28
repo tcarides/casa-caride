@@ -72,6 +72,9 @@
   function inject() {
     var header = document.querySelector('header');
     if (!header) return;
+    // Una pantalla con back propio (sube de nivel adentro de la app, no al
+    // launcher) lo declara y no recibe la flecha de zona.
+    if (header.getAttribute('data-casa-nav') === 'off') return;
     if (header.querySelector('.casa-back')) return; // ya inyectada
     // Si la app define una fila de título (.casa-headrow), la flecha va ahí,
     // alineada con el título. Si no, como primer elemento del header.

@@ -6,5 +6,11 @@ import { hasSession } from '@/lib/session'
 // por acá, así que se puede abrir sin login.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   if (!(await hasSession())) redirect('https://casa-caride.vercel.app/navidad')
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      {/* Flecha atrás compartida: a la izquierda del ícono + título. */}
+      <script src="/casa-nav.js" async />
+    </>
+  )
 }

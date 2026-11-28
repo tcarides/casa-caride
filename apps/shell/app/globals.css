@@ -185,21 +185,27 @@ body {
 }
 
 /* ── Tile full-bleed con ilustración custom ──
-   La imagen (fondo amarillo propio) cubre la tarjeta; el nombre va en negro
-   sobre una banda del mismo amarillo abajo, así es legible y no depende de
-   dónde esté el sujeto de cada ilustración. */
+   La imagen (fondo propio) cubre la tarjeta; el nombre va en negro sobre una
+   banda del mismo color abajo. El área de la ilustración tiene altura fija
+   respecto del ancho del tile (la de Olivia/Fabián, el texto más corto), así
+   un nombre de dos líneas o una descripción de tres no achica el dibujo. */
 .tile--art {
   padding: 0;
   background: var(--art-bg, #f7c901);
-  justify-content: space-between;
+  justify-content: flex-start;
+  aspect-ratio: auto;
+  container-type: inline-size;
 }
 
 .tile__art {
   position: relative;
   z-index: 1;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   width: 100%;
+  /* ~el alto que tenía la ilustración en un tile casi cuadrado con una línea
+     de nombre y una de descripción (Olivia / Fabián). */
+  height: calc(100cqi * 0.68);
+  min-height: 108px;
   padding: 12px 12px 0;
   box-sizing: border-box;
   object-fit: contain;
@@ -225,6 +231,228 @@ body {
   color: #3a300f;
   border-color: rgba(0, 0, 0, 0.28);
   background: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Sección "Bloqueadas" ── */
+.home__section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 26px 2px 12px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--fw-medium, 600);
+  letter-spacing: -0.01em;
+  color: var(--text-sec);
+}
+
+.home__section-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* Tile sin acceso: se ve, no se abre. Sin hover ni click. */
+.tile--locked,
+.tile--locked:hover,
+.tile--locked:active {
+  opacity: 0.68;
+  filter: saturate(0.72);
+  transform: none;
+  cursor: default;
+  pointer-events: none;
+  border-color: var(--border-subtle);
+}
+
+.tile__lock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  color: #141414;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+.tile:not(.tile--art) .tile__lock {
+  color: var(--text-pri);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: none;
+}
+
+.tile__lock svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* ── Loader (handoff del splash de la PWA) ──
+   Círculo con icon-512 sobre #0a0a0a. El humo sale de la chimenea
+   (~67.87% x, 25% y del ícono) y es sólo CSS. */
+.loader {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: #0a0a0a;
+}
+
+.loader__disc {
+  position: relative;
+  width: 192px;
+  height: 192px;
+}
+
+.loader__house {
+  width: 192px;
+  height: 192px;
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #f7c901;
+  box-shadow: var(--glow-accent, 0 4px 18px -4px rgba(255, 214, 0, 0.35));
+}
+
+.loader__smoke {
+  position: absolute;
+  left: 67.87%;
+  top: 25%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.loader__puff {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 42% 40%,
+    rgba(248, 248, 246, 0.95) 0%,
+    rgba(220, 220, 216, 0.55) 38%,
+    rgba(170, 170, 166, 0.18) 66%,
+    rgba(170, 170, 166, 0) 78%
+  );
+  filter: blur(3px);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: smoke-rise 2.8s ease-out infinite;
+}
+
+.loader__puff--1 {
+  width: 17px;
+  height: 17px;
+  margin-left: -8.5px;
+  animation-duration: 2.75s;
+  animation-delay: 0s;
+}
+
+.loader__puff--2 {
+  width: 21px;
+  height: 21px;
+  margin-left: -10.5px;
+  filter: blur(3.5px);
+  animation-duration: 3s;
+  animation-delay: 0.95s;
+  animation-name: smoke-rise-b;
+}
+
+.loader__puff--3 {
+  width: 15px;
+  height: 15px;
+  margin-left: -7.5px;
+  filter: blur(3.2px);
+  animation-duration: 2.6s;
+  animation-delay: 1.85s;
+  animation-name: smoke-rise-c;
+}
+
+@keyframes smoke-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 5px) scale(0.28);
+  }
+  8% {
+    opacity: 0.85;
+    transform: translate(0.5px, -2px) scale(0.55);
+  }
+  28% {
+    opacity: 0.62;
+    transform: translate(-5px, -28px) scale(1.05);
+  }
+  58% {
+    opacity: 0.28;
+    transform: translate(7px, -62px) scale(1.65);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-3px, -108px) scale(2.2);
+  }
+}
+
+@keyframes smoke-rise-b {
+  0% {
+    opacity: 0;
+    transform: translate(0, 6px) scale(0.28);
+  }
+  12% {
+    opacity: 0.8;
+    transform: translate(-2px, -6px) scale(0.7);
+  }
+  40% {
+    opacity: 0.55;
+    transform: translate(6px, -38px) scale(1.25);
+  }
+  70% {
+    opacity: 0.22;
+    transform: translate(-8px, -72px) scale(1.85);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, -108px) scale(2.4);
+  }
+}
+
+@keyframes smoke-rise-c {
+  0% {
+    opacity: 0;
+    transform: translate(0, 5px) scale(0.32);
+  }
+  14% {
+    opacity: 0.82;
+    transform: translate(2px, -5px) scale(0.6);
+  }
+  38% {
+    opacity: 0.55;
+    transform: translate(8px, -30px) scale(1.1);
+  }
+  68% {
+    opacity: 0.22;
+    transform: translate(-2px, -66px) scale(1.65);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-6px, -94px) scale(2.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader__puff {
+    animation: none !important;
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 .home__footer {

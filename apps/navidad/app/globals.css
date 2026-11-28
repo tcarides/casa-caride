@@ -21,7 +21,24 @@ body {
   margin: -16px -16px 16px; padding: 14px 16px 12px;
 }
 .nv-title { display: flex; align-items: center; gap: 12px; }
-.nv-logo { font-size: 30px; line-height: 1; display: inline-flex; align-items: center; color: var(--nav); }
+/* Misma fila y flecha que casa-nav.js, presentes desde el primer paint. */
+.casa-headrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.casa-headrow > .nv-title { flex: 1; min-width: 0; }
+.casa-back {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 10px;
+  color: inherit; text-decoration: none; opacity: .8; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, opacity .15s, transform .1s;
+}
+.casa-back:hover { opacity: 1; background: rgba(127, 127, 127, .18); }
+.casa-back:active { transform: scale(.88); }
+/* Misma altura que el emoji de Cuentas (34px) / Fabián (28px), con el radio
+   de los controles del header. */
+.nv-logo {
+  width: 36px; height: 36px; flex: 0 0 auto; display: block;
+  border-radius: 10px; object-fit: cover;
+}
 .nv-title h1 { font-size: 1.3rem; font-weight: 800; }
 .nv-title p { font-size: 0.78rem; color: var(--text-sec); margin-top: 2px; }
 .nv-topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
